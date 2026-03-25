@@ -1,0 +1,164 @@
+# =============================================================================
+# Certis JBS Platform — Helm Values
+#
+# This chart deploys ONLY the custom services that cannot run natively on HAIC:
+#   1. Webhook Service      (FastAPI — receives WhatsApp/Telegram events)
+#   2. Conversation Orchestrator (FastAPI — phase state machine + h2oGPTe calls)
+#   3. Document Generator   (Python — renders .docx from approved JBS JSON)
+#   4. SharePoint Sync CronJob (runs daily to keep h2oGPTe collections fresh)
+#
+# NOT in this chart (managed natively on HAIC):
+#   - Admin Dashboard  → deploy via `h2o bundle` + HAIC App Store
+#   - Redis            → eliminated; h2oGPTe owns conversation history natively
+#   - h2oGPTe          → licensed HAIC service, pre-provisioned
+#   - H2O Document AI  → licensed HAIC service, pre-provisioned
+#   - H2O MLOps        → configured via HAIC console
+# =============================================================================
+
+global:
+  registry: registry.your-haic-cluster.h2o.ai/certis
+  imageTag: "1.0.0"
+  imagePullPolicy: Always
+  tenantId: "certis"
+  orchestratorUrl: "http://certis-jbs-orchestrator:8001"
+  documentGeneratorUrl: "http://certis-jbs-docgen:8002"
+
+# -----------------------------------------------------------------------------
+# 1. Webhook Service
+#    Public-facing. Receives signed events from WhatsApp and Telegram.
+# -----------------------------------------------------------------------------
+webhook:
+  replicaCount: 2
+  image: jbs-webhook
+  port: 8000
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  ingress:
+    enabled: true
+    className: nginx
+    host: jbs-webhook.your-haic-cluster.h2o.ai   # Must be publicly reachable by Meta + Telegram
+    tlsSecret: jbs-webhook-tls
+  env:
+    plain:
+      WHATSAPP_PHONE_NUMBER_ID: "<PLACEHOLDER>"
+      WHATSAPP_VERIFY_TOKEN: "<PLACEHOLDER>"      # Random string set in Meta webhook config
+    secret:
+      WHATSAPP_APP_SECRET:
+        name: certis-jbs-secrets
+        key: whatsapp-app-secret
+      WHATSAPP_ACCESS_TOKEN:
+        name: certis-jbs-secrets
+        key: whatsapp-access-token
+      TELEGRAM_BOT_TOKEN:
+        name: certis-jbs-secrets
+        key: telegram-bot-token
+
+# -----------------------------------------------------------------------------
+# 2. Conversation Orchestrator
+#    Internal only. Phase state machine. Calls h2oGPTe for LLM + RAG.
+#    State backend: memory (default) | sqlite | external_redis
+#    No Redis pod deployed — h2oGPTe owns conversation turn history.
+# -----------------------------------------------------------------------------
+orchestrator:
+  replicaCount: 2
+  image: jbs-orchestrator
+  port: 8001
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  env:
+    plain:
+      H2OGPTE_ADDRESS: "https://your-h2ogpte-instance.h2o.ai"
+      AZURE_TENANT_ID: "<PLACEHOLDER>"
+      AZURE_CLIENT_ID: "<PLACEHOLDER>"
+      SP_SITE_URL: "https://certissecurity.sharepoint.com/sites/operations"
+      SP_LIBRARY_CORPORATE: "<PLACEHOLDER>"
+      SP_LIBRARY_AVIATION: "<PLACEHOLDER>"
+      SP_LIBRARY_INDUSTRIAL: "<PLACEHOLDER>"
+      SP_LIBRARY_MARITIME: "<PLACEHOLDER>"
+      SP_LIBRARY_RETAIL: "<PLACEHOLDER>"
+      MOZART_API_BASE_URL: "https://mozart.certis.internal/api/v1"
+      TENANT_ID: "certis"
+      SESSION_TTL_HOURS: "24"
+      # State backend: "memory" (single replica), "sqlite" (restart-safe), or
+      # "external_redis" (multi-replica — requires REDIS_URL below)
+      STATE_BACKEND: "sqlite"
+      SQLITE_PATH: "/data/jbs_sessions.db"
+    secret:
+      H2OGPTE_API_KEY:
+        name: certis-jbs-secrets
+        key: h2ogpte-api-key
+      AZURE_CLIENT_SECRET:
+        name: certis-jbs-secrets
+        key: azure-client-secret
+      MOZART_API_KEY:
+        name: certis-jbs-secrets
+        key: mozart-api-key
+      # Only needed if STATE_BACKEND=external_redis
+      # REDIS_URL:
+      #   name: certis-jbs-secrets
+      #   key: redis-url
+
+# -----------------------------------------------------------------------------
+# 3. Document Generator
+#    Internal only. Renders approved JBS JSON to .docx, uploads to S3.
+# -----------------------------------------------------------------------------
+documentGenerator:
+  replicaCount: 1
+  image: jbs-docgen
+  port: 8002
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  env:
+    plain:
+      S3_BUCKET: "certis-jbs-documents"
+      S3_ENDPOINT_URL: "https://storage.your-haic-cluster.h2o.ai"
+      S3_PREFIX: "jbs-documents/"
+      DOC_URL_EXPIRY_SECONDS: "900"
+      AWS_ACCESS_KEY_ID: "<PLACEHOLDER>"
+    secret:
+      AWS_SECRET_ACCESS_KEY:
+        name: certis-jbs-secrets
+        key: s3-secret-access-key
+
+# -----------------------------------------------------------------------------
+# 4. SharePoint Sync CronJob
+#    Daily sync: SharePoint → H2O Document AI → h2oGPTe collections
+# -----------------------------------------------------------------------------
+syncCronJob:
+  enabled: true
+  schedule: "0 2 * * *"    # Daily at 02:00 UTC
+  image: jbs-orchestrator   # Reuses orchestrator image
+  command: ["python", "-m", "src.rag.sharepoint_sync"]
+  restartPolicy: OnFailure
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"

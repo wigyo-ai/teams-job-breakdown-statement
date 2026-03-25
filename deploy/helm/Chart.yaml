@@ -1,0 +1,13 @@
+apiVersion: v2
+name: certis-jbs-platform
+description: Certis Security JBS Automation Platform — H2O AI Cloud
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Certis Digital Team
+keywords:
+  - security
+  - jbs
+  - h2o
+  - ai

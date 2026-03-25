@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1600"/>
+<title>JBS Platform — Solution Diagram</title>
+
+<!-- TailwindCSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- vis-network CDN -->
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          h2o: {
+            yellow: '#FFD100',
+            dark:   '#1a1a1a',
+          }
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  body { background: #f5f6f8; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+  /* ── vis-network canvas background ─────────────────────────── */
+  #network-canvas { background: #f0f4f8 !important; }
+  .vis-network { outline: none !important; }
+
+  /* ── Custom tooltip styling ────────────────────────────────── */
+  .vis-tooltip {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 10px !important;
+    color: #374151 !important;
+    font-family: 'Segoe UI', system-ui, sans-serif !important;
+    font-size: 12px !important;
+    line-height: 1.6 !important;
+    max-width: 300px !important;
+    padding: 10px 14px !important;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12) !important;
+    pointer-events: none;
+  }
+
+  /* ── H2O yellow accent bar on header ───────────────────────── */
+  .h2o-accent { background: #FFD100; }
+
+  /* ── Step description cards ─────────────────────────────────── */
+  .step-card {
+    transition: border-color .2s, background .2s, transform .15s, box-shadow .2s;
+  }
+  .step-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .step-card.active {
+    box-shadow: 0 0 0 2px var(--active-color), 0 6px 20px rgba(0,0,0,0.1);
+    border-color: var(--active-color) !important;
+    background: #fffbeb !important;
+  }
+
+  /* ── Network toolbar buttons ─────────────────────────────────── */
+  .net-btn {
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .net-btn:hover { background: #FFD100; color: #1a1a1a; border-color: #FFD100; }
+</style>
+</head>
+
+<body class="min-h-screen">
+
+<!-- ══ PAGE HEADER ════════════════════════════════════════════════ -->
+<div class="h2o-accent h-1 w-full"></div>
+<div class="bg-white border-b border-gray-200 px-8 py-5 text-center shadow-sm">
+  <div class="flex items-center justify-center gap-3 mb-1">
+    <!-- H2O.ai style wordmark accent dot -->
+    <span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>
+    <h1 class="text-2xl font-extrabold tracking-tight text-gray-900">
+      Certis Security — JBS Automation Platform
+    </h1>
+    <span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>
+  </div>
+  <p class="text-gray-500 text-sm mt-1 tracking-wide">
+    Solution Architecture &nbsp;·&nbsp; H2O.ai Enterprise Platform &nbsp;·&nbsp; Hover nodes for details &nbsp;·&nbsp; Click a step below to trace the workflow
+  </p>
+</div>
+
+<!-- ══ DIAGRAM CARD ════════════════════════════════════════════════ -->
+<div class="max-w-[1580px] mx-auto px-6 pt-6">
+
+  <!-- Toolbar -->
+  <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center gap-2">
+      <!-- Legend -->
+      <div class="flex items-center gap-5 bg-white border border-gray-200 rounded-xl px-5 py-2.5 shadow-sm">
+        <span class="text-gray-400 text-xs font-semibold uppercase tracking-wider">Legend</span>
+        <div class="flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-sm bg-green-100 border border-green-500 inline-block"></span>
+          <span class="text-gray-600 text-xs">Client / Messaging</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-sm bg-gray-100 border border-gray-400 inline-block"></span>
+          <span class="text-gray-600 text-xs">Integration / Middleware</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-sm bg-yellow-100 border border-yellow-400 inline-block"></span>
+          <span class="text-gray-600 text-xs">AI &amp; Data (H2O.ai)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-sm bg-blue-100 border border-blue-500 inline-block"></span>
+          <span class="text-gray-600 text-xs">External Systems</span>
+        </div>
+        <div class="w-px h-4 bg-gray-200"></div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-6 border-t-2 border-solid border-gray-400"></span>
+          <span class="text-gray-600 text-xs">Primary flow</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-6 border-t-2 border-dashed border-gray-400"></span>
+          <span class="text-gray-600 text-xs">Return / Admin</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex items-center gap-2">
+      <button onclick="network.fit({animation:{duration:600,easingFunction:'easeInOutQuad'}})"
+        class="net-btn flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-600 text-xs font-semibold">
+        ⊞ Fit All
+      </button>
+      <button onclick="resetHighlight()"
+        class="net-btn flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-600 text-xs font-semibold">
+        ✕ Clear Selection
+      </button>
+    </div>
+  </div>
+
+  <!-- Network canvas -->
+  <div class="rounded-2xl border border-gray-200 shadow-md overflow-hidden"
+       style="height:640px; background:#f0f4f8;">
+    <div id="network-canvas" style="width:100%; height:100%;"></div>
+  </div>
+
+</div>
+
+<!-- ══ STEPS PANEL ═════════════════════════════════════════════════ -->
+<div class="max-w-[1580px] mx-auto px-6 py-8 pb-14">
+
+  <div class="flex items-center gap-4 mb-5">
+    <h2 class="text-base font-bold text-gray-800 whitespace-nowrap">Workflow Steps</h2>
+    <div class="flex-1 h-px bg-gray-200"></div>
+    <span class="text-xs text-gray-400 whitespace-nowrap">Click a step to highlight nodes &amp; edges on the diagram</span>
+  </div>
+
+  <div class="grid grid-cols-4 gap-3" id="steps-grid">
+
+    <!-- Step 1 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="1" style="--active-color:#FFD100" onclick="activateStep(1)">
+      <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">1</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">User Sends Message</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Security personnel send a message via WhatsApp or Telegram to initiate or continue a JBS interview session.</p>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="2" style="--active-color:#FFD100" onclick="activateStep(2)">
+      <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">2</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Webhook Validates Signature</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Webhook Service receives the event and verifies the HMAC-SHA256 signature (WhatsApp) or Telegram token to prevent spoofing.</p>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="3" style="--active-color:#FFD100" onclick="activateStep(3)">
+      <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">3</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Forward to Orchestrator</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Validated payload normalised to internal schema (channel, user_id, text, reply_to) and POSTed to the Conversation Orchestrator service.</p>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="4" style="--active-color:#6366f1" onclick="activateStep(4)">
+      <div class="w-7 h-7 rounded-full bg-indigo-100 border border-indigo-400 flex items-center justify-center text-indigo-700 text-xs font-black flex-shrink-0 mt-0.5">4</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Session Loaded &amp; Phase Determined</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator loads lightweight session from SQLite (phase + collected fields). Turn history lives natively in h2oGPTe — no Redis pod needed.</p>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="5" style="--active-color:#d97706" onclick="activateStep(5)">
+      <div class="w-7 h-7 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-700 text-xs font-black flex-shrink-0 mt-0.5">5</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Prompt Built &amp; h2oGPTe Called</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Phase-specific system prompt assembled with anti-hallucination rules. Sent to h2oGPTe with the conversation_id for vector search across the site-category RAG collection.</p>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="6" style="--active-color:#d97706" onclick="activateStep(6)">
+      <div class="w-7 h-7 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-700 text-xs font-black flex-shrink-0 mt-0.5">6</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">RAG Vector Search + LLM Response</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">h2oGPTe retrieves relevant SOP chunks from the correct collection (Corporate / Aviation / Industrial / Maritime / Retail) and generates a grounded response via hnswlib vector search.</p>
+      </div>
+    </div>
+
+    <!-- Step 7 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="7" style="--active-color:#FFD100" onclick="activateStep(7)">
+      <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">7</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Response Returned to User</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator saves updated phase state. LLM reply is sent back through the Webhook Service to the user via WhatsApp Cloud API or Telegram sendMessage.</p>
+      </div>
+    </div>
+
+    <!-- Step 8 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="8" style="--active-color:#f59e0b" onclick="activateStep(8)">
+      <div class="w-7 h-7 rounded-full bg-orange-100 border border-orange-400 flex items-center justify-center text-orange-700 text-xs font-black flex-shrink-0 mt-0.5">8</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Phase 4: Mozart Reference Lookup</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator calls Mozart REST API with the user-provided Site ID to fetch linked documents (SOPs, Emergency Plans). References embedded in the final JBS output.</p>
+      </div>
+    </div>
+
+    <!-- Step 9 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="9" style="--active-color:#7c3aed" onclick="activateStep(9)">
+      <div class="w-7 h-7 rounded-full bg-violet-100 border border-violet-400 flex items-center justify-center text-violet-700 text-xs font-black flex-shrink-0 mt-0.5">9</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Phase 5: Document Generation Triggered</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">On user APPROVE in Phase 5, the Orchestrator assembles the complete JBS JSON payload and calls the Document Generator service.</p>
+      </div>
+    </div>
+
+    <!-- Step 10 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="10" style="--active-color:#7c3aed" onclick="activateStep(10)">
+      <div class="w-7 h-7 rounded-full bg-violet-100 border border-violet-400 flex items-center justify-center text-violet-700 text-xs font-black flex-shrink-0 mt-0.5">10</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">.docx Rendered &amp; Uploaded to S3</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">python-docx renders JBS JSON into the corporate Word template. File uploaded to S3 object store. A 15-minute presigned download URL is sent back to the user.</p>
+      </div>
+    </div>
+
+    <!-- Step 11 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="11" style="--active-color:#16a34a" onclick="activateStep(11)">
+      <div class="w-7 h-7 rounded-full bg-green-100 border border-green-500 flex items-center justify-center text-green-700 text-xs font-black flex-shrink-0 mt-0.5">11</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Daily SharePoint Sync</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">CronJob runs at 02:00 UTC pulling changed SOP documents from SharePoint via Microsoft Graph API. H2O Document AI processes (OCR, chunking) and ingests into the correct h2oGPTe site-category collection.</p>
+      </div>
+    </div>
+
+    <!-- Step 12 -->
+    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
+         data-step="12" style="--active-color:#0ea5e9" onclick="activateStep(12)">
+      <div class="w-7 h-7 rounded-full bg-sky-100 border border-sky-400 flex items-center justify-center text-sky-700 text-xs font-black flex-shrink-0 mt-0.5">12</div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Admin Monitoring &amp; Control</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">H2O Wave Admin Dashboard (HAIC App Store native) monitors active interviews, document library, and triggers SharePoint syncs. H2O MLOps tracks inference latency, error rates, and drift.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ SCRIPT ══════════════════════════════════════════════════════ -->
+<script>
+// ── Tooltip helper ───────────────────────────────────────────────
+function tip(title, body) {
+  return `<div style="font-family:'Segoe UI',sans-serif">
+    <div style="font-weight:700;color:#111827;margin-bottom:5px;font-size:12.5px">${title}</div>
+    <div style="color:#6b7280;font-size:11.5px;line-height:1.6">${body}</div>
+  </div>`;
+}
+
+// ── Node definitions ─────────────────────────────────────────────
+const nodeData = [
+
+  // === CLIENT TIER ===
+  { id: 1, label: '💬  WhatsApp\nBusiness API', group: 'client', level: 0,
+    title: tip('WhatsApp Business API',
+      'Entry point for security personnel. Sends signed webhook events via Meta Cloud API. HMAC-SHA256 signature ensures authenticity of every inbound message.') },
+
+  { id: 2, label: '✈️  Telegram\nBot API', group: 'client', level: 0,
+    title: tip('Telegram Bot API',
+      'Alternative messaging channel. Bot API delivers user messages via webhook to the JBS Webhook Service. Supports text messages for the interview flow.') },
+
+  // === MIDDLEWARE TIER ===
+  { id: 3, label: '🔗  Webhook Service\nFastAPI · Port 8000', group: 'middleware', level: 1,
+    title: tip('Webhook Service — FastAPI :8000',
+      'Receives inbound events from WhatsApp &amp; Telegram. Validates HMAC-SHA256 signatures. Normalises to internal schema (channel, user_id, text, reply_to) and forwards to the Orchestrator. 2× replicas, HPA scales to 10.') },
+
+  { id: 4, label: '🧠  Conversation\nOrchestrator\nFastAPI · Port 8001', group: 'middleware', level: 2,
+    title: tip('Conversation Orchestrator — FastAPI :8001',
+      'Core of the platform. Enforces the 5-phase JBS interview state machine. Builds phase-specific prompts, calls h2oGPTe for RAG-grounded LLM responses, handles Mozart Phase 4 lookup, and triggers Document Generator on Phase 5 approval. Session phase state in SQLite; turn history owned by h2oGPTe natively. 2× replicas.') },
+
+  { id: 5, label: '📝  Document\nGenerator\nPython · Port 8002', group: 'middleware', level: 3,
+    title: tip('Document Generator — python-docx :8002',
+      'Receives approved JBS JSON payload from the Orchestrator. Renders it into the approved corporate Word (.docx) template using python-docx. Uploads file to S3-compatible object store and returns a 15-minute presigned download URL sent back to the user.') },
+
+  { id: 6, label: '🔄  SharePoint\nSync CronJob', group: 'middleware', level: 1,
+    title: tip('SharePoint Sync CronJob',
+      'Kubernetes CronJob scheduled at 02:00 UTC daily. Fetches changed SOP documents from SharePoint via Microsoft Graph API. Passes them to H2O Document AI for OCR and chunking, then ingests processed chunks into the correct h2oGPTe site-category collection.') },
+
+  { id: 7, label: '📊  Admin Dashboard\nH2O Wave', group: 'middleware', level: 2,
+    title: tip('Admin Dashboard — H2O Wave',
+      'Deployed natively via HAIC App Store (NOT via Helm). H2O Wave is a first-class citizen on HAIC. Provides real-time monitoring of active JBS interviews, document library access, manual SharePoint sync trigger, and H2O MLOps metrics view.') },
+
+  // === AI & DATA TIER ===
+  { id: 8, label: '🤖  H2O Enterprise\nh2oGPTe\n(HAIC Native)', group: 'ai', level: 3,
+    title: tip('H2O Enterprise h2oGPTe',
+      'Core AI engine. Manages full conversational state via <code>conversation_id</code> — eliminating the need for a Redis pod. Performs hnswlib vector search across 5 site-category RAG collections (Corporate, Aviation, Industrial, Maritime, Retail) to ground every LLM response. Hosts Llama 3 / Mistral or custom fine-tuned security model. Licensed HAIC service — pre-provisioned, not deployed via Helm.') },
+
+  { id: 9, label: '📄  H2O Document AI\n(HAIC Native)', group: 'ai', level: 2,
+    title: tip('H2O Document AI',
+      'Processes raw SOP documents fetched from SharePoint. Performs OCR, layout intelligence, and entity extraction (task names, frequencies, roles). Chunks documents for ingestion into h2oGPTe vector store collections. Licensed HAIC service.') },
+
+  { id: 10, label: '📈  H2O MLOps\n(HAIC Native)', group: 'ai', level: 4,
+    title: tip('H2O MLOps',
+      'Production model monitoring for the h2oGPTe LLM inference endpoint. Tracks response latency p95 (alert &gt;8s), error rate (alert &gt;2%), and data drift score (alert &gt;0.3). Sends notifications via email or Slack. Licensed HAIC service.') },
+
+  // === EXTERNAL SYSTEMS ===
+  { id: 11, label: '📁  SharePoint\nOnline', group: 'external', level: 0,
+    title: tip('SharePoint Online',
+      'Source of truth for all SOPs, historical JBS documents, and policy files. Accessed via Microsoft Graph API using Azure AD OAuth 2.0 client credentials (Files.Read.All, Sites.Read.All permissions). Documents auto-synced daily into h2oGPTe collections.') },
+
+  { id: 12, label: '🎵  Mozart API', group: 'external', level: 4,
+    title: tip('Mozart API',
+      'Reference document management system for Certis. Called during Phase 4 of the JBS interview to fetch linked documents (SOPs, Emergency Plans, Policies) by Site ID. REST API with Bearer token authentication. API key stored in H2O Secret Manager.') },
+
+  { id: 13, label: '🗄️  S3 Object\nStore (HAIC)', group: 'external', level: 4,
+    title: tip('S3 Object Store',
+      'S3-compatible storage for generated JBS Word documents. Can be HAIC native object storage, AWS S3, or Azure Blob Storage. Generated .docx files stored with a 15-minute presigned URL returned to the end user. Access restricted to the Document Generator service account.') },
+];
+
+// ── Edge definitions ─────────────────────────────────────────────
+const edgeData = [
+  // User flow — blue
+  { id: 1,  from: 1,  to: 3,  label: 'webhook POST', color:{color:'#2563eb',hover:'#3b82f6',highlight:'#60a5fa'}, width:2,   dashes:false, title:'WhatsApp sends signed webhook event to the Webhook Service over HTTPS.' },
+  { id: 2,  from: 2,  to: 3,  label: 'webhook POST', color:{color:'#2563eb',hover:'#3b82f6',highlight:'#60a5fa'}, width:2,   dashes:false, title:'Telegram sends webhook event to the Webhook Service over HTTPS.' },
+  { id: 3,  from: 3,  to: 4,  label: 'forward',       color:{color:'#2563eb',hover:'#3b82f6',highlight:'#60a5fa'}, width:2,   dashes:false, title:'Webhook Service forwards normalised message to the Conversation Orchestrator.' },
+  { id: 4,  from: 4,  to: 3,  label: 'reply',          color:{color:'#60a5fa',hover:'#93c5fd',highlight:'#bfdbfe'}, width:1.5, dashes:true,  title:'Orchestrator returns the LLM reply via the Webhook Service back to the user.' },
+
+  // AI flow — amber/gold
+  { id: 5,  from: 4,  to: 8,  label: 'RAG prompt\nPhases 1–5', color:{color:'#d97706',hover:'#f59e0b',highlight:'#fbbf24'}, width:2.2, dashes:false, title:'Orchestrator sends phase-specific system prompt + conversation_id to h2oGPTe for RAG-grounded LLM inference.' },
+  { id: 6,  from: 8,  to: 4,  label: 'response',       color:{color:'#ca8a04',hover:'#d97706',highlight:'#f59e0b'}, width:1.5, dashes:true,  title:'h2oGPTe returns the generated response. Turn history stored natively by h2oGPTe — no Redis required.' },
+
+  // Document flow — violet
+  { id: 7,  from: 4,  to: 5,  label: 'Phase 5 JSON',   color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'On Phase 5 APPROVE, Orchestrator sends the complete JBS JSON payload to the Document Generator.' },
+  { id: 8,  from: 5,  to: 13, label: '.docx upload',    color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'Document Generator uploads the rendered Word file to S3 and returns a presigned download URL.' },
+
+  // Mozart — orange dashed
+  { id: 9,  from: 4,  to: 12, label: 'Phase 4 lookup',  color:{color:'#ea580c',hover:'#f97316',highlight:'#fb923c'}, width:1.8, dashes:true,  title:'Phase 4: Orchestrator queries Mozart API with the Site ID to retrieve linked reference documents.' },
+
+  // SharePoint sync — green
+  { id: 10, from: 11, to: 6,  label: 'Graph API\ndaily', color:{color:'#16a34a',hover:'#22c55e',highlight:'#4ade80'}, width:2,   dashes:false, title:'CronJob fetches changed SOP documents from SharePoint Online via Microsoft Graph API.' },
+  { id: 11, from: 6,  to: 9,  label: 'raw documents',    color:{color:'#16a34a',hover:'#22c55e',highlight:'#4ade80'}, width:2,   dashes:false, title:'CronJob passes downloaded files to H2O Document AI for OCR, layout analysis, and chunking.' },
+  { id: 12, from: 9,  to: 8,  label: 'chunks + embeds',  color:{color:'#16a34a',hover:'#22c55e',highlight:'#4ade80'}, width:2,   dashes:false, title:'H2O Document AI sends processed chunks to h2oGPTe for vector embedding and ingestion into the site-category collection.' },
+
+  // Admin / monitoring — sky dashed
+  { id: 13, from: 7,  to: 4,  label: 'admin API',        color:{color:'#0ea5e9',hover:'#38bdf8',highlight:'#7dd3fc'}, width:1.5, dashes:true,  title:'Wave Admin Dashboard calls the Orchestrator admin API to list active sessions and trigger manual syncs.' },
+  { id: 14, from: 8,  to: 10, label: 'metrics',           color:{color:'#0ea5e9',hover:'#38bdf8',highlight:'#7dd3fc'}, width:1.5, dashes:true,  title:'h2oGPTe sends inference metrics (latency, error rate, drift) to H2O MLOps for monitoring and alerting.' },
+];
+
+// ── vis-network setup ─────────────────────────────────────────────
+const container = document.getElementById('network-canvas');
+
+const nodes = new vis.DataSet(nodeData);
+const edges = new vis.DataSet(edgeData);
+
+const options = {
+  layout: {
+    hierarchical: {
+      enabled: true,
+      direction: 'LR',
+      sortMethod: 'directed',
+      levelSeparation: 240,
+      nodeSpacing: 110,
+      treeSpacing: 160,
+      blockShifting: true,
+      edgeMinimization: true,
+      parentCentralization: true,
+    }
+  },
+  physics: { enabled: false },
+  interaction: {
+    hover: true,
+    tooltipDelay: 180,
+    navigationButtons: false,
+    keyboard: { enabled: true, bindToWindow: false },
+    zoomView: true,
+    dragView: true,
+    dragNodes: true,
+    multiselect: false,
+  },
+  nodes: {
+    shape: 'box',
+    borderWidth: 2,
+    borderWidthSelected: 3,
+    shadow: { enabled: true, color: 'rgba(0,0,0,0.10)', size: 10, x: 1, y: 2 },
+    font: { size: 12, face: "'Segoe UI', system-ui, sans-serif", multi: false, vadjust: 0 },
+    margin: { top: 12, right: 18, bottom: 12, left: 18 },
+    widthConstraint: { minimum: 140, maximum: 175 },
+  },
+  edges: {
+    arrows: { to: { enabled: true, scaleFactor: 0.75, type: 'arrow' } },
+    smooth: { enabled: true, type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.45 },
+    font: { size: 10, face: "'Segoe UI', sans-serif", align: 'middle',
+            background: 'rgba(255,255,255,0.88)', strokeWidth: 0, color: '#6b7280' },
+    length: 220,
+    selectionWidth: 3,
+  },
+  groups: {
+    client: {
+      color: {
+        background: '#dcfce7', border: '#16a34a',
+        highlight: { background: '#bbf7d0', border: '#15803d' },
+        hover:      { background: '#bbf7d0', border: '#16a34a' }
+      },
+      font: { color: '#14532d' }
+    },
+    middleware: {
+      color: {
+        background: '#f1f5f9', border: '#94a3b8',
+        highlight: { background: '#e2e8f0', border: '#475569' },
+        hover:      { background: '#e2e8f0', border: '#64748b' }
+      },
+      font: { color: '#1e293b' }
+    },
+    ai: {
+      color: {
+        background: '#fefce8', border: '#ca8a04',
+        highlight: { background: '#fef9c3', border: '#a16207' },
+        hover:      { background: '#fef9c3', border: '#ca8a04' }
+      },
+      font: { color: '#713f12' }
+    },
+    external: {
+      color: {
+        background: '#dbeafe', border: '#2563eb',
+        highlight: { background: '#bfdbfe', border: '#1d4ed8' },
+        hover:      { background: '#bfdbfe', border: '#2563eb' }
+      },
+      font: { color: '#1e3a8a' }
+    }
+  }
+};
+
+const network = new vis.Network(container, { nodes, edges }, options);
+
+// Fit to canvas after init
+network.once('afterDrawing', () => {
+  network.fit({ animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+});
+
+// ── Dim / Highlight colours ───────────────────────────────────────
+const DIM_NODE = { background: '#f1f5f9', border: '#e2e8f0', font: { color: '#cbd5e1' } };
+const DIM_EDGE = { color: { color: '#e2e8f0', highlight: '#e2e8f0', hover: '#e2e8f0' }, font: { color: 'transparent' } };
+
+// Original node colours by group
+const GROUP_COLORS = {
+  client:     { background: '#dcfce7', border: '#16a34a', font: { color: '#14532d' } },
+  middleware: { background: '#f1f5f9', border: '#94a3b8', font: { color: '#1e293b' } },
+  ai:         { background: '#fefce8', border: '#ca8a04', font: { color: '#713f12' } },
+  external:   { background: '#dbeafe', border: '#2563eb', font: { color: '#1e3a8a' } },
+};
+
+// Original edge data (color + font) keyed by edge id
+const ORIGINAL_EDGE = {};
+edgeData.forEach(e => {
+  ORIGINAL_EDGE[e.id] = { color: { ...e.color }, font: { size:10, face:"'Segoe UI',sans-serif", align:'middle', background:'rgba(255,255,255,0.88)', strokeWidth:0, color:'#6b7280' } };
+});
+
+// ── Step → node/edge map ─────────────────────────────────────────
+const STEP_MAP = {
+  1:  { nodes: [1, 2, 3],          edges: [1, 2] },
+  2:  { nodes: [1, 2, 3],          edges: [1, 2] },
+  3:  { nodes: [3, 4],             edges: [3] },
+  4:  { nodes: [4],                edges: [] },
+  5:  { nodes: [4, 8],             edges: [5] },
+  6:  { nodes: [8],                edges: [5, 6] },
+  7:  { nodes: [1, 2, 3, 4],       edges: [4, 6] },
+  8:  { nodes: [4, 12],            edges: [9] },
+  9:  { nodes: [4, 5],             edges: [7] },
+  10: { nodes: [5, 13],            edges: [8] },
+  11: { nodes: [11, 6, 9, 8],      edges: [10, 11, 12] },
+  12: { nodes: [7, 4, 10],         edges: [13, 14] },
+};
+
+let activeStep = null;
+
+function activateStep(step) {
+  if (activeStep === step) { resetHighlight(); return; }
+  activeStep = step;
+
+  const { nodes: litNodes, edges: litEdges } = STEP_MAP[step];
+  const litNodeSet = new Set(litNodes);
+  const litEdgeSet = new Set(litEdges);
+
+  // Dim all nodes then re-brighten lit ones
+  const nodeUpdates = nodeData.map(n => ({
+    id: n.id,
+    color: litNodeSet.has(n.id)
+      ? { background: GROUP_COLORS[n.group].background, border: GROUP_COLORS[n.group].border, highlight: GROUP_COLORS[n.group] }
+      : DIM_NODE,
+    font: litNodeSet.has(n.id)
+      ? GROUP_COLORS[n.group].font
+      : DIM_NODE.font,
+    borderWidth: litNodeSet.has(n.id) ? 3 : 1,
+    shadow: litNodeSet.has(n.id)
+      ? { enabled: true, color: 'rgba(0,0,0,0.18)', size: 16, x: 0, y: 0 }
+      : { enabled: false }
+  }));
+  nodes.update(nodeUpdates);
+
+  // Dim all edges then re-brighten lit ones
+  const edgeUpdates = edgeData.map(e => ({
+    id: e.id,
+    color: litEdgeSet.has(e.id)
+      ? { ...ORIGINAL_EDGE[e.id].color, opacity: 1 }
+      : DIM_EDGE.color,
+    font: litEdgeSet.has(e.id)
+      ? ORIGINAL_EDGE[e.id].font
+      : DIM_EDGE.font,
+    width: litEdgeSet.has(e.id) ? 3 : 1,
+  }));
+  edges.update(edgeUpdates);
+
+  // Highlight step description cards
+  document.querySelectorAll('.step-card').forEach(el => {
+    el.classList.toggle('active', Number(el.dataset.step) === step);
+  });
+
+  // Scroll active card into view
+  const card = document.querySelector(`.step-card[data-step="${step}"]`);
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetHighlight() {
+  activeStep = null;
+
+  // Restore all nodes
+  nodes.update(nodeData.map(n => ({
+    id: n.id,
+    color: { background: GROUP_COLORS[n.group].background, border: GROUP_COLORS[n.group].border },
+    font:  GROUP_COLORS[n.group].font,
+    borderWidth: 2,
+    shadow: { enabled: true, color: 'rgba(0,0,0,0.10)', size: 10, x: 1, y: 2 }
+  })));
+
+  // Restore all edges
+  edges.update(edgeData.map(e => ({
+    id: e.id,
+    color: ORIGINAL_EDGE[e.id].color,
+    font:  ORIGINAL_EDGE[e.id].font,
+    width: edgeData.find(x => x.id === e.id)?.width || 1.5,
+  })));
+
+  document.querySelectorAll('.step-card').forEach(el => el.classList.remove('active'));
+}
+
+// Click on blank canvas to reset
+network.on('click', params => {
+  if (params.nodes.length === 0 && params.edges.length === 0) resetHighlight();
+});
+
+// Clicking a vis-network node highlights relevant steps
+network.on('selectNode', params => {
+  if (params.nodes.length === 0) return;
+  const nodeId = params.nodes[0];
+  for (const [step, map] of Object.entries(STEP_MAP)) {
+    if (map.nodes.includes(nodeId)) {
+      activateStep(Number(step));
+      break;
+    }
+  }
+});
+</script>
+</body>
+</html>

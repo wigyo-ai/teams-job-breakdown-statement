@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JBS Platform — Deployment Guide</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --h2o-blue:     #0d6efd;
+      --h2o-dark:     #0a1628;
+      --h2o-mid:      #0f2040;
+      --h2o-accent:   #00c4f4;
+      --h2o-green:    #00c58e;
+      --h2o-yellow:   #f5a623;
+      --h2o-red:      #ff4d6d;
+      --sidebar-w:    270px;
+      --text:         #e2e8f0;
+      --text-muted:   #8899aa;
+      --surface:      #0f1f38;
+      --surface2:     #162840;
+      --surface3:     #1d3354;
+      --border:       #1e3a5f;
+      --code-bg:      #060f1e;
+      --radius:       8px;
+      --shadow:       0 4px 24px rgba(0,0,0,.45);
+    }
+
+    html { scroll-behavior: smooth; font-size: 15px; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--h2o-dark);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+      line-height: 1.7;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      background: var(--h2o-mid);
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar-header {
+      padding: 20px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #0a1e40 0%, #0f2a55 100%);
+    }
+
+    #sidebar-header .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .brand-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--h2o-accent), var(--h2o-blue));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 16px; color: #fff;
+      flex-shrink: 0;
+    }
+
+    #sidebar-header h2 {
+      font-size: 13px; font-weight: 700;
+      color: #fff; line-height: 1.3;
+    }
+
+    #sidebar-header p {
+      font-size: 11px; color: var(--h2o-accent);
+      padding-left: 44px;
+    }
+
+    #sidebar nav { padding: 12px 0 20px; flex: 1; }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 14px 18px 6px;
+    }
+
+    #sidebar nav a {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 18px;
+      font-size: 12.5px;
+      color: #9bb8d4;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all .18s;
+    }
+
+    #sidebar nav a:hover { color: #fff; background: rgba(255,255,255,.05); }
+
+    #sidebar nav a.active {
+      color: var(--h2o-accent);
+      border-left-color: var(--h2o-accent);
+      background: rgba(0,196,244,.07);
+    }
+
+    .nav-num {
+      width: 20px; height: 20px;
+      background: var(--surface3);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+
+    #sidebar nav a.active .nav-num {
+      background: var(--h2o-accent);
+      color: #000;
+    }
+
+    /* ── Main Content ─────────────────────────────────────────────── */
+    #main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      max-width: calc(100vw - var(--sidebar-w));
+    }
+
+    /* ── Top Bar ──────────────────────────────────────────────────── */
+    #topbar {
+      background: linear-gradient(90deg, #050e1e 0%, #0a1e42 50%, #050e1e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 22px 48px 20px;
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    #topbar h1 {
+      font-size: 22px; font-weight: 800;
+      background: linear-gradient(90deg, #fff 0%, var(--h2o-accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    #topbar .meta {
+      font-size: 12px; color: var(--text-muted); margin-top: 4px;
+      display: flex; align-items: center; gap: 18px;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+
+    .badge-blue  { background: rgba(13,110,253,.2); color: #6da9ff; border: 1px solid rgba(13,110,253,.3); }
+    .badge-green { background: rgba(0,197,142,.18); color: #40e8b0; border: 1px solid rgba(0,197,142,.3); }
+    .badge-warn  { background: rgba(245,166,35,.18); color: #f5c842; border: 1px solid rgba(245,166,35,.3); }
+    .badge-red   { background: rgba(255,77,109,.15); color: #ff7a94; border: 1px solid rgba(255,77,109,.25); }
+
+    /* ── Content Sections ─────────────────────────────────────────── */
+    .content { padding: 40px 48px 80px; }
+
+    section { margin-bottom: 60px; scroll-margin-top: 80px; }
+
+    /* ── Section Headers ──────────────────────────────────────────── */
+    .section-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step-badge {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--h2o-blue), var(--h2o-accent));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 14px; color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(13,110,253,.4);
+    }
+
+    .step-badge.prereq { background: linear-gradient(135deg, #6f42c1, #a855f7); box-shadow: 0 4px 12px rgba(111,66,193,.4); }
+    .step-badge.check  { background: linear-gradient(135deg, var(--h2o-green), #00a876); box-shadow: 0 4px 12px rgba(0,197,142,.4); }
+    .step-badge.warn   { background: linear-gradient(135deg, var(--h2o-yellow), #e08800); box-shadow: 0 4px 12px rgba(245,166,35,.4); }
+    .step-badge.trouble { background: linear-gradient(135deg, var(--h2o-red), #c0002a); box-shadow: 0 4px 12px rgba(255,77,109,.35); }
+    .step-badge.arch   { background: linear-gradient(135deg, #0f9d9d, #00c4c4); box-shadow: 0 4px 12px rgba(0,197,197,.35); }
+
+    .section-header h2 {
+      font-size: 20px; font-weight: 700; color: #fff;
+    }
+
+    .section-header .section-desc {
+      font-size: 13px; color: var(--text-muted); margin-top: 2px;
+    }
+
+    h3 {
+      font-size: 15px; font-weight: 700; color: #c9dff5;
+      margin: 28px 0 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    h3::before {
+      content: '';
+      display: block; width: 3px; height: 16px;
+      background: var(--h2o-accent);
+      border-radius: 2px;
+    }
+
+    p { margin-bottom: 12px; color: #b0c8e0; }
+
+    /* ── Info Cards ───────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+
+    .callout {
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 13.5px;
+    }
+
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    .callout.info    { background: rgba(13,110,253,.1);  border-left: 3px solid var(--h2o-blue);   color: #93c5fd; }
+    .callout.warn    { background: rgba(245,166,35,.1);  border-left: 3px solid var(--h2o-yellow); color: #fcd34d; }
+    .callout.success { background: rgba(0,197,142,.1);   border-left: 3px solid var(--h2o-green);  color: #6ee7b7; }
+    .callout.danger  { background: rgba(255,77,109,.1);  border-left: 3px solid var(--h2o-red);    color: #fca5a5; }
+
+    /* ── Tables ───────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin: 16px 0 24px; border-radius: var(--radius); border: 1px solid var(--border); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+
+    thead tr { background: var(--surface3); }
+
+    th {
+      padding: 11px 16px; text-align: left;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .8px; text-transform: uppercase;
+      color: var(--h2o-accent);
+      white-space: nowrap;
+    }
+
+    td { padding: 10px 16px; border-top: 1px solid var(--border); vertical-align: top; color: #b8cfe6; }
+
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    td code, th code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--h2o-accent);
+    }
+
+    /* ── Code Blocks ──────────────────────────────────────────────── */
+    .code-wrap {
+      position: relative;
+      margin: 16px 0 24px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .code-header {
+      background: var(--surface3);
+      padding: 8px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-lang {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .5px; text-transform: uppercase;
+      color: var(--h2o-accent);
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 3px 10px;
+      border-radius: 5px;
+      font-size: 11px; cursor: pointer;
+      transition: all .15s;
+    }
+
+    .copy-btn:hover { background: var(--surface2); color: #fff; border-color: var(--h2o-accent); }
+    .copy-btn.copied { color: var(--h2o-green); border-color: var(--h2o-green); }
+
+    pre {
+      background: var(--code-bg);
+      padding: 18px 20px;
+      overflow-x: auto;
+      margin: 0;
+    }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    pre code { color: #c8d8f0; }
+
+    /* Syntax colouring (manual, no lib) */
+    .kw  { color: #7dd3fc; }   /* keywords */
+    .st  { color: #86efac; }   /* strings */
+    .cm  { color: #6b7f95; font-style: italic; }  /* comments */
+    .nm  { color: #fbbf24; }   /* names/vars */
+    .op  { color: var(--h2o-accent); }   /* operators/punct */
+    .nb  { color: #c084fc; }   /* numbers/built-ins */
+
+    /* ── Steps / Ordered List ─────────────────────────────────────── */
+    .step-list { list-style: none; counter-reset: steps; }
+
+    .step-list li {
+      counter-increment: steps;
+      padding: 10px 0 10px 44px;
+      position: relative;
+      color: #b0c8e0;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+
+    .step-list li:last-child { border-bottom: none; }
+
+    .step-list li::before {
+      content: counter(steps);
+      position: absolute; left: 0; top: 10px;
+      width: 26px; height: 26px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--h2o-accent);
+    }
+
+    .step-list li strong { color: #e2e8f0; }
+
+    /* ── Checklist ────────────────────────────────────────────────── */
+    .checklist { list-style: none; }
+
+    .checklist li {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      font-size: 13.5px; color: #b0c8e0;
+    }
+
+    .checklist li:last-child { border-bottom: none; }
+
+    .checklist input[type="checkbox"] {
+      width: 17px; height: 17px;
+      accent-color: var(--h2o-green);
+      cursor: pointer; flex-shrink: 0; margin-top: 2px;
+    }
+
+    .checklist li.done { color: #5a7a6a; text-decoration: line-through; }
+
+    /* ── Architecture Diagram ─────────────────────────────────────── */
+    .arch-diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: #7eb8d4;
+    }
+
+    /* ── Phase flow ───────────────────────────────────────────────── */
+    .phase-flow {
+      display: flex; flex-direction: column;
+      gap: 0; margin: 20px 0;
+    }
+
+    .phase-item {
+      display: flex; gap: 0;
+    }
+
+    .phase-spine {
+      display: flex; flex-direction: column; align-items: center;
+      width: 44px; flex-shrink: 0;
+    }
+
+    .phase-dot {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
+      color: #fff; flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .phase-line {
+      width: 2px; flex: 1; min-height: 20px;
+      background: var(--border);
+      margin: 2px 0;
+    }
+
+    .phase-item:last-child .phase-line { display: none; }
+
+    .phase-body {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      margin-left: 10px;
+    }
+
+    .phase-body h4 { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+    .phase-body p  { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+    .p1 { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .p2 { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .p3 { background: linear-gradient(135deg, #f59e0b, #b45309); }
+    .p4 { background: linear-gradient(135deg, #06b6d4, #0284c7); }
+    .p5 { background: linear-gradient(135deg, #10b981, #047857); }
+
+    /* ── Component Grid ───────────────────────────────────────────── */
+    .component-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 16px 0 24px;
+    }
+
+    .component-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      transition: border-color .2s;
+    }
+
+    .component-card:hover { border-color: var(--h2o-accent); }
+
+    .component-card .comp-icon {
+      font-size: 22px; margin-bottom: 8px;
+    }
+
+    .component-card h4 {
+      font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px;
+    }
+
+    .component-card p {
+      font-size: 12px; color: var(--text-muted); margin: 0;
+    }
+
+    .component-card .comp-tech {
+      display: inline-block; margin-top: 8px;
+      font-size: 10.5px; font-weight: 600;
+      padding: 2px 8px; border-radius: 12px;
+      background: rgba(0,196,244,.12);
+      color: var(--h2o-accent);
+      border: 1px solid rgba(0,196,244,.2);
+    }
+
+    /* ── Troubleshooting accordion ────────────────────────────────── */
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 14px 18px;
+      cursor: pointer;
+      font-size: 14px; font-weight: 600;
+      color: #ccddf0;
+      display: flex; align-items: center; gap: 10px;
+      list-style: none;
+      user-select: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    summary::after {
+      content: '›';
+      margin-left: auto;
+      font-size: 18px;
+      color: var(--text-muted);
+      transform: rotate(90deg);
+      transition: transform .2s;
+    }
+
+    details[open] summary::after { transform: rotate(270deg); }
+
+    details[open] summary { border-bottom: 1px solid var(--border); }
+
+    .details-body { padding: 16px 18px; }
+
+    .trouble-icon { font-size: 18px; }
+
+    /* ── Print ────────────────────────────────────────────────────── */
+    @media print {
+      #sidebar { display: none; }
+      #main { margin-left: 0; max-width: 100%; }
+      #topbar { position: static; }
+      .copy-btn { display: none; }
+      details { border: 1px solid #ccc; }
+      details[open] { page-break-inside: avoid; }
+    }
+
+    /* ── Responsive ───────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 0px; }
+      #sidebar { transform: translateX(-100%); }
+      #topbar { padding: 16px 20px; }
+      .content { padding: 24px 20px 60px; }
+    }
+
+    /* ── Scrollbar ────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2d5a8a; }
+
+    kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #c9dff5;
+      font-family: monospace;
+    }
+
+    strong { color: #dbeeff; }
+
+    ul { padding-left: 22px; margin-bottom: 12px; }
+    ul li { color: #b0c8e0; font-size: 13.5px; margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ SIDEBAR ═══════════════════ -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <div class="brand">
+      <div class="brand-icon">H2</div>
+      <h2>JBS Automation<br>Platform</h2>
+    </div>
+    <p>Deployment Guide v1.0</p>
+  </div>
+
+  <nav>
+    <div class="nav-section-label">Overview</div>
+    <a href="#overview">
+      <span class="nav-num">⊙</span> Architecture Overview
+    </a>
+    <a href="#prerequisites">
+      <span class="nav-num">⊙</span> Prerequisites
+    </a>
+
+    <div class="nav-section-label">Deployment Steps</div>
+    <a href="#step1"><span class="nav-num">1</span> Clone &amp; Configure</a>
+    <a href="#step2"><span class="nav-num">2</span> h2oGPTe Collections</a>
+    <a href="#step3"><span class="nav-num">3</span> Azure AD / SharePoint</a>
+    <a href="#step4"><span class="nav-num">4</span> WhatsApp Business API</a>
+    <a href="#step5"><span class="nav-num">5</span> Telegram Bot</a>
+    <a href="#step6"><span class="nav-num">6</span> Build Docker Images</a>
+    <a href="#step7"><span class="nav-num">7</span> H2O Secret Manager</a>
+    <a href="#step8"><span class="nav-num">8</span> Deploy via Helm</a>
+    <a href="#step9"><span class="nav-num">9</span> Wave Dashboard</a>
+    <a href="#step10"><span class="nav-num">10</span> MLOps Monitoring</a>
+    <a href="#step11"><span class="nav-num">11</span> Verify Deployment</a>
+    <a href="#step12"><span class="nav-num">12</span> Post-Deploy Config</a>
+
+    <div class="nav-section-label">Checklists &amp; Reference</div>
+    <a href="#hardening"><span class="nav-num">✓</span> Production Hardening</a>
+    <a href="#troubleshooting"><span class="nav-num">!</span> Troubleshooting</a>
+  </nav>
+</aside>
+
+<!-- ═══════════════════════════════════════════ MAIN ═══════════════════════ -->
+<div id="main">
+
+  <!-- Top Bar -->
+  <div id="topbar">
+    <h1>JBS Automation Platform — Deployment Guide</h1>
+    <div class="meta">
+      <span class="badge badge-blue">H2O AI Cloud</span>
+      <span class="badge badge-green">v1.0.0</span>
+      <span class="badge badge-warn">Certis Security</span>
+      <span style="color:var(--text-muted)">13 Steps · 2024</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ OVERVIEW ══════════════════════════════════════════════════════ -->
+    <section id="overview">
+      <div class="section-header">
+        <div class="step-badge arch">⬡</div>
+        <div>
+          <h2>Solution Architecture</h2>
+          <div class="section-desc">Multi-layer, cloud-native platform on H2O AI Cloud (HAIC)</div>
+        </div>
+      </div>
+
+      <div class="component-grid">
+        <div class="component-card">
+          <div class="comp-icon">🤖</div>
+          <h4>AI &amp; RAG Engine</h4>
+          <p>Conversational agent with SharePoint-grounded knowledge base</p>
+          <span class="comp-tech">H2O Enterprise h2oGPTe</span>
+        </div>
+        <div class="component-card">
+          <div class="comp-icon">📄</div>
+          <h4>Document AI</h4>
+          <p>OCR, entity extraction, and chunking of SOP documents</p>
+          <span class="comp-tech">H2O Document AI</span>
+        </div>
+        <div class="component-card">
+          <div class="comp-icon">📊</div>
+          <h4>Admin Dashboard</h4>
+          <p>Real-time interview monitoring and sync management</p>
+          <span class="comp-tech">H2O Wave</span>
+        </div>
+        <div class="component-card">
+          <div class="comp-icon">☁️</div>
+          <h4>Deployment Platform</h4>
+          <p>Kubernetes-based cloud hosting of all 4 microservices</p>
+          <span class="comp-tech">H2O AI Cloud (HAIC)</span>
+        </div>
+        <div class="component-card">
+          <div class="comp-icon">📈</div>
+          <h4>Model Monitoring</h4>
+          <p>Inference latency, drift detection, and alerting</p>
+          <span class="comp-tech">H2O MLOps</span>
+        </div>
+        <div class="component-card">
+          <div class="comp-icon">💾</div>
+          <h4>Session State</h4>
+          <p>Phase state in SQLite/memory. Turn history owned by h2oGPTe natively.</p>
+          <span class="comp-tech">SQLite (no Redis pod)</span>
+        </div>
+        <div class="component-card">
+          <div class="comp-icon">💬</div>
+          <h4>Messaging Channels</h4>
+          <p>WhatsApp Business API and Telegram Bot API</p>
+          <span class="comp-tech">Webhook + FastAPI</span>
+        </div>
+        <div class="component-card">
+          <div class="comp-icon">📝</div>
+          <h4>Document Generator</h4>
+          <p>Renders approved JSON to corporate .docx template</p>
+          <span class="comp-tech">python-docx</span>
+        </div>
+      </div>
+
+      <h3>5-Phase Conversation Flow</h3>
+      <div class="phase-flow">
+        <div class="phase-item">
+          <div class="phase-spine">
+            <div class="phase-dot p1">1</div>
+            <div class="phase-line"></div>
+          </div>
+          <div class="phase-body">
+            <h4>Context &amp; Initiation</h4>
+            <p>Capture: Customer Name, Site Name, Site Category, Job Purpose → load site-specific RAG collection</p>
+          </div>
+        </div>
+        <div class="phase-item">
+          <div class="phase-spine">
+            <div class="phase-dot p2">2</div>
+            <div class="phase-line"></div>
+          </div>
+          <div class="phase-body">
+            <h4>Duty Discovery &amp; Task Sequencing</h4>
+            <p>Suggest tasks from SharePoint SOPs. Capture sequence, trigger, frequency, responsible role, outcome.</p>
+          </div>
+        </div>
+        <div class="phase-item">
+          <div class="phase-spine">
+            <div class="phase-dot p3">3</div>
+            <div class="phase-line"></div>
+          </div>
+          <div class="phase-body">
+            <h4>Safety &amp; Compliance</h4>
+            <p>Capture hazards, PPE, qualifications, accreditations, escalation procedures, comms channels.</p>
+          </div>
+        </div>
+        <div class="phase-item">
+          <div class="phase-spine">
+            <div class="phase-dot p4">4</div>
+            <div class="phase-line"></div>
+          </div>
+          <div class="phase-body">
+            <h4>Mozart Integration</h4>
+            <p>Link reference documents (SOPs, Emergency Plans) from Mozart via Site ID and Document IDs.</p>
+          </div>
+        </div>
+        <div class="phase-item">
+          <div class="phase-spine">
+            <div class="phase-dot p5">5</div>
+            <div class="phase-line"></div>
+          </div>
+          <div class="phase-body">
+            <h4>Review &amp; Document Generation</h4>
+            <p>Present summary for approval → emit JSON → generate Word .docx → send download link.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Data Flow</h3>
+      <div class="arch-diagram">User (WhatsApp / Telegram)
+      │  HTTPS POST
+      ▼
+Webhook Service (FastAPI · HAIC)          ← signature validated
+      │
+      ▼
+Conversation Orchestrator (Python · HAIC)
+      │  load session from Redis
+      │  build prompt (phase + RAG context + history)
+      ▼
+H2O Enterprise h2oGPTe ◄──── SharePoint Collections (per site category)
+      │                              (Corporate / Aviation / Industrial / Maritime / Retail)
+      │  LLM response
+      ▼
+Phase 4 only ──► Mozart API ──► reference document metadata
+      │
+Phase 5 approved ──► JSON ──► Document Generator ──► .docx ──► S3
+      │
+      ▼
+Reply + download link ──► User</div>
+    </section>
+
+    <!-- ═══ PREREQUISITES ═════════════════════════════════════════════════ -->
+    <section id="prerequisites">
+      <div class="section-header">
+        <div class="step-badge prereq">✦</div>
+        <div>
+          <h2>Prerequisites</h2>
+          <div class="section-desc">Ensure all of these are in place before starting</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Requirement</th><th>Version / Detail</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><strong>H2O AI Cloud (HAIC)</strong></td><td>Managed or Hybrid Cloud environment with cluster access</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>H2O Enterprise h2oGPTe</strong></td><td>Licensed instance provisioned on HAIC</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>H2O Document AI</strong></td><td>Licensed instance on HAIC</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Docker</strong></td><td>v24+</td><td><span class="badge badge-blue">Tool</span></td></tr>
+            <tr><td><strong>kubectl</strong></td><td>v1.27+ configured for HAIC cluster</td><td><span class="badge badge-blue">Tool</span></td></tr>
+            <tr><td><strong>Helm</strong></td><td>v3.12+</td><td><span class="badge badge-blue">Tool</span></td></tr>
+            <tr><td><strong>Python</strong></td><td>3.11+</td><td><span class="badge badge-blue">Tool</span></td></tr>
+            <tr><td><strong>WhatsApp Business Account</strong></td><td>Meta Developer account · approved WhatsApp Business API</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Telegram Bot</strong></td><td>Token from @BotFather</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Azure AD App Registration</strong></td><td>With SharePoint Graph API permissions</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Mozart API</strong></td><td>API key and base URL from Mozart administrator</td><td><span class="badge badge-warn">Required</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 1 ═════════════════════════════════════════════════════════ -->
+    <section id="step1">
+      <div class="section-header">
+        <div class="step-badge">1</div>
+        <div>
+          <h2>Clone and Configure</h2>
+          <div class="section-desc">Set up the project and configure environment variables</div>
+        </div>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="cm"># Clone the repository</span>
+git clone https://github.com/certis/jbs-platform.git
+cd jbs-platform
+
+<span class="cm"># Copy the environment template</span>
+cp config/env.template .env</code></pre>
+      </div>
+
+      <p>Edit <code>.env</code> and fill in all values. Key variables to configure:</p>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash — .env</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="cm"># H2O Platform</span>
+<span class="nm">H2OGPTE_ADDRESS</span>=https://your-h2ogpte-instance.h2o.ai
+<span class="nm">H2OGPTE_API_KEY</span>=&lt;from H2O Secret Manager&gt;
+
+<span class="cm"># Redis</span>
+<span class="nm">REDIS_HOST</span>=jbs-redis-service
+<span class="nm">REDIS_PORT</span>=6379
+<span class="nm">REDIS_PASSWORD</span>=&lt;generate a strong password&gt;
+<span class="nm">REDIS_SSL</span>=<span class="kw">false</span>   <span class="cm"># set true for production</span>
+
+<span class="cm"># WhatsApp</span>
+<span class="nm">WHATSAPP_APP_SECRET</span>=&lt;from Meta Developer Portal&gt;
+<span class="nm">WHATSAPP_ACCESS_TOKEN</span>=&lt;permanent token from Meta&gt;
+<span class="nm">WHATSAPP_PHONE_NUMBER_ID</span>=&lt;from Meta Developer Portal&gt;
+
+<span class="cm"># Telegram</span>
+<span class="nm">TELEGRAM_BOT_TOKEN</span>=&lt;from @BotFather&gt;
+
+<span class="cm"># Mozart</span>
+<span class="nm">MOZART_API_BASE_URL</span>=https://mozart.certis.internal/api/v1
+<span class="nm">MOZART_API_KEY</span>=&lt;from Mozart admin&gt;
+
+<span class="cm"># SharePoint / Azure AD</span>
+<span class="nm">AZURE_TENANT_ID</span>=&lt;your Azure tenant ID&gt;
+<span class="nm">AZURE_CLIENT_ID</span>=&lt;app registration client ID&gt;
+<span class="nm">AZURE_CLIENT_SECRET</span>=&lt;app registration client secret&gt;
+<span class="nm">SP_SITE_URL</span>=https://certissecurity.sharepoint.com/sites/operations
+
+<span class="cm"># SharePoint library IDs (get from Graph API Explorer)</span>
+<span class="nm">SP_LIBRARY_CORPORATE</span>=&lt;library ID&gt;
+<span class="nm">SP_LIBRARY_AVIATION</span>=&lt;library ID&gt;
+<span class="nm">SP_LIBRARY_INDUSTRIAL</span>=&lt;library ID&gt;
+<span class="nm">SP_LIBRARY_MARITIME</span>=&lt;library ID&gt;
+<span class="nm">SP_LIBRARY_RETAIL</span>=&lt;library ID&gt;
+
+<span class="cm"># Document storage</span>
+<span class="nm">S3_BUCKET</span>=certis-jbs-documents
+<span class="nm">S3_ENDPOINT_URL</span>=https://storage.your-haic-cluster.h2o.ai
+<span class="nm">AWS_ACCESS_KEY_ID</span>=&lt;key&gt;
+<span class="nm">AWS_SECRET_ACCESS_KEY</span>=&lt;secret&gt;
+
+<span class="cm"># Internal</span>
+<span class="nm">TENANT_ID</span>=certis
+<span class="nm">ORCHESTRATOR_URL</span>=http://jbs-orchestrator-service:8001</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <span class="callout-icon">⚠️</span>
+        <span>Never commit <code>.env</code> to version control. It is included in <code>.gitignore</code>. Use H2O Secret Manager for all production secrets (Step 7).</span>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 2 ═════════════════════════════════════════════════════════ -->
+    <section id="step2">
+      <div class="section-header">
+        <div class="step-badge">2</div>
+        <div>
+          <h2>Set Up h2oGPTe Collections</h2>
+          <div class="section-desc">Create per-site-category knowledge base collections to power RAG</div>
+        </div>
+      </div>
+
+      <h3>2a — Log in to h2oGPTe</h3>
+      <p>Open your h2oGPTe instance URL in a browser and log in with your HAIC credentials.</p>
+
+      <h3>2b — Create Collections via h2oGPTe UI</h3>
+      <p>Navigate to <strong>Collections → New Collection</strong> and create one collection per site category:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Collection Name</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>collection_corporate</code></td><td>SOPs and historical JBS for Corporate sites</td></tr>
+            <tr><td><code>collection_aviation</code></td><td>SOPs and historical JBS for Aviation sites</td></tr>
+            <tr><td><code>collection_industrial</code></td><td>SOPs and historical JBS for Industrial sites</td></tr>
+            <tr><td><code>collection_maritime</code></td><td>SOPs and historical JBS for Maritime sites</td></tr>
+            <tr><td><code>collection_retail</code></td><td>SOPs and historical JBS for Retail sites</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span>Copy each <strong>Collection ID</strong> from the UI — you will need these to update <code>SITE_CATEGORY_COLLECTION_MAP</code> in <code>src/agent/phase_controller.py</code> (Step 12a).</span>
+      </div>
+
+      <h3>2c — Configure SharePoint Integration in h2oGPTe</h3>
+      <p>In h2oGPTe, navigate to <strong>Collections → [Select Collection] → Import → SharePoint Online</strong> and enter:</p>
+      <ul>
+        <li><strong>Tenant ID</strong> — your Azure AD tenant ID</li>
+        <li><strong>Client ID</strong> — Azure app registration client ID</li>
+        <li><strong>Client Secret</strong> — Azure app registration client secret</li>
+        <li><strong>Site URL</strong> — SharePoint site URL</li>
+        <li><strong>Document Library</strong> — select the appropriate library per category</li>
+      </ul>
+      <p>Enable <strong>Auto-sync</strong> and set frequency to <strong>Daily</strong>.</p>
+
+      <h3>2d — Manual Sync (alternative)</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="cm"># From project root, with .env loaded</span>
+python -m src.rag.sharepoint_sync</code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 3 ═════════════════════════════════════════════════════════ -->
+    <section id="step3">
+      <div class="section-header">
+        <div class="step-badge">3</div>
+        <div>
+          <h2>Configure Azure AD App Registration</h2>
+          <div class="section-desc">Grants the platform read access to SharePoint via Microsoft Graph API</div>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span>Skip this step if your Azure AD app registration is already configured with Graph API permissions.</span>
+      </div>
+
+      <ol class="step-list">
+        <li>Log in to <strong>Azure Portal</strong> → Azure Active Directory → App registrations → <strong>New registration</strong></li>
+        <li>Set Name: <code>CertisJBSPlatform</code> · Supported account types: <strong>Single tenant</strong> → click <strong>Register</strong></li>
+        <li>Under <strong>API permissions</strong>, add Application permissions:<br>
+          <code>Microsoft Graph → Files.Read.All</code><br>
+          <code>Microsoft Graph → Sites.Read.All</code></li>
+        <li>Click <strong>Grant admin consent</strong></li>
+        <li>Under <strong>Certificates &amp; secrets → New client secret</strong> — copy the secret value into <code>.env</code> as <code>AZURE_CLIENT_SECRET</code></li>
+      </ol>
+    </section>
+
+    <!-- ═══ STEP 4 ═════════════════════════════════════════════════════════ -->
+    <section id="step4">
+      <div class="section-header">
+        <div class="step-badge">4</div>
+        <div>
+          <h2>Configure WhatsApp Business API</h2>
+          <div class="section-desc">Set up the Meta WhatsApp Cloud API channel and webhook</div>
+        </div>
+      </div>
+
+      <ol class="step-list">
+        <li>Log in to <strong>Meta Developer Portal</strong> → Create App → <strong>Business</strong> type</li>
+        <li>Add the <strong>WhatsApp</strong> product to your app</li>
+        <li>Under <strong>WhatsApp → Getting Started</strong>, note the <strong>Phone Number ID</strong> → <code>WHATSAPP_PHONE_NUMBER_ID</code></li>
+        <li>Generate a <strong>permanent system user token</strong> for production → <code>WHATSAPP_ACCESS_TOKEN</code></li>
+        <li>Under <strong>WhatsApp → Configuration → Webhook</strong>:<br>
+          Callback URL: <code>https://your-jbs-webhook.h2o.ai/webhook/whatsapp</code><br>
+          Verify Token: set a random string<br>
+          Subscribe to: <code>messages</code></li>
+        <li>Copy <strong>App Secret</strong> from <strong>App Settings → Basic</strong> → <code>WHATSAPP_APP_SECRET</code></li>
+      </ol>
+
+      <div class="callout warn">
+        <span class="callout-icon">⚠️</span>
+        <span>The webhook URL must be publicly accessible over HTTPS before Meta will accept it. Deploy the webhook service (Step 8) first, then register the URL.</span>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 5 ═════════════════════════════════════════════════════════ -->
+    <section id="step5">
+      <div class="section-header">
+        <div class="step-badge">5</div>
+        <div>
+          <h2>Configure Telegram Bot</h2>
+          <div class="section-desc">Create the Telegram bot and register the webhook endpoint</div>
+        </div>
+      </div>
+
+      <ol class="step-list">
+        <li>Open Telegram and message <strong>@BotFather</strong></li>
+        <li>Send <kbd>/newbot</kbd> and follow the prompts to name your bot</li>
+        <li>Copy the API token → <code>TELEGRAM_BOT_TOKEN</code></li>
+        <li>After deploying the webhook service (Step 8), register the webhook URL:</li>
+      </ol>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>curl -X POST <span class="st">"https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook"</span> \
+  -H <span class="st">"Content-Type: application/json"</span> \
+  -d <span class="st">'{"url": "https://your-jbs-webhook.h2o.ai/webhook/telegram"}'</span></code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 6 ═════════════════════════════════════════════════════════ -->
+    <section id="step6">
+      <div class="section-header">
+        <div class="step-badge">6</div>
+        <div>
+          <h2>Build Docker Images</h2>
+          <div class="section-desc">Build and push all four service images to the HAIC registry</div>
+        </div>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash — build</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="cm"># Webhook service</span>
+docker build -f Dockerfile.webhook    -t certis-jbs-webhook:1.0.0 .
+
+<span class="cm"># Conversation orchestrator</span>
+docker build -f Dockerfile.orchestrator -t certis-jbs-orchestrator:1.0.0 .
+
+<span class="cm"># Document generator</span>
+docker build -f Dockerfile.document   -t certis-jbs-docgen:1.0.0 .
+
+<span class="cm"># H2O Wave admin dashboard</span>
+docker build -f Dockerfile.dashboard  -t certis-jbs-dashboard:1.0.0 .</code></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash — push to HAIC registry</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="nm">REGISTRY</span>=registry.your-haic-cluster.h2o.ai/certis
+
+docker tag certis-jbs-webhook:1.0.0      <span class="st">${REGISTRY}</span>/jbs-webhook:1.0.0
+docker tag certis-jbs-orchestrator:1.0.0 <span class="st">${REGISTRY}</span>/jbs-orchestrator:1.0.0
+docker tag certis-jbs-docgen:1.0.0       <span class="st">${REGISTRY}</span>/jbs-docgen:1.0.0
+docker tag certis-jbs-dashboard:1.0.0    <span class="st">${REGISTRY}</span>/jbs-dashboard:1.0.0
+
+docker push <span class="st">${REGISTRY}</span>/jbs-webhook:1.0.0
+docker push <span class="st">${REGISTRY}</span>/jbs-orchestrator:1.0.0
+docker push <span class="st">${REGISTRY}</span>/jbs-docgen:1.0.0
+docker push <span class="st">${REGISTRY}</span>/jbs-dashboard:1.0.0</code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 7 ═════════════════════════════════════════════════════════ -->
+    <section id="step7">
+      <div class="section-header">
+        <div class="step-badge">7</div>
+        <div>
+          <h2>Store Secrets in H2O Secret Manager</h2>
+          <div class="section-desc">All sensitive credentials must be stored in HAIC — never in plaintext config</div>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        <span class="callout-icon">🔐</span>
+        <span>Never store secrets in <code>values.yaml</code> or any file committed to version control. HAIC Secret Manager is the only approved store for production credentials.</span>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash — h2octl</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>h2octl secret create --name h2ogpte-api-key        --value <span class="st">"&lt;your key&gt;"</span>
+h2octl secret create --name whatsapp-app-secret    --value <span class="st">"&lt;your secret&gt;"</span>
+h2octl secret create --name whatsapp-access-token  --value <span class="st">"&lt;your token&gt;"</span>
+h2octl secret create --name telegram-bot-token     --value <span class="st">"&lt;your token&gt;"</span>
+h2octl secret create --name mozart-api-key         --value <span class="st">"&lt;your key&gt;"</span>
+h2octl secret create --name azure-client-secret    --value <span class="st">"&lt;your secret&gt;"</span>
+h2octl secret create --name redis-password         --value <span class="st">"&lt;your password&gt;"</span>
+h2octl secret create --name s3-secret-access-key   --value <span class="st">"&lt;your key&gt;"</span></code></pre>
+      </div>
+
+      <p>The Helm chart references these secrets by name via <code>secretKeyRef</code> — no plaintext values appear in the deployed manifests.</p>
+    </section>
+
+    <!-- ═══ STEP 8 ═════════════════════════════════════════════════════════ -->
+    <section id="step8">
+      <div class="section-header">
+        <div class="step-badge">8</div>
+        <div>
+          <h2>Deploy via Helm</h2>
+          <div class="section-desc">Install all platform services into the HAIC Kubernetes cluster</div>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span>This chart deploys <strong>3 services only</strong>: Webhook, Orchestrator, Document Generator (+ CronJob). The Admin Dashboard is deployed via HAIC App Store (Step 9). Redis is eliminated — h2oGPTe owns conversation history natively.</span>
+      </div>
+
+      <h3>8a — Edit values.yaml</h3>
+      <p>Update all <code>&lt;PLACEHOLDER&gt;</code> values in <code>deploy/helm/values.yaml</code>:</p>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">yaml — values.yaml (key sections)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="kw">global</span>:
+  registry: registry.your-haic-cluster.h2o.ai/certis
+  imageTag: <span class="st">"1.0.0"</span>
+  tenantId: <span class="st">"certis"</span>
+  orchestratorUrl: <span class="st">"http://jbs-orchestrator-service:8001"</span>
+
+<span class="kw">webhook</span>:
+  replicaCount: 2
+  ingress:
+    host: jbs-webhook.your-haic-cluster.h2o.ai
+    tlsSecret: jbs-webhook-tls
+
+<span class="kw">orchestrator</span>:
+  replicaCount: 2
+  env:
+    plain:
+      <span class="nm">H2OGPTE_ADDRESS</span>: <span class="st">"https://your-h2ogpte-instance.h2o.ai"</span>
+      <span class="nm">AZURE_TENANT_ID</span>: <span class="st">"&lt;tenant ID&gt;"</span>
+      <span class="nm">MOZART_API_BASE_URL</span>: <span class="st">"https://mozart.certis.internal/api/v1"</span>
+      <span class="cm"># No Redis config needed — h2oGPTe handles conversation history</span>
+      <span class="nm">STATE_BACKEND</span>: <span class="st">"sqlite"</span>     <span class="cm"># phase state only (tiny payload)</span>
+      <span class="nm">SQLITE_PATH</span>: <span class="st">"/data/jbs_sessions.db"</span>
+
+<span class="kw">syncCronJob</span>:
+  schedule: <span class="st">"0 2 * * *"</span>   <span class="cm"># Daily at 02:00 UTC</span></code></pre>
+      </div>
+
+      <h3>8b — Install with Helm</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="cm"># Create the Kubernetes namespace</span>
+kubectl create namespace certis-jbs
+
+<span class="cm"># Deploy all services</span>
+helm install certis-jbs deploy/helm/ \
+  --namespace certis-jbs \
+  --values deploy/helm/values.yaml \
+  --wait</code></pre>
+      </div>
+
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <span>The <code>--wait</code> flag holds until all pods reach <code>Running</code> state. Typically takes 2–4 minutes on first deploy.</span>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 9 ═════════════════════════════════════════════════════════ -->
+    <section id="step9">
+      <div class="section-header">
+        <div class="step-badge">9</div>
+        <div>
+          <h2>Deploy H2O Wave Dashboard</h2>
+          <div class="section-desc">Package and publish the admin dashboard as a native HAIC App</div>
+        </div>
+      </div>
+
+      <h3>9a — Bundle the Wave App</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>cd dashboard
+h2o bundle
+<span class="cm"># Produces: certis-jbs-dashboard-1.0.0.wave</span></code></pre>
+      </div>
+
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <span>H2O Wave is a <strong>native HAIC citizen</strong> — the App Store is purpose-built for Wave apps. This is the correct deployment path. Do not deploy the dashboard via Helm.</span>
+      </div>
+
+      <h3>9b — Import to HAIC App Store</h3>
+      <ol class="step-list">
+        <li>Log in to HAIC console → navigate to <strong>App Store → Import App</strong></li>
+        <li>Upload <code>certis-jbs-dashboard-1.0.0.wave</code></li>
+        <li>Set app visibility to <strong>Private</strong> (internal users only)</li>
+        <li>Configure environment variables: <code>ORCHESTRATOR_URL</code> pointing to the internal orchestrator service</li>
+        <li>Click <strong>Deploy</strong> — HAIC assigns a public HTTPS subdomain automatically</li>
+      </ol>
+
+      <p>The dashboard is accessible at your HAIC App Store URL: <code>https://&lt;instance-uuid&gt;.wave.h2o.ai</code> (or custom domain if configured).</p>
+    </section>
+
+    <!-- ═══ STEP 10 ════════════════════════════════════════════════════════ -->
+    <section id="step10">
+      <div class="section-header">
+        <div class="step-badge">10</div>
+        <div>
+          <h2>Configure H2O MLOps Monitoring</h2>
+          <div class="section-desc">Track inference latency, error rates, and data drift</div>
+        </div>
+      </div>
+
+      <h3>10a — Register the Inference Endpoint</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="kw">from</span> h2o_mlops <span class="kw">import</span> Client
+
+mlops = Client(
+    url=<span class="st">"https://mlops.your-haic-cluster.h2o.ai"</span>,
+    token=<span class="st">"&lt;token&gt;"</span>
+)
+
+deployment = mlops.create_deployment(
+    name=<span class="st">"certis-jbs-llm-inference"</span>,
+    description=<span class="st">"JBS Conversation Agent — h2oGPTe inference monitoring"</span>
+)
+
+<span class="nb">print</span>(<span class="st">f"Deployment ID: </span>{deployment.id}<span class="st">"</span>)</code></pre>
+      </div>
+
+      <h3>10b — Configure Alert Thresholds</h3>
+      <p>In the HAIC MLOps console navigate to <strong>Deployments → certis-jbs-llm-inference</strong>:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Threshold</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>Response latency p95</td><td>&gt; 8 seconds</td><td>Alert via email / Slack</td></tr>
+            <tr><td>Error rate</td><td>&gt; 2%</td><td>Alert via email / Slack</td></tr>
+            <tr><td>Data drift score</td><td>&gt; 0.3</td><td>Notify team, review RAG collections</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 11 ════════════════════════════════════════════════════════ -->
+    <section id="step11">
+      <div class="section-header">
+        <div class="step-badge check">11</div>
+        <div>
+          <h2>Verify Deployment</h2>
+          <div class="section-desc">Run through all checks to confirm a healthy deployment</div>
+        </div>
+      </div>
+
+      <h3>11a — Check Pod Health</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>kubectl get pods -n certis-jbs</code></pre>
+      </div>
+
+      <p>Expected output:</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">expected output</span></div>
+        <pre><code>NAME                                     READY   STATUS    RESTARTS
+certis-jbs-webhook-7d4f9b-xxxx           1/1     Running   0
+certis-jbs-webhook-7d4f9b-yyyy           1/1     Running   0
+certis-jbs-orchestrator-6c8d7b-xxxx      1/1     Running   0
+certis-jbs-orchestrator-6c8d7b-yyyy      1/1     Running   0
+certis-jbs-docgen-5b6c8a-xxxx            1/1     Running   0
+certis-jbs-redis-0                       1/1     Running   0</code></pre>
+      </div>
+
+      <h3>11b — Test Webhook Endpoint</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash — curl</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>curl -X POST https://jbs-webhook.your-haic-cluster.h2o.ai/webhook/telegram \
+  -H <span class="st">"Content-Type: application/json"</span> \
+  -d <span class="st">'{
+    "update_id": 1,
+    "message": {
+      "message_id": 1,
+      "from": {"id": 999, "first_name": "Test"},
+      "chat": {"id": 999, "type": "private"},
+      "text": "Hello"
+    }
+  }'</span>
+
+<span class="cm"># Expected response: {"status": "ok"}</span></code></pre>
+      </div>
+
+      <h3>11c — Test h2oGPTe RAG Collections</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>python -c <span class="st">"
+from src.rag.h2ogpte_client import H2OGPTeClient
+import asyncio
+
+async def test():
+    client = H2OGPTeClient()
+    collections = client.client.list_recent_collections(0, 10)
+    print('Collections:', [c.name for c in collections])
+
+asyncio.run(test())
+"</span></code></pre>
+      </div>
+
+      <h3>11d — End-to-End Telegram Test</h3>
+      <ol class="step-list">
+        <li>Open Telegram and find your bot</li>
+        <li>Send: <kbd>Hello</kbd></li>
+        <li>Expected: bot greets and asks for Customer Name and Site Name</li>
+        <li>Reply with site details and proceed through all 5 phases</li>
+      </ol>
+
+      <h3>11e — Verify Admin Dashboard</h3>
+      <ol class="step-list">
+        <li>Navigate to <code>https://jbs-admin.your-haic-cluster.h2o.ai</code></li>
+        <li>Verify the test interview appears in the Active Interviews table</li>
+        <li>Verify SharePoint sync status is shown in the Sync panel</li>
+      </ol>
+    </section>
+
+    <!-- ═══ STEP 12 ════════════════════════════════════════════════════════ -->
+    <section id="step12">
+      <div class="section-header">
+        <div class="step-badge">12</div>
+        <div>
+          <h2>Post-Deployment Configuration</h2>
+          <div class="section-desc">Final configuration tasks after services are running</div>
+        </div>
+      </div>
+
+      <h3>12a — Update h2oGPTe Collection IDs</h3>
+      <p>After creating collections in Step 2b, update the mapping in <code>src/agent/phase_controller.py</code>:</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>SITE_CATEGORY_COLLECTION_MAP = {
+    <span class="st">"Corporate"</span>:   <span class="st">"col_xxxxxxxx"</span>,  <span class="cm"># Replace with real IDs from h2oGPTe UI</span>
+    <span class="st">"Aviation"</span>:    <span class="st">"col_yyyyyyyy"</span>,
+    <span class="st">"Industrial"</span>:  <span class="st">"col_zzzzzzzz"</span>,
+    <span class="st">"Maritime"</span>:    <span class="st">"col_aaaaaaaa"</span>,
+    <span class="st">"Retail"</span>:      <span class="st">"col_bbbbbbbb"</span>,
+}</code></pre>
+      </div>
+      <p>Rebuild and redeploy the orchestrator image after this change.</p>
+
+      <h3>12b — Upload the Corporate Word Template</h3>
+      <p>Place the approved corporate JBS Word template with bookmarks at:</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">path</span></div>
+        <pre><code>src/document/jbs_template.docx</code></pre>
+      </div>
+      <p>Required template bookmarks: <code>{CUSTOMER_NAME}</code>, <code>{SITE_NAME}</code>, <code>{SITE_CATEGORY}</code>, <code>{JOB_PURPOSE}</code>, <code>{GENERATED_AT}</code>, <code>{AUTHORIZED_BY}</code>. Rebuild the document generator image.</p>
+
+      <h3>12c — Initial Knowledge Base Population</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>kubectl create job --from=cronjob/certis-jbs-sharepoint-sync \
+  initial-sync -n certis-jbs
+
+kubectl logs -f job/initial-sync -n certis-jbs</code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ PRODUCTION HARDENING ══════════════════════════════════════════ -->
+    <section id="hardening">
+      <div class="section-header">
+        <div class="step-badge check">✓</div>
+        <div>
+          <h2>Production Hardening Checklist</h2>
+          <div class="section-desc">Complete all items before going live — click to mark as done</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <ul class="checklist" id="checklist">
+          <li><input type="checkbox" onchange="toggleDone(this)"> All secrets stored in H2O Secret Manager — no plaintext in <code>values.yaml</code></li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Session state backend confirmed: <code>sqlite</code> for single-replica, <code>external_redis</code> (managed service) for multi-replica — no Redis pod deployed via Helm</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Ingress TLS certificates issued and valid for both webhook and dashboard hosts</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> WhatsApp webhook HMAC-SHA256 signature validation tested and confirmed</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> HAIC RBAC configured — only authorised roles access admin dashboard</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> S3 bucket policy restricts access to document generator service account only</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> SharePoint App Registration uses minimum permissions: <code>Files.Read.All</code>, <code>Sites.Read.All</code></li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Mozart API key rotated from default</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> MLOps monitoring alerts configured and test alerts fired successfully</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Redis persistence enabled with regular snapshot schedule</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Pod resource limits set in Helm values (CPU / memory)</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Horizontal Pod Autoscaler (HPA) configured for webhook and orchestrator</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Document download URLs use short-lived presigned S3 URLs (15-minute expiry)</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Penetration test of public webhook endpoint completed</li>
+        </ul>
+      </div>
+
+      <div id="checklist-progress" class="callout info" style="display:none">
+        <span class="callout-icon">📋</span>
+        <span id="checklist-status"></span>
+      </div>
+    </section>
+
+    <!-- ═══ TROUBLESHOOTING ════════════════════════════════════════════════ -->
+    <section id="troubleshooting">
+      <div class="section-header">
+        <div class="step-badge trouble">!</div>
+        <div>
+          <h2>Troubleshooting</h2>
+          <div class="section-desc">Common issues and how to resolve them</div>
+        </div>
+      </div>
+
+      <details>
+        <summary><span class="trouble-icon">💬</span> Bot not responding to messages</summary>
+        <div class="details-body">
+          <ol class="step-list">
+            <li>Check webhook service logs:
+              <div class="code-wrap" style="margin-top:10px">
+                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><code>kubectl logs -l app=jbs-webhook -n certis-jbs --tail=50</code></pre>
+              </div>
+            </li>
+            <li>Verify WhatsApp webhook subscription is active in Meta Developer Portal → webhook shows green status</li>
+            <li>Confirm orchestrator is reachable from the webhook pod:
+              <div class="code-wrap" style="margin-top:10px">
+                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><code>kubectl exec -it deploy/certis-jbs-webhook -n certis-jbs -- \
+  curl http://jbs-orchestrator-service:8001/health</code></pre>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="trouble-icon">🧠</span> RAG returning no context / responses hallucinating</summary>
+        <div class="details-body">
+          <ol class="step-list">
+            <li>Verify collections are populated:
+              <div class="code-wrap" style="margin-top:10px">
+                <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><code>python -c "from src.rag.h2ogpte_client import H2OGPTeClient; c=H2OGPTeClient(); print(c.client.list_recent_collections(0,10))"</code></pre>
+              </div>
+            </li>
+            <li>Check Document AI processing status in the h2oGPTe UI — look for ingestion errors</li>
+            <li>Confirm SharePoint Graph API permissions are admin-consented in Azure Portal</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="trouble-icon">📄</span> Document generation fails</summary>
+        <div class="details-body">
+          <ol class="step-list">
+            <li>Check document generator logs:
+              <div class="code-wrap" style="margin-top:10px">
+                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><code>kubectl logs -l app=jbs-docgen -n certis-jbs --tail=50</code></pre>
+              </div>
+            </li>
+            <li>Verify S3 bucket exists and credentials are valid — test with <code>aws s3 ls s3://certis-jbs-documents</code></li>
+            <li>Confirm <code>jbs_template.docx</code> is present in the container image — check Dockerfile.document</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="trouble-icon">💾</span> Session state lost after orchestrator pod restart</summary>
+        <div class="details-body">
+          <p>If <code>STATE_BACKEND=memory</code>, state is lost on restart by design. Switch to <code>sqlite</code> for restart-safe state:</p>
+          <ol class="step-list">
+            <li>Set <code>STATE_BACKEND=sqlite</code> and <code>SQLITE_PATH=/data/jbs_sessions.db</code> in Helm values</li>
+            <li>Mount a PersistentVolume at <code>/data</code> on the orchestrator pod so the SQLite file survives restarts</li>
+            <li>For multi-replica deployments, use <code>STATE_BACKEND=external_redis</code> with a managed Redis URL (e.g. AWS ElastiCache) — do not deploy a Redis pod via Helm</li>
+          </ol>
+          <p>Note: conversation turn history is never lost regardless of state backend — it lives in h2oGPTe natively via <code>conversation_id</code>.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="trouble-icon">🔄</span> SharePoint sync not running</summary>
+        <div class="details-body">
+          <ol class="step-list">
+            <li>Check CronJob and recent job status:
+              <div class="code-wrap" style="margin-top:10px">
+                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><code>kubectl get cronjobs -n certis-jbs
+kubectl get jobs -n certis-jbs</code></pre>
+              </div>
+            </li>
+            <li>Trigger a manual sync:
+              <div class="code-wrap" style="margin-top:10px">
+                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><code>kubectl create job --from=cronjob/certis-jbs-sharepoint-sync \
+  manual-sync-$(date +%s) -n certis-jbs</code></pre>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </details>
+
+    </section>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  // ── Active nav link on scroll ──────────────────────────────────────────
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks  = document.querySelectorAll('#sidebar nav a');
+
+  function updateActiveLink() {
+    let current = '';
+    sections.forEach(s => {
+      const top = s.getBoundingClientRect().top;
+      if (top <= 100) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+
+  document.getElementById('main').addEventListener('scroll', updateActiveLink);
+  window.addEventListener('scroll', updateActiveLink);
+  updateActiveLink();
+
+  // ── Copy-to-clipboard ─────────────────────────────────────────────────
+  function copyCode(btn) {
+    const pre = btn.closest('.code-wrap').querySelector('pre');
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  // ── Checklist progress ────────────────────────────────────────────────
+  function toggleDone(cb) {
+    cb.closest('li').classList.toggle('done', cb.checked);
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const all     = document.querySelectorAll('#checklist input[type="checkbox"]');
+    const checked = document.querySelectorAll('#checklist input[type="checkbox"]:checked');
+    const pct     = Math.round((checked.length / all.length) * 100);
+    const el      = document.getElementById('checklist-progress');
+    const st      = document.getElementById('checklist-status');
+
+    el.style.display = 'flex';
+    if (pct === 100) {
+      el.className = 'callout success';
+      st.textContent = '✅ All production hardening checks complete. Platform is ready for go-live.';
+    } else {
+      el.className = 'callout info';
+      st.textContent = `${checked.length} of ${all.length} checks complete (${pct}%)`;
+    }
+  }
+</script>
+</body>
+</html>
