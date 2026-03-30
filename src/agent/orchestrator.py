@@ -6,6 +6,7 @@ Phase state + collected fields stored in StateManager (memory/sqlite/external_re
 """
 
 import os
+import time
 import httpx
 from .state_manager import StateManager
 from .phase_controller import PhaseController
@@ -18,6 +19,9 @@ state_mgr = StateManager()
 h2ogpte   = H2OGPTeClient()
 mozart    = MozartClient()
 doc_gen   = DocumentGenerator()
+
+# Simple in-process cache for the Bot Framework OAuth token
+_bot_token_cache: dict = {"token": None, "expires_at": 0}
 
 
 async def process_message(msg: dict):
@@ -71,33 +75,65 @@ async def process_message(msg: dict):
 
 
 async def _send_reply(msg: dict, text: str):
-    channel = msg["channel"]
-    if channel == "whatsapp":
-        await _send_whatsapp(msg["reply_to"], text)
-    elif channel == "telegram":
-        await _send_telegram(msg["reply_to"], text)
+    if msg["channel"] == "teams":
+        await _send_teams(
+            service_url=msg["service_url"],
+            conversation_id=msg["conversation_id"],
+            reply_to_id=msg["reply_to"],
+            text=text,
+        )
 
 
-async def _send_whatsapp(phone_number_id_recipient: str, text: str):
-    token = os.environ["WHATSAPP_ACCESS_TOKEN"]
-    phone_id = os.environ["WHATSAPP_PHONE_NUMBER_ID"]
+async def _send_teams(service_url: str, conversation_id: str, reply_to_id: str, text: str):
+    """
+    Reply to a Teams message using the Bot Framework REST API.
+
+    Bot Framework reply URL pattern:
+      {serviceUrl}/v3/conversations/{conversationId}/activities/{activityId}
+
+    The access token is obtained from Azure AD using the bot's client credentials
+    and cached for the duration of its TTL (typically 3600 seconds).
+    """
+    token = await _get_bot_token()
+    url = (
+        f"{service_url.rstrip('/')}/v3/conversations"
+        f"/{conversation_id}/activities/{reply_to_id}"
+    )
     async with httpx.AsyncClient() as client:
         await client.post(
-            f"https://graph.facebook.com/v19.0/{phone_id}/messages",
+            url,
             headers={"Authorization": f"Bearer {token}"},
-            json={
-                "messaging_product": "whatsapp",
-                "to": phone_number_id_recipient,
-                "type": "text",
-                "text": {"body": text}
-            }
+            json={"type": "message", "text": text},
         )
 
 
-async def _send_telegram(chat_id: str, text: str):
-    token = os.environ["TELEGRAM_BOT_TOKEN"]
+async def _get_bot_token() -> str:
+    """
+    Obtain an OAuth2 access token scoped to the Bot Framework API.
+
+    Uses the bot's App ID and App Password (client credentials flow).
+    The token is cached in memory until 60 seconds before expiry.
+    """
+    now = time.time()
+    if _bot_token_cache["token"] and now < _bot_token_cache["expires_at"]:
+        return _bot_token_cache["token"]
+
+    app_id       = os.environ["TEAMS_APP_ID"]
+    app_password = os.environ["TEAMS_APP_PASSWORD"]
+
     async with httpx.AsyncClient() as client:
-        await client.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+        resp = await client.post(
+            "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
+            data={
+                "grant_type":    "client_credentials",
+                "client_id":     app_id,
+                "client_secret": app_password,
+                "scope":         "https://api.botframework.com/.default",
+            },
         )
+        resp.raise_for_status()
+        data = resp.json()
+
+    _bot_token_cache["token"]      = data["access_token"]
+    _bot_token_cache["expires_at"] = now + data.get("expires_in", 3600) - 60
+    return _bot_token_cache["token"]

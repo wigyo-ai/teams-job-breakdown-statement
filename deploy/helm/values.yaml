@@ -2,7 +2,7 @@
 # Certis JBS Platform — Helm Values
 #
 # This chart deploys ONLY the custom services that cannot run natively on HAIC:
-#   1. Webhook Service      (FastAPI — receives WhatsApp/Telegram events)
+#   1. Webhook Service      (FastAPI — receives Microsoft Teams events via Azure Bot Service)
 #   2. Conversation Orchestrator (FastAPI — phase state machine + h2oGPTe calls)
 #   3. Document Generator   (Python — renders .docx from approved JBS JSON)
 #   4. SharePoint Sync CronJob (runs daily to keep h2oGPTe collections fresh)
@@ -25,7 +25,9 @@ global:
 
 # -----------------------------------------------------------------------------
 # 1. Webhook Service
-#    Public-facing. Receives signed events from WhatsApp and Telegram.
+#    Public-facing. Receives Bot Framework Activity events from Microsoft Teams.
+#    Register the messaging endpoint in your Azure Bot resource as:
+#      https://<host>/webhook/teams
 # -----------------------------------------------------------------------------
 webhook:
   replicaCount: 2
@@ -46,22 +48,15 @@ webhook:
   ingress:
     enabled: true
     className: nginx
-    host: jbs-webhook.your-haic-cluster.h2o.ai   # Must be publicly reachable by Meta + Telegram
+    host: jbs-webhook.your-haic-cluster.h2o.ai   # Must be publicly reachable by Azure Bot Service
     tlsSecret: jbs-webhook-tls
   env:
     plain:
-      WHATSAPP_PHONE_NUMBER_ID: "<PLACEHOLDER>"
-      WHATSAPP_VERIFY_TOKEN: "<PLACEHOLDER>"      # Random string set in Meta webhook config
+      TEAMS_APP_ID: "<PLACEHOLDER>"               # Azure Bot App Registration client ID
     secret:
-      WHATSAPP_APP_SECRET:
+      TEAMS_APP_PASSWORD:
         name: certis-jbs-secrets
-        key: whatsapp-app-secret
-      WHATSAPP_ACCESS_TOKEN:
-        name: certis-jbs-secrets
-        key: whatsapp-access-token
-      TELEGRAM_BOT_TOKEN:
-        name: certis-jbs-secrets
-        key: telegram-bot-token
+        key: teams-app-password
 
 # -----------------------------------------------------------------------------
 # 2. Conversation Orchestrator

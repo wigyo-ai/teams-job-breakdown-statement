@@ -2,7 +2,7 @@
 
 ## 1. Architecture Overview
 
-The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud (HAIC)**. It uses **H2O Enterprise h2oGPTe** as the core AI and RAG engine, with external integrations for messaging (WhatsApp/Telegram), document sources (SharePoint), reference systems (Mozart), and document generation (python-docx).
+The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud (HAIC)**. It uses **H2O Enterprise h2oGPTe** as the core AI and RAG engine, with external integrations for messaging (Microsoft Teams via Azure Bot Service), document sources (SharePoint), reference systems (Mozart), and document generation (python-docx).
 
 ---
 
@@ -12,11 +12,12 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                        EXTERNAL CHANNELS                                    │
 │                                                                             │
-│   [WhatsApp Business API]          [Telegram Bot API]                       │
-│           │                                │                                │
-└───────────┼────────────────────────────────┼────────────────────────────────┘
-            │  HTTPS Webhook POST            │  HTTPS Webhook POST
-            ▼                                ▼
+│              [Microsoft Teams — Azure Bot Service]                          │
+│                              │                                              │
+└──────────────────────────────┼──────────────────────────────────────────────┘
+                               │  HTTPS POST (Bot Framework Activity)
+                               │  JWT Bearer token (RS256, validated on receipt)
+                               ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                H2O AI CLOUD (HAIC) — Kubernetes Cluster                     │
 │                                                                             │
@@ -24,8 +25,8 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 │  │                 LAYER 1: INGESTION & WEBHOOK SERVICE                 │   │
 │  │                   (FastAPI — deployed as HAIC App)                   │   │
 │  │                                                                      │   │
-│  │   • Receives webhook events from WhatsApp / Telegram                 │   │
-│  │   • Validates signatures (HMAC-SHA256)                               │   │
+│  │   • Receives Bot Framework Activity events from Microsoft Teams      │   │
+│  │   • Validates RS256 JWT Bearer token (Azure Bot Service JWKS)        │   │
 │  │   • Normalises message payload to internal schema                    │   │
 │  │   • Routes to Conversation Orchestrator                              │   │
 │  └─────────────────────────┬────────────────────────────────────────────┘   │
@@ -35,13 +36,14 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 │  │              LAYER 2: CONVERSATION ORCHESTRATOR                      │   │
 │  │              (Python Service — deployed as HAIC App)                 │   │
 │  │                                                                      │   │
-│  │   • Maintains per-user conversation state in Redis                   │   │
+│  │   • Maintains per-user conversation state in SQLite                  │   │
 │  │   • Enforces 5-phase interview flow (Phase 1 → 5)                    │   │
 │  │   • Builds prompt context window for each turn                       │   │
 │  │   • Enforces anti-hallucination rules (RAG-only responses)           │   │
 │  │   • Dispatches to h2oGPTe API                                        │   │
+│  │   • Sends replies via Bot Framework REST API (OAuth2 token cached)   │   │
 │  │                                                                      │   │
-│  │   State Store: Redis (HAIC managed)                                  │   │
+│  │   State Store: SQLite (default) / external managed Redis             │   │
 │  └──────┬───────────────────┬──────────────────────────────────────────┘   │
 │         │                   │                                               │
 │         ▼                   ▼                                               │
@@ -80,7 +82,7 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 │  │   Receives: Approved JBS JSON (<JBS_DATA> payload)                   │   │
 │  │   Processes: Maps JSON fields to corporate Word template             │   │
 │  │   Outputs: Signed .docx URL (stored in HAIC object store / S3)       │   │
-│  │   Notifies: Sends download link back to user via messaging API       │   │
+│  │   Notifies: Sends download link back to user via Teams Bot API       │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
@@ -103,8 +105,8 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 
 | Component | Technology | Role | Hosting |
 |---|---|---|---|
-| Webhook Service | FastAPI (Python) | Receive & normalise messaging events | **Helm** |
-| Conversation Orchestrator | Python service | Phase state machine, prompt builder | **Helm** |
+| Webhook Service | FastAPI (Python) | Receive & validate Teams Bot Framework events | **Helm** |
+| Conversation Orchestrator | Python service | Phase state machine, prompt builder, Teams reply sender | **Helm** |
 | Session State | SQLite (default) or external managed Redis | Per-user phase state (TTL: 24h) | **In-process** (no Redis pod) |
 | Conversation History | H2O Enterprise h2oGPTe (native) | Full turn history via conversation_id | **h2oGPTe — no Redis needed** |
 | AI + RAG Engine | H2O Enterprise h2oGPTe | LLM inference + vector search | HAIC Service (pre-provisioned) |
@@ -121,22 +123,24 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 ## 4. Data Flow — Conversation Turn
 
 ```
-1. User sends message (WhatsApp/Telegram)
-2. Platform webhook → Webhook Service (HAIC)
-3. Webhook Service validates signature, extracts text + user_id
-4. Conversation Orchestrator loads user session from Redis
-5. Orchestrator determines current Phase (1–5)
-6. Orchestrator builds prompt:
+1. User sends a message in Microsoft Teams
+2. Azure Bot Service delivers signed Bot Framework Activity to Webhook Service (HAIC)
+3. Webhook Service validates RS256 JWT Bearer token (against Bot Framework JWKS)
+4. Webhook Service extracts text + user AAD object ID, normalises to internal schema
+5. Conversation Orchestrator loads user session from SQLite
+6. Orchestrator determines current Phase (1–5)
+7. Orchestrator builds prompt:
      - System prompt (phase-specific instructions + anti-hallucination rules)
      - Retrieved RAG context (from h2oGPTe Collection for this site category)
-     - Conversation history (last N turns from Redis)
+     - Conversation history (managed natively by h2oGPTe via conversation_id)
      - User's latest message
-7. Orchestrator calls h2oGPTe API → LLM generates response
-8. Orchestrator updates Redis session (new phase state, extracted fields)
-9. If Phase 4: Mozart connector fetches reference document metadata
-10. If Phase 5 (user approves): JSON emitted → Document Generator
-11. Document Generator renders .docx, stores in HAIC object store
-12. Webhook Service sends reply + (if Phase 5) download link to user
+8. Orchestrator calls h2oGPTe API → LLM generates response
+9. Orchestrator updates SQLite session (new phase state, extracted fields)
+10. If Phase 4: Mozart connector fetches reference document metadata
+11. If Phase 5 (user approves): JSON emitted → Document Generator
+12. Document Generator renders .docx, stores in HAIC object store
+13. Orchestrator obtains OAuth2 token from Azure AD (Bot Framework scope),
+    POSTs reply Activity to Teams via Bot Framework REST API
 ```
 
 ---
@@ -170,11 +174,12 @@ h2oGPTe Collection (per site category)
 
 | Concern | Control |
 |---|---|
-| Webhook authenticity | HMAC-SHA256 signature validation (WhatsApp/Telegram) |
+| Webhook authenticity | RS256 JWT Bearer token validation (Azure Bot Service JWKS — `login.botframework.com`) |
 | API keys | H2O Secret Manager (HAIC) — never in plaintext config |
-| User data isolation | Redis keys namespaced by `tenant_id:user_id` |
+| User identity | Azure AD Object ID (`aadObjectId`) used as stable user identifier |
 | Document access | Signed S3 URLs (15-minute expiry) |
 | SharePoint auth | Azure AD App Registration (OAuth 2.0 client credentials) |
+| Teams Bot auth | Azure AD client credentials flow (Bot Framework scope) — token cached in-process |
 | Mozart auth | API Key stored in H2O Secret Manager |
 | Network | All inter-service communication within HAIC cluster (no public exposure of internal services) |
 | RBAC | HAIC role-based access for admin dashboard users |
@@ -229,7 +234,7 @@ h2oGPTe Collection (per site category)
     "site_name": "string",
     "site_category": "Corporate | Aviation | Industrial | Maritime | Retail",
     "job_purpose": "string",
-    "created_by": "string (user identifier)",
+    "created_by": "string (AAD object ID)",
     "authorized_by": "string"
   },
   "duties": [

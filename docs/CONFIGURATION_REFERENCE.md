@@ -20,14 +20,18 @@ h2oGPTe natively stores full conversation turn history via `conversation_id`. Th
 | `SESSION_TTL_HOURS` | No | `24` | Session time-to-live in hours |
 | `REDIS_URL` | Conditional | — | Full Redis URL (only when `STATE_BACKEND=external_redis`). Use a **managed** Redis service — do NOT deploy a Redis pod via Helm. Format: `rediss://:password@host:6380/0` |
 
-### Messaging Channels
+### Microsoft Teams — Azure Bot Service
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `WHATSAPP_APP_SECRET` | Yes | — | Meta app secret for HMAC-SHA256 signature validation |
-| `WHATSAPP_ACCESS_TOKEN` | Yes | — | WhatsApp Cloud API access token |
-| `WHATSAPP_PHONE_NUMBER_ID` | Yes | — | WhatsApp Business phone number ID |
-| `TELEGRAM_BOT_TOKEN` | Yes | — | Telegram Bot API token from @BotFather |
+| `TEAMS_APP_ID` | Yes | — | Application (client) ID of the Azure Bot App Registration. Used for JWT audience validation (webhook) and OAuth2 client credentials (orchestrator). |
+| `TEAMS_APP_PASSWORD` | Yes | — | Client secret of the Azure Bot App Registration. Used to obtain Bot Framework OAuth2 access tokens for sending replies. |
+
+> **How to obtain these values:**
+> 1. Go to [Azure Portal](https://portal.azure.com) → **Azure Bot** resource (or create one)
+> 2. Under **Configuration**, the **Microsoft App ID** is your `TEAMS_APP_ID`
+> 3. Click **Manage** → **Certificates & secrets** → create a new client secret → copy it as `TEAMS_APP_PASSWORD`
+> 4. Set the **Messaging endpoint** to `https://<your-webhook-host>/webhook/teams`
 
 ### Mozart Integration
 
@@ -42,14 +46,16 @@ h2oGPTe natively stores full conversation turn history via `conversation_id`. Th
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AZURE_TENANT_ID` | Yes | — | Azure AD tenant ID |
-| `AZURE_CLIENT_ID` | Yes | — | Azure app registration client ID |
-| `AZURE_CLIENT_SECRET` | Yes | — | Azure app registration client secret |
+| `AZURE_CLIENT_ID` | Yes | — | Azure app registration client ID (for SharePoint access) |
+| `AZURE_CLIENT_SECRET` | Yes | — | Azure app registration client secret (for SharePoint access) |
 | `SP_SITE_URL` | Yes | — | SharePoint site URL |
 | `SP_LIBRARY_CORPORATE` | Yes | — | SharePoint library ID for Corporate category |
 | `SP_LIBRARY_AVIATION` | Yes | — | SharePoint library ID for Aviation category |
 | `SP_LIBRARY_INDUSTRIAL` | Yes | — | SharePoint library ID for Industrial category |
 | `SP_LIBRARY_MARITIME` | Yes | — | SharePoint library ID for Maritime category |
 | `SP_LIBRARY_RETAIL` | Yes | — | SharePoint library ID for Retail category |
+
+> **Note:** The SharePoint App Registration (`AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`) is separate from the Teams Bot App Registration (`TEAMS_APP_ID` / `TEAMS_APP_PASSWORD`). The SharePoint registration needs `Files.Read.All` and `Sites.Read.All` Graph API permissions. The Teams Bot registration needs no Graph API permissions — it uses the Bot Framework scope only.
 
 ### Document Generation & Storage
 
@@ -68,7 +74,7 @@ h2oGPTe natively stores full conversation turn history via `conversation_id`. Th
 |---|---|---|---|
 | `ORCHESTRATOR_URL` | Yes | — | Internal URL of the orchestrator service |
 | `DOCUMENT_GENERATOR_URL` | Yes | — | Internal URL of the document generator service |
-| `TENANT_ID` | No | `certis` | Tenant namespace prefix for Redis keys |
+| `TENANT_ID` | No | `certis` | Tenant namespace prefix |
 
 ---
 
@@ -122,7 +128,14 @@ global:
 
 webhook:
   ingress:
-    host: <public webhook hostname>   # Must be accessible by Meta/Telegram
+    host: <public webhook hostname>   # Must be accessible by Azure Bot Service
+  env:
+    plain:
+      TEAMS_APP_ID: "<your bot app ID>"
+    secret:
+      TEAMS_APP_PASSWORD:
+        name: certis-jbs-secrets
+        key: teams-app-password
 
 orchestrator:
   env:
@@ -182,7 +195,7 @@ Duty tables and the safety section are dynamically inserted after the template h
     "site_name": "Changi Airport Terminal 3",
     "site_category": "Aviation",
     "job_purpose": "Provide airside security screening and access control for Terminal 3 operations.",
-    "created_by": "user_telegram_123456",
+    "created_by": "aad-object-id-of-user",
     "authorized_by": "John Smith"
   },
   "duties": [

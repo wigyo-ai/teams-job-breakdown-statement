@@ -166,7 +166,7 @@
       <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">1</div>
       <div>
         <h4 class="text-sm font-bold text-gray-800 mb-1">User Sends Message</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Security personnel send a message via WhatsApp or Telegram to initiate or continue a JBS interview session.</p>
+        <p class="text-xs text-gray-500 leading-relaxed">Security personnel send a message in Microsoft Teams to initiate or continue a JBS interview session. Azure Bot Service delivers the event as a Bot Framework Activity.</p>
       </div>
     </div>
 
@@ -175,8 +175,8 @@
          data-step="2" style="--active-color:#FFD100" onclick="activateStep(2)">
       <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">2</div>
       <div>
-        <h4 class="text-sm font-bold text-gray-800 mb-1">Webhook Validates Signature</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Webhook Service receives the event and verifies the HMAC-SHA256 signature (WhatsApp) or Telegram token to prevent spoofing.</p>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Webhook Validates JWT Token</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Webhook Service receives the Bot Framework Activity and validates the RS256 JWT Bearer token issued by Azure Bot Service, using the Bot Framework JWKS endpoint to prevent spoofing.</p>
       </div>
     </div>
 
@@ -226,7 +226,7 @@
       <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">7</div>
       <div>
         <h4 class="text-sm font-bold text-gray-800 mb-1">Response Returned to User</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator saves updated phase state. LLM reply is sent back through the Webhook Service to the user via WhatsApp Cloud API or Telegram sendMessage.</p>
+        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator saves updated phase state. LLM reply is sent directly to Teams via the Bot Framework REST API, using an OAuth2 access token obtained from Azure AD (client credentials, cached in-process).</p>
       </div>
     </div>
 
@@ -297,22 +297,18 @@ function tip(title, body) {
 const nodeData = [
 
   // === CLIENT TIER ===
-  { id: 1, label: '💬  WhatsApp\nBusiness API', group: 'client', level: 0,
-    title: tip('WhatsApp Business API',
-      'Entry point for security personnel. Sends signed webhook events via Meta Cloud API. HMAC-SHA256 signature ensures authenticity of every inbound message.') },
-
-  { id: 2, label: '✈️  Telegram\nBot API', group: 'client', level: 0,
-    title: tip('Telegram Bot API',
-      'Alternative messaging channel. Bot API delivers user messages via webhook to the JBS Webhook Service. Supports text messages for the interview flow.') },
+  { id: 1, label: '🟦  Microsoft\nTeams', group: 'client', level: 0,
+    title: tip('Microsoft Teams — Azure Bot Service',
+      'Entry point for security personnel. Users interact with the JBS bot directly in a Teams chat. Azure Bot Service signs every outbound Activity with an RS256 JWT Bearer token ensuring authenticity.') },
 
   // === MIDDLEWARE TIER ===
   { id: 3, label: '🔗  Webhook Service\nFastAPI · Port 8000', group: 'middleware', level: 1,
     title: tip('Webhook Service — FastAPI :8000',
-      'Receives inbound events from WhatsApp &amp; Telegram. Validates HMAC-SHA256 signatures. Normalises to internal schema (channel, user_id, text, reply_to) and forwards to the Orchestrator. 2× replicas, HPA scales to 10.') },
+      'Receives Bot Framework Activity events from Microsoft Teams via Azure Bot Service. Validates RS256 JWT Bearer tokens using the Bot Framework JWKS endpoint. Normalises to internal schema (channel, user_id, text, service_url, conversation_id, reply_to) and forwards to the Orchestrator. 2× replicas, HPA scales to 10.') },
 
   { id: 4, label: '🧠  Conversation\nOrchestrator\nFastAPI · Port 8001', group: 'middleware', level: 2,
     title: tip('Conversation Orchestrator — FastAPI :8001',
-      'Core of the platform. Enforces the 5-phase JBS interview state machine. Builds phase-specific prompts, calls h2oGPTe for RAG-grounded LLM responses, handles Mozart Phase 4 lookup, and triggers Document Generator on Phase 5 approval. Session phase state in SQLite; turn history owned by h2oGPTe natively. 2× replicas.') },
+      'Core of the platform. Enforces the 5-phase JBS interview state machine. Builds phase-specific prompts, calls h2oGPTe for RAG-grounded LLM responses, handles Mozart Phase 4 lookup, and triggers Document Generator on Phase 5 approval. Session phase state in SQLite; turn history owned by h2oGPTe natively. Sends replies via Bot Framework REST API using cached OAuth2 token. 2× replicas.') },
 
   { id: 5, label: '📝  Document\nGenerator\nPython · Port 8002', group: 'middleware', level: 3,
     title: tip('Document Generator — python-docx :8002',
@@ -356,10 +352,9 @@ const nodeData = [
 // ── Edge definitions ─────────────────────────────────────────────
 const edgeData = [
   // User flow — blue
-  { id: 1,  from: 1,  to: 3,  label: 'webhook POST', color:{color:'#2563eb',hover:'#3b82f6',highlight:'#60a5fa'}, width:2,   dashes:false, title:'WhatsApp sends signed webhook event to the Webhook Service over HTTPS.' },
-  { id: 2,  from: 2,  to: 3,  label: 'webhook POST', color:{color:'#2563eb',hover:'#3b82f6',highlight:'#60a5fa'}, width:2,   dashes:false, title:'Telegram sends webhook event to the Webhook Service over HTTPS.' },
+  { id: 1,  from: 1,  to: 3,  label: 'Activity POST\n(JWT signed)', color:{color:'#2563eb',hover:'#3b82f6',highlight:'#60a5fa'}, width:2,   dashes:false, title:'Azure Bot Service delivers a signed Bot Framework Activity to the Webhook Service over HTTPS. RS256 JWT Bearer token authenticates the request.' },
   { id: 3,  from: 3,  to: 4,  label: 'forward',       color:{color:'#2563eb',hover:'#3b82f6',highlight:'#60a5fa'}, width:2,   dashes:false, title:'Webhook Service forwards normalised message to the Conversation Orchestrator.' },
-  { id: 4,  from: 4,  to: 3,  label: 'reply',          color:{color:'#60a5fa',hover:'#93c5fd',highlight:'#bfdbfe'}, width:1.5, dashes:true,  title:'Orchestrator returns the LLM reply via the Webhook Service back to the user.' },
+  { id: 4,  from: 4,  to: 1,  label: 'Bot Framework\nreply',        color:{color:'#60a5fa',hover:'#93c5fd',highlight:'#bfdbfe'}, width:1.5, dashes:true,  title:'Orchestrator POSTs a reply Activity to the Teams Bot Framework REST API using a cached OAuth2 access token. Reply appears in the user\'s Teams chat.' },
 
   // AI flow — amber/gold
   { id: 5,  from: 4,  to: 8,  label: 'RAG prompt\nPhases 1–5', color:{color:'#d97706',hover:'#f59e0b',highlight:'#fbbf24'}, width:2.2, dashes:false, title:'Orchestrator sends phase-specific system prompt + conversation_id to h2oGPTe for RAG-grounded LLM inference.' },

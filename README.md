@@ -2,7 +2,7 @@
 
 ## Overview
 
-An AI-powered, conversational agent that interviews security operations personnel via WhatsApp or Telegram, captures all requirements for a Job Breakdown Statement (JBS), and generates a compliant Word (.docx) document — fully grounded in SharePoint knowledge base content.
+An AI-powered, conversational agent that interviews security operations personnel via **Microsoft Teams**, captures all requirements for a Job Breakdown Statement (JBS), and generates a compliant Word (.docx) document — fully grounded in SharePoint knowledge base content.
 
 Built on the **H2O.ai Enterprise Platform**.
 
@@ -25,7 +25,7 @@ Built on the **H2O.ai Enterprise Platform**.
 |---|---|
 | Conversational AI + RAG | H2O Enterprise h2oGPTe |
 | Knowledge Base Ingestion | H2O Document AI + SharePoint (Microsoft Graph API) |
-| Messaging Interface | WhatsApp Business API / Telegram Bot API |
+| Messaging Interface | Microsoft Teams (Azure Bot Service) |
 | Orchestration & State | Python FastAPI + SQLite session store (no Redis pod) |
 | Conversation History | H2O Enterprise h2oGPTe (native, via conversation_id) |
 | Admin Dashboard | H2O Wave — deployed via HAIC App Store (not Helm) |
@@ -38,10 +38,11 @@ Built on the **H2O.ai Enterprise Platform**.
 ## High-Level Flow
 
 ```
-User (WhatsApp/Telegram)
+User (Microsoft Teams)
         │
         ▼
   Webhook Handler (FastAPI on HAIC)
+  — JWT Bearer token validated (Azure Bot Service)
         │
         ▼
   Conversation Orchestrator (phase state in SQLite)
@@ -58,5 +59,5 @@ User (WhatsApp/Telegram)
   Phase 5: JSON Output ──► python-docx ──► .docx document
         │
         ▼
-  Reply to User (WhatsApp/Telegram)
+  Reply to User (Microsoft Teams — Bot Framework REST API)
 ```

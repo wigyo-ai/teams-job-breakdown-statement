@@ -589,15 +589,14 @@
     <a href="#step1"><span class="nav-num">1</span> Clone &amp; Configure</a>
     <a href="#step2"><span class="nav-num">2</span> h2oGPTe Collections</a>
     <a href="#step3"><span class="nav-num">3</span> Azure AD / SharePoint</a>
-    <a href="#step4"><span class="nav-num">4</span> WhatsApp Business API</a>
-    <a href="#step5"><span class="nav-num">5</span> Telegram Bot</a>
-    <a href="#step6"><span class="nav-num">6</span> Build Docker Images</a>
-    <a href="#step7"><span class="nav-num">7</span> H2O Secret Manager</a>
-    <a href="#step8"><span class="nav-num">8</span> Deploy via Helm</a>
-    <a href="#step9"><span class="nav-num">9</span> Wave Dashboard</a>
-    <a href="#step10"><span class="nav-num">10</span> MLOps Monitoring</a>
-    <a href="#step11"><span class="nav-num">11</span> Verify Deployment</a>
-    <a href="#step12"><span class="nav-num">12</span> Post-Deploy Config</a>
+    <a href="#step4"><span class="nav-num">4</span> Microsoft Teams Bot</a>
+    <a href="#step5"><span class="nav-num">5</span> Build Docker Images</a>
+    <a href="#step6"><span class="nav-num">6</span> H2O Secret Manager</a>
+    <a href="#step7"><span class="nav-num">7</span> Deploy via Helm</a>
+    <a href="#step8"><span class="nav-num">8</span> Wave Dashboard</a>
+    <a href="#step9"><span class="nav-num">9</span> MLOps Monitoring</a>
+    <a href="#step10"><span class="nav-num">10</span> Verify Deployment</a>
+    <a href="#step11"><span class="nav-num">11</span> Post-Deploy Config</a>
 
     <div class="nav-section-label">Checklists &amp; Reference</div>
     <a href="#hardening"><span class="nav-num">✓</span> Production Hardening</a>
@@ -669,9 +668,9 @@
           <span class="comp-tech">SQLite (no Redis pod)</span>
         </div>
         <div class="component-card">
-          <div class="comp-icon">💬</div>
-          <h4>Messaging Channels</h4>
-          <p>WhatsApp Business API and Telegram Bot API</p>
+          <div class="comp-icon">🟦</div>
+          <h4>Messaging Channel</h4>
+          <p>Microsoft Teams via Azure Bot Service — JWT-authenticated Bot Framework Activities</p>
           <span class="comp-tech">Webhook + FastAPI</span>
         </div>
         <div class="component-card">
@@ -737,15 +736,16 @@
       </div>
 
       <h3>Data Flow</h3>
-      <div class="arch-diagram">User (WhatsApp / Telegram)
-      │  HTTPS POST
+      <div class="arch-diagram">User (Microsoft Teams)
+      │  HTTPS POST — Bot Framework Activity
+      │  JWT Bearer token (RS256, signed by Azure Bot Service)
       ▼
-Webhook Service (FastAPI · HAIC)          ← signature validated
+Webhook Service (FastAPI · HAIC)          ← JWT validated
       │
       ▼
 Conversation Orchestrator (Python · HAIC)
-      │  load session from Redis
-      │  build prompt (phase + RAG context + history)
+      │  load session from SQLite
+      │  build prompt (phase + RAG context + h2oGPTe history)
       ▼
 H2O Enterprise h2oGPTe ◄──── SharePoint Collections (per site category)
       │                              (Corporate / Aviation / Industrial / Maritime / Retail)
@@ -756,7 +756,7 @@ Phase 4 only ──► Mozart API ──► reference document metadata
 Phase 5 approved ──► JSON ──► Document Generator ──► .docx ──► S3
       │
       ▼
-Reply + download link ──► User</div>
+Reply + download link ──► User (Bot Framework REST API · OAuth2 token)</div>
     </section>
 
     <!-- ═══ PREREQUISITES ═════════════════════════════════════════════════ -->
@@ -780,9 +780,9 @@ Reply + download link ──► User</div>
             <tr><td><strong>kubectl</strong></td><td>v1.27+ configured for HAIC cluster</td><td><span class="badge badge-blue">Tool</span></td></tr>
             <tr><td><strong>Helm</strong></td><td>v3.12+</td><td><span class="badge badge-blue">Tool</span></td></tr>
             <tr><td><strong>Python</strong></td><td>3.11+</td><td><span class="badge badge-blue">Tool</span></td></tr>
-            <tr><td><strong>WhatsApp Business Account</strong></td><td>Meta Developer account · approved WhatsApp Business API</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>Telegram Bot</strong></td><td>Token from @BotFather</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>Azure AD App Registration</strong></td><td>With SharePoint Graph API permissions</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Microsoft 365 Tenant</strong></td><td>Teams enabled · Azure subscription for Azure Bot resource</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Azure Bot Resource</strong></td><td>Azure Bot App Registration (App ID + client secret)</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Azure AD App Registration</strong></td><td>Separate registration with SharePoint Graph API permissions</td><td><span class="badge badge-warn">Required</span></td></tr>
             <tr><td><strong>Mozart API</strong></td><td>API key and base URL from Mozart administrator</td><td><span class="badge badge-warn">Required</span></td></tr>
           </tbody>
         </table>
@@ -817,19 +817,9 @@ cp config/env.template .env</code></pre>
 <span class="nm">H2OGPTE_ADDRESS</span>=https://your-h2ogpte-instance.h2o.ai
 <span class="nm">H2OGPTE_API_KEY</span>=&lt;from H2O Secret Manager&gt;
 
-<span class="cm"># Redis</span>
-<span class="nm">REDIS_HOST</span>=jbs-redis-service
-<span class="nm">REDIS_PORT</span>=6379
-<span class="nm">REDIS_PASSWORD</span>=&lt;generate a strong password&gt;
-<span class="nm">REDIS_SSL</span>=<span class="kw">false</span>   <span class="cm"># set true for production</span>
-
-<span class="cm"># WhatsApp</span>
-<span class="nm">WHATSAPP_APP_SECRET</span>=&lt;from Meta Developer Portal&gt;
-<span class="nm">WHATSAPP_ACCESS_TOKEN</span>=&lt;permanent token from Meta&gt;
-<span class="nm">WHATSAPP_PHONE_NUMBER_ID</span>=&lt;from Meta Developer Portal&gt;
-
-<span class="cm"># Telegram</span>
-<span class="nm">TELEGRAM_BOT_TOKEN</span>=&lt;from @BotFather&gt;
+<span class="cm"># Microsoft Teams (Azure Bot Service)</span>
+<span class="nm">TEAMS_APP_ID</span>=&lt;Azure Bot App Registration client ID&gt;
+<span class="nm">TEAMS_APP_PASSWORD</span>=&lt;Azure Bot App Registration client secret&gt;
 
 <span class="cm"># Mozart</span>
 <span class="nm">MOZART_API_BASE_URL</span>=https://mozart.certis.internal/api/v1
@@ -949,52 +939,47 @@ python -m src.rag.sharepoint_sync</code></pre>
       <div class="section-header">
         <div class="step-badge">4</div>
         <div>
-          <h2>Configure WhatsApp Business API</h2>
-          <div class="section-desc">Set up the Meta WhatsApp Cloud API channel and webhook</div>
+          <h2>Configure Microsoft Teams Bot (Azure Bot Service)</h2>
+          <div class="section-desc">Create the Azure Bot resource and connect it to Microsoft Teams</div>
         </div>
       </div>
 
+      <h3>4a — Create an Azure Bot resource</h3>
       <ol class="step-list">
-        <li>Log in to <strong>Meta Developer Portal</strong> → Create App → <strong>Business</strong> type</li>
-        <li>Add the <strong>WhatsApp</strong> product to your app</li>
-        <li>Under <strong>WhatsApp → Getting Started</strong>, note the <strong>Phone Number ID</strong> → <code>WHATSAPP_PHONE_NUMBER_ID</code></li>
-        <li>Generate a <strong>permanent system user token</strong> for production → <code>WHATSAPP_ACCESS_TOKEN</code></li>
-        <li>Under <strong>WhatsApp → Configuration → Webhook</strong>:<br>
-          Callback URL: <code>https://your-jbs-webhook.h2o.ai/webhook/whatsapp</code><br>
-          Verify Token: set a random string<br>
-          Subscribe to: <code>messages</code></li>
-        <li>Copy <strong>App Secret</strong> from <strong>App Settings → Basic</strong> → <code>WHATSAPP_APP_SECRET</code></li>
+        <li>Log in to <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → search for <strong>Azure Bot</strong> → <strong>Create</strong></li>
+        <li>Fill in: <strong>Bot handle</strong> = <code>certis-jbs-bot</code>, Pricing tier = <code>Standard</code></li>
+        <li>Under <strong>Microsoft App ID</strong> select <strong>Create new Microsoft App ID</strong></li>
+        <li>Click <strong>Review + create → Create</strong></li>
+        <li>Once deployed, navigate to the resource → <strong>Configuration</strong></li>
+        <li>Copy the <strong>Microsoft App ID</strong> → <code>TEAMS_APP_ID</code></li>
+        <li>Click <strong>Manage</strong> → <strong>Certificates &amp; secrets → New client secret</strong> → copy value → <code>TEAMS_APP_PASSWORD</code></li>
       </ol>
+
+      <h3>4b — Set the messaging endpoint</h3>
+      <p>In the Azure Bot resource → <strong>Configuration</strong>, set:</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">Messaging endpoint</span></div>
+        <pre><code>https://&lt;your-jbs-webhook-host&gt;/webhook/teams</code></pre>
+      </div>
 
       <div class="callout warn">
         <span class="callout-icon">⚠️</span>
-        <span>The webhook URL must be publicly accessible over HTTPS before Meta will accept it. Deploy the webhook service (Step 8) first, then register the URL.</span>
-      </div>
-    </section>
-
-    <!-- ═══ STEP 5 ═════════════════════════════════════════════════════════ -->
-    <section id="step5">
-      <div class="section-header">
-        <div class="step-badge">5</div>
-        <div>
-          <h2>Configure Telegram Bot</h2>
-          <div class="section-desc">Create the Telegram bot and register the webhook endpoint</div>
-        </div>
+        <span>The webhook service must be deployed (Step 7) and publicly accessible over HTTPS before Azure Bot Service will verify the endpoint. You can enter the URL now and confirm connectivity after deployment.</span>
       </div>
 
+      <h3>4c — Enable the Teams channel</h3>
       <ol class="step-list">
-        <li>Open Telegram and message <strong>@BotFather</strong></li>
-        <li>Send <kbd>/newbot</kbd> and follow the prompts to name your bot</li>
-        <li>Copy the API token → <code>TELEGRAM_BOT_TOKEN</code></li>
-        <li>After deploying the webhook service (Step 8), register the webhook URL:</li>
+        <li>In the Azure Bot resource → <strong>Channels</strong></li>
+        <li>Click <strong>Microsoft Teams → Apply</strong> and accept the Terms of Service</li>
       </ol>
 
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>curl -X POST <span class="st">"https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook"</span> \
-  -H <span class="st">"Content-Type: application/json"</span> \
-  -d <span class="st">'{"url": "https://your-jbs-webhook.h2o.ai/webhook/telegram"}'</span></code></pre>
-      </div>
+      <h3>4d — Add the bot to your Teams tenant</h3>
+      <ol class="step-list">
+        <li>Create a Teams app manifest using <a href="https://dev.teams.microsoft.com" target="_blank">Teams Developer Portal</a></li>
+        <li>Set the <strong>Bot ID</strong> to your <code>TEAMS_APP_ID</code></li>
+        <li>Upload to your tenant's app catalogue or side-load for testing:<br>
+          Teams → <strong>Apps → Manage your apps → Upload a custom app</strong></li>
+      </ol>
     </section>
 
     <!-- ═══ STEP 6 ═════════════════════════════════════════════════════════ -->
@@ -1056,7 +1041,7 @@ docker push <span class="st">${REGISTRY}</span>/jbs-dashboard:1.0.0</code></pre>
       <div class="code-wrap">
         <div class="code-header"><span class="code-lang">bash — h2octl</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
         <pre><code>h2octl secret create --name h2ogpte-api-key        --value <span class="st">"&lt;your key&gt;"</span>
-h2octl secret create --name whatsapp-app-secret    --value <span class="st">"&lt;your secret&gt;"</span>
+h2octl secret create --name teams-app-password    --value <span class="st">"&lt;your Teams bot client secret&gt;"</span>
 h2octl secret create --name whatsapp-access-token  --value <span class="st">"&lt;your token&gt;"</span>
 h2octl secret create --name telegram-bot-token     --value <span class="st">"&lt;your token&gt;"</span>
 h2octl secret create --name mozart-api-key         --value <span class="st">"&lt;your key&gt;"</span>
@@ -1099,6 +1084,13 @@ h2octl secret create --name s3-secret-access-key   --value <span class="st">"&lt
   ingress:
     host: jbs-webhook.your-haic-cluster.h2o.ai
     tlsSecret: jbs-webhook-tls
+  env:
+    plain:
+      <span class="nm">TEAMS_APP_ID</span>: <span class="st">"&lt;your bot app ID&gt;"</span>
+    secret:
+      <span class="nm">TEAMS_APP_PASSWORD</span>:
+        name: certis-jbs-secrets
+        key: teams-app-password
 
 <span class="kw">orchestrator</span>:
   replicaCount: 2
@@ -1107,9 +1099,14 @@ h2octl secret create --name s3-secret-access-key   --value <span class="st">"&lt
       <span class="nm">H2OGPTE_ADDRESS</span>: <span class="st">"https://your-h2ogpte-instance.h2o.ai"</span>
       <span class="nm">AZURE_TENANT_ID</span>: <span class="st">"&lt;tenant ID&gt;"</span>
       <span class="nm">MOZART_API_BASE_URL</span>: <span class="st">"https://mozart.certis.internal/api/v1"</span>
+      <span class="nm">TEAMS_APP_ID</span>: <span class="st">"&lt;your bot app ID&gt;"</span>
       <span class="cm"># No Redis config needed — h2oGPTe handles conversation history</span>
       <span class="nm">STATE_BACKEND</span>: <span class="st">"sqlite"</span>     <span class="cm"># phase state only (tiny payload)</span>
       <span class="nm">SQLITE_PATH</span>: <span class="st">"/data/jbs_sessions.db"</span>
+    secret:
+      <span class="nm">TEAMS_APP_PASSWORD</span>:
+        name: certis-jbs-secrets
+        key: teams-app-password
 
 <span class="kw">syncCronJob</span>:
   schedule: <span class="st">"0 2 * * *"</span>   <span class="cm"># Daily at 02:00 UTC</span></code></pre>
@@ -1240,22 +1237,12 @@ certis-jbs-docgen-5b6c8a-xxxx            1/1     Running   0
 certis-jbs-redis-0                       1/1     Running   0</code></pre>
       </div>
 
-      <h3>11b — Test Webhook Endpoint</h3>
+      <h3>11b — Verify Teams Messaging Endpoint</h3>
+      <p>In the Azure Bot resource → <strong>Configuration</strong>, the messaging endpoint should show a green checkmark once the webhook service is running. Use <strong>Test in Web Chat</strong> to send a quick test message.</p>
       <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash — curl</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>curl -X POST https://jbs-webhook.your-haic-cluster.h2o.ai/webhook/telegram \
-  -H <span class="st">"Content-Type: application/json"</span> \
-  -d <span class="st">'{
-    "update_id": 1,
-    "message": {
-      "message_id": 1,
-      "from": {"id": 999, "first_name": "Test"},
-      "chat": {"id": 999, "type": "private"},
-      "text": "Hello"
-    }
-  }'</span>
-
-<span class="cm"># Expected response: {"status": "ok"}</span></code></pre>
+        <div class="code-header"><span class="code-lang">bash — health check</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>curl https://jbs-webhook.your-haic-cluster.h2o.ai/health
+<span class="cm"># Expected: {"status": "ok"}</span></code></pre>
       </div>
 
       <h3>11c — Test h2oGPTe RAG Collections</h3>
@@ -1274,9 +1261,9 @@ asyncio.run(test())
 "</span></code></pre>
       </div>
 
-      <h3>11d — End-to-End Telegram Test</h3>
+      <h3>11d — End-to-End Teams Test</h3>
       <ol class="step-list">
-        <li>Open Telegram and find your bot</li>
+        <li>Open Microsoft Teams and find the JBS bot (search by name or via app catalogue)</li>
         <li>Send: <kbd>Hello</kbd></li>
         <li>Expected: bot greets and asks for Customer Name and Site Name</li>
         <li>Reply with site details and proceed through all 5 phases</li>
@@ -1347,13 +1334,13 @@ kubectl logs -f job/initial-sync -n certis-jbs</code></pre>
           <li><input type="checkbox" onchange="toggleDone(this)"> All secrets stored in H2O Secret Manager — no plaintext in <code>values.yaml</code></li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Session state backend confirmed: <code>sqlite</code> for single-replica, <code>external_redis</code> (managed service) for multi-replica — no Redis pod deployed via Helm</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Ingress TLS certificates issued and valid for both webhook and dashboard hosts</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> WhatsApp webhook HMAC-SHA256 signature validation tested and confirmed</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Teams Bot RS256 JWT Bearer token validation tested — invalid token returns HTTP 401</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Teams Bot app manifest published to tenant app catalogue (not just side-loaded)</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> HAIC RBAC configured — only authorised roles access admin dashboard</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> S3 bucket policy restricts access to document generator service account only</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> SharePoint App Registration uses minimum permissions: <code>Files.Read.All</code>, <code>Sites.Read.All</code></li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Mozart API key rotated from default</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> MLOps monitoring alerts configured and test alerts fired successfully</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Redis persistence enabled with regular snapshot schedule</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Pod resource limits set in Helm values (CPU / memory)</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Horizontal Pod Autoscaler (HPA) configured for webhook and orchestrator</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Document download URLs use short-lived presigned S3 URLs (15-minute expiry)</li>
@@ -1387,7 +1374,8 @@ kubectl logs -f job/initial-sync -n certis-jbs</code></pre>
                 <pre><code>kubectl logs -l app=jbs-webhook -n certis-jbs --tail=50</code></pre>
               </div>
             </li>
-            <li>Verify WhatsApp webhook subscription is active in Meta Developer Portal → webhook shows green status</li>
+            <li>Verify the Teams messaging endpoint shows green status in Azure Portal → Azure Bot → Configuration</li>
+            <li>Confirm <code>TEAMS_APP_ID</code> in the webhook env matches the Azure Bot App Registration</li>
             <li>Confirm orchestrator is reachable from the webhook pod:
               <div class="code-wrap" style="margin-top:10px">
                 <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>

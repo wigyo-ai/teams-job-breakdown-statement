@@ -1,22 +1,29 @@
 """
 Webhook Service — public-facing FastAPI app.
-Receives signed events from WhatsApp and Telegram,
-validates signatures, normalises to internal schema,
+Receives Bot Framework Activity events from Microsoft Teams via Azure Bot Service,
+validates the JWT bearer token, normalises to the internal schema,
 and forwards to the internal Orchestrator service.
 """
 
-import hmac
-import hashlib
 import os
 import httpx
-from fastapi import FastAPI, Request, HTTPException, Header
-from typing import Optional
+import jwt
+from jwt import PyJWKClient
+from fastapi import FastAPI, Request, HTTPException
 from .schema import NormalisedMessage
-from .whatsapp import parse_whatsapp_event
-from .telegram import parse_telegram_event
+from .teams import parse_teams_event
 
-app = FastAPI(title="JBS Webhook Service", version="1.0.0")
+app = FastAPI(title="JBS Webhook Service", version="2.0.0")
+
 ORCHESTRATOR_URL = os.environ["ORCHESTRATOR_URL"]
+TEAMS_APP_ID     = os.environ["TEAMS_APP_ID"]
+
+# Bot Framework publishes its signing keys at this well-known JWKS endpoint.
+# PyJWKClient caches the key set in memory to avoid repeated network calls.
+_jwks_client = PyJWKClient(
+    "https://login.botframework.com/v1/.well-known/keys",
+    cache_keys=True,
+)
 
 
 @app.get("/health")
@@ -24,46 +31,46 @@ async def health():
     return {"status": "ok"}
 
 
-@app.get("/webhook/whatsapp")
-async def whatsapp_verify(
-    hub_mode: str = None,
-    hub_challenge: str = None,
-    hub_verify_token: str = None,
-):
-    """Meta webhook verification handshake."""
-    if hub_mode == "subscribe" and hub_verify_token == os.environ.get("WHATSAPP_VERIFY_TOKEN"):
-        return int(hub_challenge)
-    raise HTTPException(status_code=403, detail="Verification failed")
+@app.post("/webhook/teams")
+async def teams_webhook(request: Request):
+    """
+    Receive a Bot Framework Activity from Microsoft Teams.
 
+    Azure Bot Service signs every outbound request with a JWT Bearer token.
+    The token is validated before the payload is processed.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    _verify_teams_token(auth_header)
 
-@app.post("/webhook/whatsapp")
-async def whatsapp_webhook(
-    request: Request,
-    x_hub_signature_256: Optional[str] = Header(None),
-):
-    body = await request.body()
-    _verify_whatsapp_signature(body, x_hub_signature_256)
     payload = await request.json()
-    msg = parse_whatsapp_event(payload)
+    msg = parse_teams_event(payload)
     if msg:
         await _forward(msg)
-    return {"status": "ok"}
+    return {}
 
 
-@app.post("/webhook/telegram")
-async def telegram_webhook(request: Request):
-    payload = await request.json()
-    msg = parse_telegram_event(payload)
-    if msg:
-        await _forward(msg)
-    return {"status": "ok"}
+def _verify_teams_token(auth_header: str):
+    """
+    Validate the JWT Bearer token issued by Azure Bot Service.
 
-
-def _verify_whatsapp_signature(body: bytes, signature: str):
-    secret = os.environ["WHATSAPP_APP_SECRET"]
-    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, signature or ""):
-        raise HTTPException(status_code=403, detail="Invalid signature")
+    Tokens are RS256-signed and must:
+      - Have audience equal to this bot's TEAMS_APP_ID
+      - Have issuer "https://api.botframework.com"
+    """
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing Bearer token")
+    token = auth_header[7:]
+    try:
+        signing_key = _jwks_client.get_signing_key_from_jwt(token)
+        jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=TEAMS_APP_ID,
+            issuer="https://api.botframework.com",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
 
 
 async def _forward(msg: NormalisedMessage):
