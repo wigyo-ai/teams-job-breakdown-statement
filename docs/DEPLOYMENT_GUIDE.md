@@ -103,7 +103,7 @@ Navigate to **Collections → New Collection** and create:
 | `collection_maritime` | SOPs and JBS for Maritime sites |
 | `collection_retail` | SOPs and JBS for Retail sites |
 
-**Record each Collection ID** — you will paste these into `src/agent/phase_controller.py` in Step 13a.
+**Record each Collection ID** — you will paste these into `src/agent/phase_controller.py` in Step 14a.
 
 ### 2c. Configure SharePoint as a document source
 
@@ -159,13 +159,40 @@ export ACA_ENV=certis-jbs-env
 export IMAGE_TAG=1.0.0
 ```
 
+> **Note:** These variables are not persisted across terminal sessions. Re-export them at the start of any new session before running subsequent steps.
+
 ---
 
-## Step 5 — Configure Microsoft Teams Bot (Azure Bot Service)
+## Step 5 — Register Azure Resource Providers
+
+On a new Azure subscription, resource providers must be registered before use. This is a one-time operation per subscription.
+
+```bash
+az provider register --namespace Microsoft.ContainerRegistry
+az provider register --namespace Microsoft.Storage
+az provider register --namespace Microsoft.KeyVault
+az provider register --namespace Microsoft.App
+az provider register --namespace Microsoft.OperationalInsights
+```
+
+Registration is asynchronous. Wait until all providers show `Registered` before proceeding:
+
+```bash
+for ns in Microsoft.ContainerRegistry Microsoft.Storage Microsoft.KeyVault Microsoft.App Microsoft.OperationalInsights; do
+  echo -n "$ns: "
+  az provider show -n $ns --query registrationState -o tsv
+done
+```
+
+Re-run the check until all five return `Registered` (typically 1–3 minutes each).
+
+---
+
+## Step 6 — Configure Microsoft Teams Bot (Azure Bot Service)
 
 The Webhook service validates RS256 JWT Bearer tokens issued by Azure Bot Service (key published at `https://login.botframework.com/v1/.well-known/keys`). The Orchestrator sends replies via the Bot Framework REST API using OAuth2 client credentials.
 
-### 5a. Create an Azure Bot resource
+### 6a. Create an Azure Bot resource
 
 1. Azure Portal → search **Azure Bot** → **Create**
 2. Bot handle: `certis-jbs-bot` · Pricing tier: **Standard**
@@ -175,11 +202,11 @@ The Webhook service validates RS256 JWT Bearer tokens issued by Azure Bot Servic
 6. Copy **Microsoft App ID** → this is `TEAMS_APP_ID`
 7. Click **Manage** → **Certificates & secrets → New client secret** → copy the value → this is `TEAMS_APP_PASSWORD`
 
-### 5b. Enable the Teams channel
+### 6b. Enable the Teams channel
 
 Azure Bot → **Channels → Microsoft Teams → Apply** → accept Terms of Service.
 
-### 5c. Set the messaging endpoint (after Step 11b)
+### 6c. Set the messaging endpoint (after Step 12b)
 
 Return to **Azure Bot → Configuration** and set the **Messaging endpoint** to:
 
@@ -187,9 +214,9 @@ Return to **Azure Bot → Configuration** and set the **Messaging endpoint** to:
 https://<webhook-app-fqdn>/webhook/teams
 ```
 
-You will get the FQDN in Step 11b.
+You will get the FQDN in Step 12b.
 
-### 5d. Add the bot to your Teams tenant
+### 6d. Add the bot to your Teams tenant
 
 **For production:** Create a Teams app manifest via [Teams Developer Portal](https://dev.teams.microsoft.com), set the Bot ID to `TEAMS_APP_ID`, upload to your tenant app catalogue.
 
@@ -197,7 +224,7 @@ You will get the FQDN in Step 11b.
 
 ---
 
-## Step 6 — Build Docker Images
+## Step 7 — Build Docker Images
 
 Build all images locally. No Azure credentials required at this step.
 
@@ -234,7 +261,7 @@ docker compose up --build
 
 ---
 
-## Step 7 — Create Azure Container Registry and Push Images
+## Step 8 — Create Azure Container Registry and Push Images
 
 ```bash
 az group create --name $RG --location $LOCATION
@@ -258,11 +285,11 @@ docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 ```
 
-> The dashboard image is deployed separately via HAIC App Store (Step 13c) and is not pushed to ACR.
+> The dashboard image is deployed separately via HAIC App Store (Step 14c) and is not pushed to ACR.
 
 ---
 
-## Step 8 — Create Azure Blob Storage
+## Step 9 — Create Azure Blob Storage
 
 The Document Generator uploads `.docx` files to Blob Storage and returns a 15-minute SAS URL to the user. The blob container name and key are read from environment variables `AZURE_STORAGE_CONTAINER` and `AZURE_STORAGE_KEY`.
 
@@ -297,7 +324,7 @@ AZURE_STORAGE_KEY=<paste STORAGE_KEY value>
 
 ---
 
-## Step 9 — Create Azure Key Vault and Store Secrets
+## Step 10 — Create Azure Key Vault and Store Secrets
 
 ```bash
 az keyvault create \
@@ -323,33 +350,29 @@ az keyvault secret set --vault-name $KV_NAME \
 
 ---
 
-## Step 10 — Create Azure Container Apps Environment
+## Step 11 — Create Azure Container Apps Environment
 
 ```bash
-# Register resource providers (once per subscription)
-az provider register --namespace Microsoft.App
-az provider register --namespace Microsoft.OperationalInsights
-
 az containerapp env create \
   --name $ACA_ENV \
   --resource-group $RG \
   --location $LOCATION
 ```
 
-> **Alternative:** The Bicep template at `deploy/azure/main.bicep` provisions Steps 8–12 in a single command. See `deploy/azure/README.md`.
+> **Alternative:** The Bicep template at `deploy/azure/main.bicep` provisions Steps 9–13 in a single command. See `deploy/azure/README.md`.
 
 ---
 
-## Step 11 — Deploy Services to Azure Container Apps
+## Step 12 — Deploy Services to Azure Container Apps
 
-### 11a. Retrieve ACR credentials
+### 12a. Retrieve ACR credentials
 
 ```bash
 export ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
 export ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)
 ```
 
-### 11b. Deploy the Webhook service (external ingress — public)
+### 12b. Deploy the Webhook service (external ingress — public)
 
 ```bash
 az containerapp create \
@@ -383,9 +406,9 @@ export WEBHOOK_FQDN=$(az containerapp show \
 echo "Teams Bot messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"
 ```
 
-**→ Paste this URL into Azure Portal → Azure Bot → Configuration → Messaging endpoint** (Step 5c).
+**→ Paste this URL into Azure Portal → Azure Bot → Configuration → Messaging endpoint** (Step 6c).
 
-### 11c. Deploy the Orchestrator service (internal ingress only)
+### 12c. Deploy the Orchestrator service (internal ingress only)
 
 ```bash
 az containerapp create \
@@ -425,7 +448,7 @@ az containerapp create \
 
 > For multi-replica deployments: set `STATE_BACKEND=external_redis` and add `--secrets redis-url="<REDIS_URL>"` pointing to an Azure Cache for Redis managed instance.
 
-### 11d. Deploy the Document Generator service (internal ingress only)
+### 12d. Deploy the Document Generator service (internal ingress only)
 
 ```bash
 az containerapp create \
@@ -452,7 +475,7 @@ az containerapp create \
 
 ---
 
-## Step 12 — Deploy SharePoint Sync as an ACA Scheduled Job
+## Step 13 — Deploy SharePoint Sync as an ACA Scheduled Job
 
 The sync job reuses the orchestrator image and runs `src/rag/sharepoint_sync.py` daily at 02:00 UTC, fetching changed documents from SharePoint and ingesting them into h2oGPTe collections.
 
@@ -487,9 +510,9 @@ az containerapp job create \
 
 ---
 
-## Step 13 — Post-Deployment Configuration
+## Step 14 — Post-Deployment Configuration
 
-### 13a. Update h2oGPTe Collection IDs in the orchestrator
+### 14a. Update h2oGPTe Collection IDs in the orchestrator
 
 After creating collections in Step 2b, open `src/agent/phase_controller.py` and replace the placeholder values:
 
@@ -521,7 +544,7 @@ az containerapp job update \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 ```
 
-### 13b. Add the corporate Word template
+### 14b. Add the corporate Word template
 
 The Document Generator loads the template from `templates/jbs_corporate_template.docx` at startup. Place the approved corporate template at that path, then rebuild and redeploy:
 
@@ -539,7 +562,7 @@ az containerapp update \
   --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 ```
 
-### 13c. Deploy the H2O Wave admin dashboard via HAIC App Store
+### 14c. Deploy the H2O Wave admin dashboard via HAIC App Store
 
 The dashboard is NOT deployed as an Azure Container App — it runs natively inside HAIC.
 
@@ -555,7 +578,7 @@ h2o bundle
 4. Set environment variables: `ORCHESTRATOR_URL=https://<certisjbs-orchestrator-internal-url>`
 5. Click **Deploy**
 
-### 13d. Trigger the initial SharePoint knowledge base sync
+### 14d. Trigger the initial SharePoint knowledge base sync
 
 ```bash
 az containerapp job start \
@@ -571,9 +594,9 @@ az containerapp job execution list \
 
 ---
 
-## Step 14 — Verify Deployment
+## Step 15 — Verify Deployment
 
-### 14a. Check all Container Apps are running
+### 15a. Check all Container Apps are running
 
 ```bash
 az containerapp list --resource-group $RG --output table
@@ -589,14 +612,14 @@ certisjbs-orchestrator  Succeeded
 certisjbs-docgen        Succeeded
 ```
 
-### 14b. Webhook health check
+### 15b. Webhook health check
 
 ```bash
 curl https://${WEBHOOK_FQDN}/health
 # → {"status": "ok"}
 ```
 
-### 14c. Confirm orchestrator is reachable from webhook
+### 15c. Confirm orchestrator is reachable from webhook
 
 ```bash
 az containerapp exec \
@@ -606,7 +629,7 @@ az containerapp exec \
 # → {"status": "ok"}
 ```
 
-### 14d. Verify h2oGPTe collections exist and are populated
+### 15d. Verify h2oGPTe collections exist and are populated
 
 ```bash
 python -c "
@@ -617,7 +640,7 @@ for col in c.client.list_recent_collections(0, 20):
 "
 ```
 
-### 14e. End-to-end Teams test
+### 15e. End-to-end Teams test
 
 1. Open Microsoft Teams → find the JBS bot by name
 2. Send: `Hello`
@@ -626,7 +649,7 @@ for col in c.client.list_recent_collections(0, 20):
 5. Type one of the approval keywords: `approve`, `confirm`, `yes`, `proceed`, `looks good`
 6. Confirm the reply contains a download link pointing to `*.blob.core.windows.net`
 
-### 14f. Stream live logs
+### 15f. Stream live logs
 
 ```bash
 # Webhook
@@ -641,7 +664,7 @@ az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow
 
 ---
 
-## Step 15 — Set Up GitHub Actions CI/CD
+## Step 16 — Set Up GitHub Actions CI/CD
 
 The workflow at `.github/workflows/deploy.yml` builds and pushes all three images on every push to `main` (for paths `src/**`, `config/prompts/**`, `templates/**`, `Dockerfile.*`, `requirements.txt`) and then runs `az containerapp update` for each service.
 
@@ -655,11 +678,11 @@ Add these secrets to your GitHub repository (**Settings → Secrets and variable
 | `ACR_LOGIN_SERVER` | e.g. `certisjbsacr.azurecr.io` |
 | `AZURE_RESOURCE_GROUP` | e.g. `certis-jbs-rg` |
 
-The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrator`, `certisjbs-docgen`, and `certisjbs-sp-sync` — these must match the names used in Steps 11–12.
+The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrator`, `certisjbs-docgen`, and `certisjbs-sp-sync` — these must match the names used in Steps 12–13.
 
 ---
 
-## Step 16 — Production Hardening Checklist
+## Step 17 — Production Hardening Checklist
 
 - [ ] All secrets in Azure Key Vault — no plaintext credentials in env-var definitions or CLI history
 - [ ] Webhook has external ingress; orchestrator and docgen have **internal-only** ingress
