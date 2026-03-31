@@ -222,7 +222,7 @@
     </div>
     <div class="pill-row">
       <span class="pill pill-blue">Azure Container Apps</span>
-      <span class="pill pill-green">16 Steps</span>
+      <span class="pill pill-green">17 Steps</span>
     </div>
   </div>
   <nav>
@@ -235,18 +235,19 @@
     <a href="#step2"><span class="nav-n">2</span> h2oGPTe Collections</a>
     <a href="#step3"><span class="nav-n">3</span> SharePoint App Registration</a>
     <a href="#step4"><span class="nav-n">4</span> Shell Variables</a>
-    <a href="#step5"><span class="nav-n">5</span> Teams Bot Setup</a>
-    <a href="#step6"><span class="nav-n">6</span> Build Docker Images</a>
-    <a href="#step7"><span class="nav-n">7</span> Create ACR &amp; Push</a>
-    <a href="#step8"><span class="nav-n">8</span> Azure Blob Storage</a>
-    <a href="#step9"><span class="nav-n">9</span> Azure Key Vault</a>
-    <a href="#step10"><span class="nav-n">10</span> ACA Environment</a>
-    <a href="#step11"><span class="nav-n">11</span> Deploy Services</a>
-    <a href="#step12"><span class="nav-n">12</span> SharePoint Sync Job</a>
-    <a href="#step13"><span class="nav-n">13</span> Post-Deployment Config</a>
-    <a href="#step14"><span class="nav-n">14</span> Verify Deployment</a>
-    <a href="#step15"><span class="nav-n">15</span> GitHub Actions CI/CD</a>
-    <a href="#step16"><span class="nav-n">16</span> Production Hardening</a>
+    <a href="#step5"><span class="nav-n">5</span> Register Resource Providers</a>
+    <a href="#step6"><span class="nav-n">6</span> Teams Bot Setup</a>
+    <a href="#step7"><span class="nav-n">7</span> Build Docker Images</a>
+    <a href="#step8"><span class="nav-n">8</span> Create ACR &amp; Push</a>
+    <a href="#step9"><span class="nav-n">9</span> Azure Blob Storage</a>
+    <a href="#step10"><span class="nav-n">10</span> Azure Key Vault</a>
+    <a href="#step11"><span class="nav-n">11</span> ACA Environment</a>
+    <a href="#step12"><span class="nav-n">12</span> Deploy Services</a>
+    <a href="#step13"><span class="nav-n">13</span> SharePoint Sync Job</a>
+    <a href="#step14"><span class="nav-n">14</span> Post-Deployment Config</a>
+    <a href="#step15"><span class="nav-n">15</span> Verify Deployment</a>
+    <a href="#step16"><span class="nav-n">16</span> GitHub Actions CI/CD</a>
+    <a href="#step17"><span class="nav-n">17</span> Production Hardening</a>
 
     <div class="nav-group">Reference</div>
     <a href="#troubleshooting"><span class="nav-ic">🔧</span> Troubleshooting</a>
@@ -337,7 +338,8 @@
     <table class="dt">
       <thead><tr><th>Requirement</th><th>Notes</th></tr></thead>
       <tbody>
-        <tr><td>Azure CLI v2.55+</td><td>With <code>containerapp</code> extension. Install: <code>az extension add --name containerapp</code></td></tr>
+        <tr><td>Azure CLI v2.55+</td><td><code>brew install azure-cli</code> or see <a href="https://docs.microsoft.com/cli/azure/install-azure-cli" style="color:var(--blue-light);">docs.microsoft.com</a></td></tr>
+        <tr><td>Azure CLI containerapp extension</td><td><code>az extension add --name containerapp</code></td></tr>
         <tr><td>Docker v24+</td><td>For building and pushing images locally</td></tr>
         <tr><td>Python 3.11+</td><td>For local testing and running sync scripts</td></tr>
         <tr><td>Azure subscription</td><td>Contributor access to create resource groups and services</td></tr>
@@ -346,9 +348,10 @@
         <tr><td>H2O Document AI</td><td>Licensed HAIC instance — pre-provisioned, no changes required</td></tr>
       </tbody>
     </table>
+    <p>Install the containerapp extension before starting:</p>
     <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
     <pre>az extension add --name containerapp
-az extension update --name containerapp</pre></div>
+az login</pre></div>
   </section>
 
   <!-- Step 1 -->
@@ -365,43 +368,44 @@ az extension update --name containerapp</pre></div>
 cd certis-job-breakdown-statement
 cp config/env.template .env</pre></div>
 
-    <p>Edit <code>.env</code>. Fill in all values — you will retrieve specific secrets in later steps:</p>
+    <p>Open <code>.env</code> and fill in all values. The full variable reference is below — you will retrieve individual values in the steps that follow:</p>
 
-    <div class="cb"><div class="cb-head"><span class="cb-lang">env — .env</span><button class="cb-copy">Copy</button></div>
-    <pre># H2O Enterprise h2oGPTe
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre># ── H2O Enterprise h2oGPTe ──────────────────────────────────────────────────
 H2OGPTE_ADDRESS=https://your-h2ogpte-instance.h2o.ai
 H2OGPTE_API_KEY=                          # From HAIC Secret Manager
 
-# Session state — memory | sqlite | external_redis
+# ── Session state ────────────────────────────────────────────────────────────
+# Options: memory (dev only) | sqlite (default) | external_redis (multi-replica)
 STATE_BACKEND=sqlite
 SQLITE_PATH=/tmp/jbs_sessions.db
 SESSION_TTL_HOURS=24
-# REDIS_URL=rediss://:password@your-redis.cache.windows.net:6380/0
+# REDIS_URL=rediss://:password@your-redis.cache.windows.net:6380/0  # only if external_redis
 
-# Microsoft Teams (Azure Bot Service) — values from Step 5
-TEAMS_APP_ID=
-TEAMS_APP_PASSWORD=
+# ── Microsoft Teams — Azure Bot Service ─────────────────────────────────────
+TEAMS_APP_ID=                             # Azure Bot App Registration client ID  (Step 6)
+TEAMS_APP_PASSWORD=                       # Azure Bot App Registration client secret (Step 6)
 
-# SharePoint / Microsoft Graph API — values from Step 3
-AZURE_TENANT_ID=
-AZURE_CLIENT_ID=
-AZURE_CLIENT_SECRET=
+# ── SharePoint / Microsoft Graph API ────────────────────────────────────────
+AZURE_TENANT_ID=                          # Azure AD tenant ID
+AZURE_CLIENT_ID=                          # SharePoint App Registration client ID  (Step 4)
+AZURE_CLIENT_SECRET=                      # SharePoint App Registration client secret (Step 4)
 SP_SITE_URL=https://certissecurity.sharepoint.com/sites/operations
-SP_LIBRARY_CORPORATE=
+SP_LIBRARY_CORPORATE=                     # SharePoint document library IDs (Step 3b)
 SP_LIBRARY_AVIATION=
 SP_LIBRARY_INDUSTRIAL=
 SP_LIBRARY_MARITIME=
 SP_LIBRARY_RETAIL=
 
-# Azure Blob Storage — values from Step 8
-AZURE_STORAGE_ACCOUNT=certisjbsstorage
+# ── Azure Blob Storage ───────────────────────────────────────────────────────
+AZURE_STORAGE_ACCOUNT=certisjbsstorage    # Set after Step 9
 AZURE_STORAGE_CONTAINER=certis-jbs-documents
-AZURE_STORAGE_KEY=
+AZURE_STORAGE_KEY=                        # Set after Step 9
 BLOB_PREFIX=jbs-documents/
-DOC_URL_EXPIRY_SECONDS=900
+DOC_URL_EXPIRY_SECONDS=900                # SAS URL validity (seconds) — default 15 min
 
-# Internal service routing
-ORCHESTRATOR_URL=http://localhost:8001
+# ── Internal service URLs ────────────────────────────────────────────────────
+ORCHESTRATOR_URL=http://localhost:8001    # Overridden by docker-compose / ACA env
 DOCUMENT_GENERATOR_URL=http://localhost:8002
 TENANT_ID=certis</pre></div>
   </section>
@@ -433,12 +437,13 @@ TENANT_ID=certis</pre></div>
           <tr><td><code>collection_retail</code></td><td>SOPs and historical JBS for Retail sites</td></tr>
         </tbody>
       </table>
-      <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong>Record each Collection ID</strong> shown after creation. You will paste these into <code>src/agent/phase_controller.py</code> in Step 13a. The placeholders currently in the file (<code>col_REPLACE_CORPORATE</code> etc.) must be replaced before the orchestrator will route queries to the correct collection.</p></div>
+      <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong>Record each Collection ID</strong> shown after creation. You will paste these into <code>src/agent/phase_controller.py</code> in Step 14a. The placeholders currently in the file (<code>col_REPLACE_CORPORATE</code> etc.) must be replaced before the orchestrator will route queries to the correct collection.</p></div>
     </div>
 
     <div class="sub">
       <div class="sub-hdr"><div class="sub-dot">2c</div><h3>Configure SharePoint as a document source</h3></div>
       <p>In h2oGPTe: <strong>Collections → [Select Collection] → Import → SharePoint Online</strong>. Enter Tenant ID, Client ID, Client Secret, Site URL, and Document Library. Enable <strong>Auto-sync → Daily</strong>. Repeat for all five collections.</p>
+      <div class="note note-info"><span class="note-ic">ℹ️</span><p>To retrieve SharePoint library IDs: use Graph API Explorer or run <code>az rest --method get --url "https://graph.microsoft.com/v1.0/sites/{site-id}/drives"</code>.</p></div>
     </div>
 
     <div class="sub">
@@ -453,11 +458,11 @@ python -m src.rag.sharepoint_sync</pre></div>
   <section id="step3" class="step">
     <div class="step-hdr">
       <div class="step-num">3</div>
-      <div class="step-ttl"><div class="step-label">Step 3</div><div class="step-title">SharePoint Azure AD App Registration</div></div>
+      <div class="step-ttl"><div class="step-label">Step 3</div><div class="step-title">Configure Azure AD App Registration for SharePoint</div></div>
     </div>
     <div class="step-rule"></div>
-    <p class="step-intro">This app registration is used by <code>src/integrations/graph_api_client.py</code> to authenticate to the Microsoft Graph API and read SharePoint documents. It uses the OAuth 2.0 client credentials flow — no user login required.</p>
-    <div class="note note-tip"><span class="note-ic">✅</span><p>Skip this step if your Azure AD app registration for SharePoint is already configured.</p></div>
+    <p class="step-intro">This app registration grants the platform read-only access to SharePoint documents via the Microsoft Graph API. Required by <code>src/integrations/graph_api_client.py</code>.</p>
+    <div class="note note-tip"><span class="note-ic">✅</span><p>Skip if an app registration for SharePoint access already exists.</p></div>
 
     <ol class="ol">
       <li>Azure Portal → <strong>Azure Active Directory → App registrations → New registration</strong></li>
@@ -485,25 +490,54 @@ python -m src.rag.sharepoint_sync</pre></div>
 
     <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
     <pre>export RG=certis-jbs-rg
-export LOCATION=australiaeast          # change to your preferred Azure region
-export ACR_NAME=certisjbsacr           # globally unique, alphanumeric only
+export LOCATION=australiaeast       # change to your preferred region
+export ACR_NAME=certisjbsacr        # globally unique, alphanumeric only
 export STORAGE_ACCOUNT=certisjbsstorage  # globally unique, 3–24 lowercase alphanumeric
-export KV_NAME=certis-jbs-kv           # globally unique
+export KV_NAME=certis-jbs-kv        # globally unique
 export ACA_ENV=certis-jbs-env
 export IMAGE_TAG=1.0.0</pre></div>
+
+    <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong>Note:</strong> These variables are not persisted across terminal sessions. Re-export them at the start of any new session before running subsequent steps.</p></div>
   </section>
 
   <!-- Step 5 -->
   <section id="step5" class="step">
     <div class="step-hdr">
       <div class="step-num">5</div>
-      <div class="step-ttl"><div class="step-label">Step 5</div><div class="step-title">Configure Microsoft Teams Bot</div></div>
+      <div class="step-ttl"><div class="step-label">Step 5</div><div class="step-title">Register Azure Resource Providers</div></div>
+    </div>
+    <div class="step-rule"></div>
+    <p class="step-intro">On a new Azure subscription, resource providers must be registered before use. This is a one-time operation per subscription.</p>
+
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>az provider register --namespace Microsoft.ContainerRegistry
+az provider register --namespace Microsoft.Storage
+az provider register --namespace Microsoft.KeyVault
+az provider register --namespace Microsoft.App
+az provider register --namespace Microsoft.OperationalInsights</pre></div>
+
+    <p>Registration is asynchronous. Wait until all providers show <code>Registered</code> before proceeding:</p>
+
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>for ns in Microsoft.ContainerRegistry Microsoft.Storage Microsoft.KeyVault Microsoft.App Microsoft.OperationalInsights; do
+  echo -n "$ns: "
+  az provider show -n $ns --query registrationState -o tsv
+done</pre></div>
+
+    <p>Re-run the check until all five return <code>Registered</code> (typically 1–3 minutes each).</p>
+  </section>
+
+  <!-- Step 6 -->
+  <section id="step6" class="step">
+    <div class="step-hdr">
+      <div class="step-num">6</div>
+      <div class="step-ttl"><div class="step-label">Step 6</div><div class="step-title">Configure Microsoft Teams Bot</div></div>
     </div>
     <div class="step-rule"></div>
     <p class="step-intro">The Webhook service validates every incoming request against RS256 JWT tokens signed by Azure Bot Service (<code>https://login.botframework.com/v1/.well-known/keys</code>). The Orchestrator sends replies via the Bot Framework REST API using OAuth2 client credentials flow.</p>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">5a</div><h3>Create an Azure Bot resource</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">6a</div><h3>Create an Azure Bot resource</h3></div>
       <ol class="ol">
         <li>Azure Portal → search <strong>Azure Bot</strong> → <strong>Create</strong></li>
         <li>Bot handle: <code>certis-jbs-bot</code> · Pricing tier: <strong>Standard</strong></li>
@@ -516,77 +550,80 @@ export IMAGE_TAG=1.0.0</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">5b</div><h3>Enable the Microsoft Teams channel</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">6b</div><h3>Enable the Microsoft Teams channel</h3></div>
       <p>Azure Bot → <strong>Channels → Microsoft Teams → Apply</strong> → accept Terms of Service.</p>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">5c</div><h3>Set the messaging endpoint (after Step 11b)</h3></div>
-      <p>Return here after Step 11b — you need the webhook Container App FQDN first.</p>
+      <div class="sub-hdr"><div class="sub-dot">6c</div><h3>Set the messaging endpoint (after Step 12b)</h3></div>
+      <p>Return to <strong>Azure Bot → Configuration</strong> and set the <strong>Messaging endpoint</strong> to:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">url pattern</span><button class="cb-copy">Copy</button></div>
-      <pre>https://&lt;certisjbs-webhook-fqdn&gt;/webhook/teams</pre></div>
-      <p>Paste this into <strong>Azure Portal → Azure Bot → Configuration → Messaging endpoint</strong>.</p>
+      <pre>https://&lt;webhook-app-fqdn&gt;/webhook/teams</pre></div>
+      <p>You will get the FQDN in Step 12b.</p>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">5d</div><h3>Add the bot to your Teams tenant</h3></div>
-      <p><strong>Production:</strong> Create a Teams app manifest via <a href="https://dev.teams.microsoft.com" style="color:var(--blue-light);">Teams Developer Portal</a>, set Bot ID to <code>TEAMS_APP_ID</code>, publish to your tenant app catalogue.</p>
-      <p><strong>Testing:</strong> Teams → <strong>Apps → Manage your apps → Upload a custom app</strong> → upload the <code>.zip</code> package.</p>
+      <div class="sub-hdr"><div class="sub-dot">6d</div><h3>Add the bot to your Teams tenant</h3></div>
+      <p><strong>For production:</strong> Create a Teams app manifest via <a href="https://dev.teams.microsoft.com" style="color:var(--blue-light);">Teams Developer Portal</a>, set the Bot ID to <code>TEAMS_APP_ID</code>, upload to your tenant app catalogue.</p>
+      <p><strong>For testing:</strong> Teams → <strong>Apps → Manage your apps → Upload a custom app</strong> → upload the <code>.zip</code> package.</p>
     </div>
-  </section>
-
-  <!-- Step 6 -->
-  <section id="step6" class="step">
-    <div class="step-hdr">
-      <div class="step-num">6</div>
-      <div class="step-ttl"><div class="step-label">Step 6</div><div class="step-title">Build Docker Images</div></div>
-    </div>
-    <div class="step-rule"></div>
-    <p class="step-intro">Build all images locally. No Azure credentials required. The orchestrator image bundles <code>config/prompts/</code>; the docgen image bundles <code>templates/</code>.</p>
-
-    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-    <pre># Webhook — FastAPI on port 8000
-docker build -f Dockerfile.webhook -t jbs-webhook:${IMAGE_TAG} .
-
-# Orchestrator — FastAPI on port 8001 (includes config/prompts/)
-docker build -f Dockerfile.orchestrator -t jbs-orchestrator:${IMAGE_TAG} .
-
-# Document generator — FastAPI on port 8002 (includes templates/)
-docker build -f Dockerfile.document -t jbs-docgen:${IMAGE_TAG} .
-
-# H2O Wave dashboard — deployed via HAIC App Store, NOT pushed to ACR
-docker build -f Dockerfile.dashboard -t jbs-dashboard:${IMAGE_TAG} .</pre></div>
-
-    <p>Verify all four images built:</p>
-    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-    <pre>docker images | grep jbs</pre></div>
-
-    <div class="note note-tip"><span class="note-ic">💡</span><p><strong>Test locally before pushing:</strong> <code>docker compose up --build</code> starts all three middleware services on ports 8000/8001/8002. Requires a populated <code>.env</code>. The compose file sets <code>STATE_BACKEND=memory</code> and wires inter-service URLs automatically.</p></div>
   </section>
 
   <!-- Step 7 -->
   <section id="step7" class="step">
     <div class="step-hdr">
       <div class="step-num">7</div>
-      <div class="step-ttl"><div class="step-label">Step 7</div><div class="step-title">Create Azure Container Registry &amp; Push Images</div></div>
+      <div class="step-ttl"><div class="step-label">Step 7</div><div class="step-title">Build Docker Images</div></div>
     </div>
     <div class="step-rule"></div>
+    <p class="step-intro">Build all images locally. No Azure credentials required. The orchestrator image bundles <code>config/prompts/</code>; the docgen image bundles <code>templates/</code>.</p>
+
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre># Webhook service — FastAPI on port 8000
+docker build -f Dockerfile.webhook -t jbs-webhook:${IMAGE_TAG} .
+
+# Orchestrator — FastAPI on port 8001 (bundles config/prompts/)
+docker build -f Dockerfile.orchestrator -t jbs-orchestrator:${IMAGE_TAG} .
+
+# Document generator — FastAPI on port 8002 (bundles templates/)
+docker build -f Dockerfile.document -t jbs-docgen:${IMAGE_TAG} .
+
+# H2O Wave admin dashboard — deployed via HAIC App Store, NOT pushed to ACR
+docker build -f Dockerfile.dashboard -t jbs-dashboard:${IMAGE_TAG} .</pre></div>
+
+    <p>Confirm all images built:</p>
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>docker images | grep jbs</pre></div>
+
+    <p><strong>Test locally before pushing:</strong></p>
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>docker compose up --build
+# webhook: http://localhost:8000/health
+# orchestrator: http://localhost:8001/health
+# docgen: http://localhost:8002/health</pre></div>
+
+    <div class="note note-tip"><span class="note-ic">💡</span><p><code>docker-compose.yml</code> sets <code>STATE_BACKEND=memory</code> and wires <code>ORCHESTRATOR_URL</code>/<code>DOCUMENT_GENERATOR_URL</code> automatically. Requires a populated <code>.env</code>.</p></div>
+  </section>
+
+  <!-- Step 8 -->
+  <section id="step8" class="step">
+    <div class="step-hdr">
+      <div class="step-num">8</div>
+      <div class="step-ttl"><div class="step-label">Step 8</div><div class="step-title">Create Azure Container Registry &amp; Push Images</div></div>
+    </div>
+    <div class="step-rule"></div>
+    <div class="note note-info"><span class="note-ic">ℹ️</span><p><strong>Copy-paste note:</strong> All <code>az</code> commands in Steps 8–13 are written as single lines. Do not split them across multiple lines when running in the terminal.</p></div>
 
     <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
     <pre>az group create --name $RG --location $LOCATION
 
-az acr create \
-  --resource-group $RG \
-  --name $ACR_NAME \
-  --sku Basic \
-  --admin-enabled true
+az acr create --resource-group $RG --name $ACR_NAME --sku Basic --admin-enabled true
 
 az acr login --name $ACR_NAME
-export ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)</pre></div>
+export ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
 
-    <p>Tag and push the three middleware images (not the dashboard):</p>
-    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-    <pre>docker tag jbs-webhook:${IMAGE_TAG}      ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG}
+# Tag and push the three middleware images
+docker tag jbs-webhook:${IMAGE_TAG}      ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG}
 docker tag jbs-orchestrator:${IMAGE_TAG} ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 docker tag jbs-docgen:${IMAGE_TAG}       ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
@@ -594,105 +631,102 @@ docker push ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG}
 docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</pre></div>
 
-    <div class="note note-info"><span class="note-ic">ℹ️</span><p>The dashboard image (<code>jbs-dashboard</code>) is deployed separately via the HAIC App Store (Step 13c) and is <strong>not</strong> pushed to ACR.</p></div>
-  </section>
-
-  <!-- Step 8 -->
-  <section id="step8" class="step">
-    <div class="step-hdr">
-      <div class="step-num">8</div>
-      <div class="step-ttl"><div class="step-label">Step 8</div><div class="step-title">Create Azure Blob Storage</div></div>
-    </div>
-    <div class="step-rule"></div>
-    <p class="step-intro">The Document Generator uploads <code>.docx</code> files here and returns a 15-minute SAS URL. Container name is <code>certis-jbs-documents</code>; expiry is controlled by <code>DOC_URL_EXPIRY_SECONDS=900</code>.</p>
-
-    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-    <pre>az storage account create \
-  --name $STORAGE_ACCOUNT \
-  --resource-group $RG \
-  --location $LOCATION \
-  --sku Standard_LRS \
-  --kind StorageV2 \
-  --min-tls-version TLS1_2 \
-  --allow-blob-public-access false
-
-az storage container create \
-  --name certis-jbs-documents \
-  --account-name $STORAGE_ACCOUNT \
-  --auth-mode login
-
-# Capture the key — passed to Key Vault in Step 9
-export STORAGE_KEY=$(az storage account keys list \
-  --account-name $STORAGE_ACCOUNT \
-  --resource-group $RG \
-  --query "[0].value" -o tsv)</pre></div>
-
-    <p>Update <code>.env</code>: set <code>AZURE_STORAGE_ACCOUNT</code> and <code>AZURE_STORAGE_KEY</code> to the values above.</p>
+    <div class="note note-info"><span class="note-ic">ℹ️</span><p>The dashboard image is deployed separately via HAIC App Store (Step 14c) and is <strong>not</strong> pushed to ACR.</p></div>
   </section>
 
   <!-- Step 9 -->
   <section id="step9" class="step">
     <div class="step-hdr">
       <div class="step-num">9</div>
-      <div class="step-ttl"><div class="step-label">Step 9</div><div class="step-title">Create Azure Key Vault &amp; Store Secrets</div></div>
+      <div class="step-ttl"><div class="step-label">Step 9</div><div class="step-title">Create Azure Blob Storage</div></div>
     </div>
     <div class="step-rule"></div>
-    <p class="step-intro">All four secrets used by the Container Apps are stored here. The Bicep template references them; for manual deployment they are passed as <code>--secrets</code> parameters directly to each Container App.</p>
+    <p class="step-intro">The Document Generator uploads <code>.docx</code> files to Blob Storage and returns a 15-minute SAS URL to the user. The blob container name and key are read from environment variables <code>AZURE_STORAGE_CONTAINER</code> and <code>AZURE_STORAGE_KEY</code>.</p>
 
     <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-    <pre>az keyvault create \
-  --name $KV_NAME \
-  --resource-group $RG \
-  --location $LOCATION \
-  --sku standard \
-  --enable-rbac-authorization true
+    <pre>az storage account create --name $STORAGE_ACCOUNT --resource-group $RG --location $LOCATION --sku Standard_LRS --kind StorageV2 --allow-blob-public-access false</pre></div>
 
-az keyvault secret set --vault-name $KV_NAME --name teams-app-password  --value "&lt;TEAMS_APP_PASSWORD&gt;"
-az keyvault secret set --vault-name $KV_NAME --name h2ogpte-api-key     --value "&lt;H2OGPTE_API_KEY&gt;"
-az keyvault secret set --vault-name $KV_NAME --name azure-client-secret --value "&lt;AZURE_CLIENT_SECRET&gt;"
-az keyvault secret set --vault-name $KV_NAME --name storage-key         --value "$STORAGE_KEY"</pre></div>
+    <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong>DNS propagation:</strong> Wait ~30–60 seconds after the account is created before running the next commands. The blob endpoint (<code>certisjbsstorage.blob.core.windows.net</code>) may not resolve immediately.</p></div>
+
+    <p>Retrieve the storage key, then create the container using it:</p>
+
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>export STORAGE_KEY=$(az storage account keys list --account-name $STORAGE_ACCOUNT --resource-group $RG --query "[0].value" -o tsv)
+
+# Verify the key was retrieved
+echo $STORAGE_KEY
+
+az storage container create --name certis-jbs-documents --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY</pre></div>
+
+    <p>Update your <code>.env</code>:</p>
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>AZURE_STORAGE_ACCOUNT=certisjbsstorage
+AZURE_STORAGE_KEY=&lt;paste STORAGE_KEY value&gt;</pre></div>
   </section>
 
   <!-- Step 10 -->
   <section id="step10" class="step">
     <div class="step-hdr">
       <div class="step-num">10</div>
-      <div class="step-ttl"><div class="step-label">Step 10</div><div class="step-title">Create Azure Container Apps Environment</div></div>
+      <div class="step-ttl"><div class="step-label">Step 10</div><div class="step-title">Create Azure Key Vault &amp; Store Secrets</div></div>
     </div>
     <div class="step-rule"></div>
-    <p class="step-intro">The ACA Environment is the shared network boundary. Services within the same environment resolve each other by name: <code>http://certisjbs-orchestrator</code>, <code>http://certisjbs-docgen</code>.</p>
 
     <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-    <pre># Register providers (once per subscription)
-az provider register --namespace Microsoft.App
-az provider register --namespace Microsoft.OperationalInsights
+    <pre>az keyvault create --name $KV_NAME --resource-group $RG --location $LOCATION --sku standard --enable-rbac-authorization true</pre></div>
 
-az containerapp env create \
-  --name $ACA_ENV \
-  --resource-group $RG \
-  --location $LOCATION</pre></div>
+    <p>The vault uses Azure RBAC for access control. Assign yourself the <strong>Key Vault Secrets Officer</strong> role before setting secrets:</p>
 
-    <div class="note note-tip"><span class="note-ic">💡</span><p><strong>Use Bicep to provision Steps 8–12 in one command.</strong> The template at <code>deploy/azure/main.bicep</code> provisions all infrastructure. See <code>deploy/azure/README.md</code> for usage with inline parameters or a parameters file.</p></div>
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>az role assignment create --role "Key Vault Secrets Officer" --assignee $(az ad signed-in-user show --query id -o tsv) --scope $(az keyvault show --name $KV_NAME --resource-group $RG --query id -o tsv)</pre></div>
+
+    <p>Wait ~30 seconds for the role assignment to propagate, then set the four secrets:</p>
+
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>az keyvault secret set --vault-name $KV_NAME --name teams-app-password --value "&lt;TEAMS_APP_PASSWORD&gt;"
+az keyvault secret set --vault-name $KV_NAME --name h2ogpte-api-key --value "&lt;H2OGPTE_API_KEY&gt;"
+az keyvault secret set --vault-name $KV_NAME --name azure-client-secret --value "&lt;AZURE_CLIENT_SECRET&gt;"
+az keyvault secret set --vault-name $KV_NAME --name storage-key --value "$STORAGE_KEY"</pre></div>
+
+    <p>Verify all four secrets are stored:</p>
+
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>az keyvault secret list --vault-name $KV_NAME --query "[].name" -o tsv</pre></div>
   </section>
 
   <!-- Step 11 -->
   <section id="step11" class="step">
     <div class="step-hdr">
       <div class="step-num">11</div>
-      <div class="step-ttl"><div class="step-label">Step 11</div><div class="step-title">Deploy the Three Services to ACA</div></div>
+      <div class="step-ttl"><div class="step-label">Step 11</div><div class="step-title">Create Azure Container Apps Environment</div></div>
+    </div>
+    <div class="step-rule"></div>
+    <p class="step-intro">The ACA Environment is the shared network boundary. Services within the same environment resolve each other by name: <code>http://certisjbs-orchestrator</code>, <code>http://certisjbs-docgen</code>.</p>
+
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>az containerapp env create --name $ACA_ENV --resource-group $RG --location $LOCATION</pre></div>
+
+    <div class="note note-tip"><span class="note-ic">💡</span><p><strong>Alternative:</strong> The Bicep template at <code>deploy/azure/main.bicep</code> provisions Steps 9–13 in a single command. See <code>deploy/azure/README.md</code>.</p></div>
+  </section>
+
+  <!-- Step 12 -->
+  <section id="step12" class="step">
+    <div class="step-hdr">
+      <div class="step-num">12</div>
+      <div class="step-ttl"><div class="step-label">Step 12</div><div class="step-title">Deploy Services to Azure Container Apps</div></div>
     </div>
     <div class="step-rule"></div>
     <p class="step-intro">Deploy webhook (external ingress), orchestrator (internal), and document generator (internal). Container App names must be <code>certisjbs-*</code> to match the GitHub Actions workflow.</p>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">11a</div><h3>Retrieve ACR credentials</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">12a</div><h3>Retrieve ACR credentials</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>export ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
 export ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">11b</div><h3>Deploy Webhook — external ingress (public)</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">12b</div><h3>Deploy the Webhook service (external ingress — public)</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp create \
   --name certisjbs-webhook \
@@ -704,7 +738,8 @@ export ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords
   --registry-password $ACR_PASSWORD \
   --ingress external \
   --target-port 8000 \
-  --min-replicas 2 --max-replicas 10 \
+  --min-replicas 2 \
+  --max-replicas 10 \
   --cpu 0.5 --memory 1.0Gi \
   --env-vars \
     TEAMS_APP_ID="&lt;TEAMS_APP_ID&gt;" \
@@ -712,21 +747,20 @@ export ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords
   --secrets \
     teams-app-password="&lt;TEAMS_APP_PASSWORD&gt;"</pre></div>
 
-      <p>Get the FQDN and complete Step 5c:</p>
+      <p>Get the FQDN and set the Teams Bot messaging endpoint:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>export WEBHOOK_FQDN=$(az containerapp show \
   --name certisjbs-webhook \
   --resource-group $RG \
   --query "properties.configuration.ingress.fqdn" -o tsv)
 
-echo "Teams Bot messaging endpoint:"
-echo "https://${WEBHOOK_FQDN}/webhook/teams"</pre></div>
+echo "Teams Bot messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</pre></div>
 
-      <div class="note note-warn"><span class="note-ic">⚠️</span><p>Go to <strong>Azure Portal → Azure Bot → Configuration → Messaging endpoint</strong> and paste the URL printed above. The bot will not receive any messages until this is set.</p></div>
+      <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong>→ Paste this URL into Azure Portal → Azure Bot → Configuration → Messaging endpoint</strong> (Step 6c). The bot will not receive any messages until this is set.</p></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">11c</div><h3>Deploy Orchestrator — internal ingress only</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">12c</div><h3>Deploy the Orchestrator service (internal ingress only)</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp create \
   --name certisjbs-orchestrator \
@@ -738,7 +772,8 @@ echo "https://${WEBHOOK_FQDN}/webhook/teams"</pre></div>
   --registry-password $ACR_PASSWORD \
   --ingress internal \
   --target-port 8001 \
-  --min-replicas 2 --max-replicas 8 \
+  --min-replicas 2 \
+  --max-replicas 8 \
   --cpu 0.5 --memory 1.0Gi \
   --env-vars \
     H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
@@ -760,11 +795,11 @@ echo "https://${WEBHOOK_FQDN}/webhook/teams"</pre></div>
     h2ogpte-api-key="&lt;H2OGPTE_API_KEY&gt;" \
     teams-app-password="&lt;TEAMS_APP_PASSWORD&gt;" \
     azure-client-secret="&lt;AZURE_CLIENT_SECRET&gt;"</pre></div>
-      <div class="note note-info"><span class="note-ic">ℹ️</span><p>For multi-replica deployments: set <code>STATE_BACKEND=external_redis</code> and add <code>--secrets redis-url="&lt;REDIS_URL&gt;"</code> pointing to an Azure Cache for Redis managed instance. Do <strong>not</strong> deploy a Redis pod via Helm.</p></div>
+      <div class="note note-info"><span class="note-ic">ℹ️</span><p>For multi-replica deployments: set <code>STATE_BACKEND=external_redis</code> and add <code>--secrets redis-url="&lt;REDIS_URL&gt;"</code> pointing to an Azure Cache for Redis managed instance.</p></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">11d</div><h3>Deploy Document Generator — internal ingress only</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">12d</div><h3>Deploy the Document Generator service (internal ingress only)</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp create \
   --name certisjbs-docgen \
@@ -776,7 +811,8 @@ echo "https://${WEBHOOK_FQDN}/webhook/teams"</pre></div>
   --registry-password $ACR_PASSWORD \
   --ingress internal \
   --target-port 8002 \
-  --min-replicas 1 --max-replicas 4 \
+  --min-replicas 1 \
+  --max-replicas 4 \
   --cpu 0.5 --memory 1.0Gi \
   --env-vars \
     AZURE_STORAGE_ACCOUNT="$STORAGE_ACCOUNT" \
@@ -788,14 +824,14 @@ echo "https://${WEBHOOK_FQDN}/webhook/teams"</pre></div>
     </div>
   </section>
 
-  <!-- Step 12 -->
-  <section id="step12" class="step">
+  <!-- Step 13 -->
+  <section id="step13" class="step">
     <div class="step-hdr">
-      <div class="step-num">12</div>
-      <div class="step-ttl"><div class="step-label">Step 12</div><div class="step-title">Deploy SharePoint Sync as ACA Scheduled Job</div></div>
+      <div class="step-num">13</div>
+      <div class="step-ttl"><div class="step-label">Step 13</div><div class="step-title">Deploy SharePoint Sync as an ACA Scheduled Job</div></div>
     </div>
     <div class="step-rule"></div>
-    <p class="step-intro">The sync job reuses the orchestrator image and runs <code>src/rag/sharepoint_sync.py</code> daily at 02:00 UTC, ingesting changed SharePoint documents into h2oGPTe collections. Maximum runtime: 1800 seconds.</p>
+    <p class="step-intro">The sync job reuses the orchestrator image and runs <code>src/rag/sharepoint_sync.py</code> daily at 02:00 UTC, fetching changed documents from SharePoint and ingesting them into h2oGPTe collections.</p>
 
     <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
     <pre>az containerapp job create \
@@ -826,111 +862,130 @@ echo "https://${WEBHOOK_FQDN}/webhook/teams"</pre></div>
     azure-client-secret="&lt;AZURE_CLIENT_SECRET&gt;"</pre></div>
   </section>
 
-  <!-- Step 13 -->
-  <section id="step13" class="step">
+  <!-- Step 14 -->
+  <section id="step14" class="step">
     <div class="step-hdr">
-      <div class="step-num">13</div>
-      <div class="step-ttl"><div class="step-label">Step 13</div><div class="step-title">Post-Deployment Configuration</div></div>
+      <div class="step-num">14</div>
+      <div class="step-ttl"><div class="step-label">Step 14</div><div class="step-title">Post-Deployment Configuration</div></div>
     </div>
     <div class="step-rule"></div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">13a</div><h3>Replace h2oGPTe Collection IDs</h3></div>
-      <p>Open <code>src/agent/phase_controller.py</code> and replace the placeholder values with the real IDs you recorded in Step 2b:</p>
+      <div class="sub-hdr"><div class="sub-dot">14a</div><h3>Update h2oGPTe Collection IDs in the orchestrator</h3></div>
+      <p>After creating collections in Step 2b, open <code>src/agent/phase_controller.py</code> and replace the placeholder values:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">python — src/agent/phase_controller.py</span><button class="cb-copy">Copy</button></div>
       <pre>SITE_CATEGORY_COLLECTION_MAP = {
-    "Corporate":   "col_REPLACE_CORPORATE",   # ← paste real ID
+    "Corporate":   "col_REPLACE_CORPORATE",   # ← paste real ID from h2oGPTe
     "Aviation":    "col_REPLACE_AVIATION",
     "Industrial":  "col_REPLACE_INDUSTRIAL",
     "Maritime":    "col_REPLACE_MARITIME",
     "Retail":      "col_REPLACE_RETAIL",
 }</pre></div>
-      <p>Rebuild and redeploy the orchestrator and sync job (both use the same image):</p>
+      <p>Rebuild and redeploy the orchestrator (and the sync job, which reuses the same image):</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>docker build -f Dockerfile.orchestrator -t ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} .
+      <pre>docker build -f Dockerfile.orchestrator \
+  -t ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 
-az containerapp update --name certisjbs-orchestrator --resource-group $RG \
+az containerapp update \
+  --name certisjbs-orchestrator \
+  --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 
-az containerapp job update --name certisjbs-sp-sync --resource-group $RG \
+az containerapp job update \
+  --name certisjbs-sp-sync \
+  --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">13b</div><h3>Add the corporate Word template</h3></div>
-      <p>The Document Generator loads <code>templates/jbs_corporate_template.docx</code> at startup (path is relative to the image). Place the approved template and rebuild:</p>
+      <div class="sub-hdr"><div class="sub-dot">14b</div><h3>Add the corporate Word template</h3></div>
+      <p>The Document Generator loads the template from <code>templates/jbs_corporate_template.docx</code> at startup. Place the approved corporate template at that path, then rebuild and redeploy:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>cp /path/to/approved-template.docx templates/jbs_corporate_template.docx
+      <pre># Copy your approved template into the project
+cp /path/to/your/template.docx templates/jbs_corporate_template.docx
 
-docker build -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
+docker build -f Dockerfile.document \
+  -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
-az containerapp update --name certisjbs-docgen --resource-group $RG \
+az containerapp update \
+  --name certisjbs-docgen \
+  --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">13c</div><h3>Deploy the H2O Wave admin dashboard via HAIC App Store</h3></div>
-      <p>The dashboard is <strong>not</strong> an Azure Container App — it runs natively in HAIC.</p>
+      <div class="sub-hdr"><div class="sub-dot">14c</div><h3>Deploy the H2O Wave admin dashboard via HAIC App Store</h3></div>
+      <p>The dashboard is <strong>NOT</strong> deployed as an Azure Container App — it runs natively inside HAIC.</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>cd dashboard
 h2o bundle
 # Creates: certis-jbs-dashboard-1.0.0.wave</pre></div>
       <ol class="ol">
-        <li>HAIC console → <strong>App Store → Import App</strong></li>
+        <li>Log in to HAIC console → <strong>App Store → Import App</strong></li>
         <li>Upload <code>certis-jbs-dashboard-1.0.0.wave</code></li>
-        <li>Visibility: <strong>Private</strong></li>
-        <li>Set env var: <code>ORCHESTRATOR_URL=https://&lt;certisjbs-orchestrator-internal-url&gt;</code></li>
+        <li>Set visibility: <strong>Private</strong></li>
+        <li>Set environment variables: <code>ORCHESTRATOR_URL=https://&lt;certisjbs-orchestrator-internal-url&gt;</code></li>
         <li>Click <strong>Deploy</strong></li>
       </ol>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">13d</div><h3>Trigger the initial knowledge base sync</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">14d</div><h3>Trigger the initial SharePoint knowledge base sync</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>az containerapp job start --name certisjbs-sp-sync --resource-group $RG
+      <pre>az containerapp job start \
+  --name certisjbs-sp-sync \
+  --resource-group $RG
 
 # Monitor execution
 az containerapp job execution list \
-  --name certisjbs-sp-sync --resource-group $RG --output table</pre></div>
+  --name certisjbs-sp-sync \
+  --resource-group $RG \
+  --output table</pre></div>
     </div>
   </section>
 
-  <!-- Step 14 -->
-  <section id="step14" class="step">
+  <!-- Step 15 -->
+  <section id="step15" class="step">
     <div class="step-hdr">
-      <div class="step-num">14</div>
-      <div class="step-ttl"><div class="step-label">Step 14</div><div class="step-title">Verify Deployment</div></div>
+      <div class="step-num">15</div>
+      <div class="step-ttl"><div class="step-label">Step 15</div><div class="step-title">Verify Deployment</div></div>
     </div>
     <div class="step-rule"></div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">14a</div><h3>Check all Container Apps are running</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">15a</div><h3>Check all Container Apps are running</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>az containerapp list --resource-group $RG --output table
-# certisjbs-webhook       → ProvisioningState: Succeeded
-# certisjbs-orchestrator  → ProvisioningState: Succeeded
-# certisjbs-docgen        → ProvisioningState: Succeeded</pre></div>
+      <pre>az containerapp list --resource-group $RG --output table</pre></div>
+      <p>Expected:</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">output</span><button class="cb-copy">Copy</button></div>
+      <pre>Name                    ProvisioningState
+----------------------  -----------------
+certisjbs-webhook       Succeeded
+certisjbs-orchestrator  Succeeded
+certisjbs-docgen        Succeeded</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">14b</div><h3>Webhook health check</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">15b</div><h3>Webhook health check</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>curl https://${WEBHOOK_FQDN}/health
 # → {"status": "ok"}</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">14c</div><h3>Confirm orchestrator is reachable from webhook</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">15c</div><h3>Confirm orchestrator is reachable from webhook</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>az containerapp exec --name certisjbs-webhook --resource-group $RG \
+      <pre>az containerapp exec \
+  --name certisjbs-webhook \
+  --resource-group $RG \
   --command "curl http://certisjbs-orchestrator/health"
 # → {"status": "ok"}</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">14d</div><h3>Verify h2oGPTe collections are populated</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">15d</div><h3>Verify h2oGPTe collections exist and are populated</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>python -c "
 from src.rag.h2ogpte_client import H2OGPTeClient
@@ -941,70 +996,76 @@ for col in c.client.list_recent_collections(0, 20):
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">14e</div><h3>End-to-end Teams test</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">15e</div><h3>End-to-end Teams test</h3></div>
       <ol class="ol">
-        <li>Open Teams → find the JBS bot → send: <code>Hello</code></li>
+        <li>Open Microsoft Teams → find the JBS bot by name</li>
+        <li>Send: <code>Hello</code></li>
         <li>Bot should greet and ask for Customer Name and Site Name (Phase 1)</li>
-        <li>Work through all 4 phases: Context → Duties → Safety → Review</li>
-        <li>Type an approval keyword: <code>approve</code>, <code>confirm</code>, <code>yes</code>, <code>proceed</code>, or <code>looks good</code></li>
-        <li>Reply should contain a download link to <code>*.blob.core.windows.net</code> (valid 15 minutes)</li>
+        <li>Complete all 4 phases (Context → Duties → Safety → Review)</li>
+        <li>Type one of the approval keywords: <code>approve</code>, <code>confirm</code>, <code>yes</code>, <code>proceed</code>, <code>looks good</code></li>
+        <li>Confirm the reply contains a download link pointing to <code>*.blob.core.windows.net</code></li>
       </ol>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">14f</div><h3>Stream live logs</h3></div>
+      <div class="sub-hdr"><div class="sub-dot">15f</div><h3>Stream live logs</h3></div>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>az containerapp logs show --name certisjbs-webhook      --resource-group $RG --follow
-az containerapp logs show --name certisjbs-orchestrator  --resource-group $RG --follow
-az containerapp logs show --name certisjbs-docgen        --resource-group $RG --follow</pre></div>
+      <pre># Webhook
+az containerapp logs show --name certisjbs-webhook --resource-group $RG --follow
+
+# Orchestrator
+az containerapp logs show --name certisjbs-orchestrator --resource-group $RG --follow
+
+# Document generator
+az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow</pre></div>
     </div>
   </section>
 
-  <!-- Step 15 -->
-  <section id="step15" class="step">
+  <!-- Step 16 -->
+  <section id="step16" class="step">
     <div class="step-hdr">
-      <div class="step-num">15</div>
-      <div class="step-ttl"><div class="step-label">Step 15</div><div class="step-title">Configure GitHub Actions CI/CD</div></div>
+      <div class="step-num">16</div>
+      <div class="step-ttl"><div class="step-label">Step 16</div><div class="step-title">Set Up GitHub Actions CI/CD</div></div>
     </div>
     <div class="step-rule"></div>
-    <p class="step-intro">The workflow at <code>.github/workflows/deploy.yml</code> triggers on push to <code>main</code> (paths: <code>src/**</code>, <code>config/prompts/**</code>, <code>templates/**</code>, <code>Dockerfile.*</code>, <code>requirements.txt</code>) and on <code>workflow_dispatch</code>. It builds and pushes all three images (tagged with commit SHA + latest), then updates each Container App.</p>
+    <p class="step-intro">The workflow at <code>.github/workflows/deploy.yml</code> builds and pushes all three images on every push to <code>main</code> (for paths <code>src/**</code>, <code>config/prompts/**</code>, <code>templates/**</code>, <code>Dockerfile.*</code>, <code>requirements.txt</code>) and then runs <code>az containerapp update</code> for each service.</p>
 
-    <p>Add these secrets to your GitHub repository (<strong>Settings → Secrets and variables → Actions → New repository secret</strong>):</p>
+    <p>Add these secrets to your GitHub repository (<strong>Settings → Secrets and variables → Actions</strong>):</p>
     <table class="dt">
-      <thead><tr><th>Secret Name</th><th>Value</th></tr></thead>
+      <thead><tr><th>Secret</th><th>Value</th></tr></thead>
       <tbody>
-        <tr><td><span class="ev">AZURE_CLIENT_ID</span></td><td>Service principal or managed identity client ID</td></tr>
+        <tr><td><span class="ev">AZURE_CLIENT_ID</span></td><td>Service principal client ID</td></tr>
         <tr><td><span class="ev">AZURE_TENANT_ID</span></td><td>Azure AD tenant ID</td></tr>
         <tr><td><span class="ev">AZURE_CLIENT_SECRET</span></td><td>Service principal client secret</td></tr>
         <tr><td><span class="ev">ACR_LOGIN_SERVER</span></td><td>e.g. <code>certisjbsacr.azurecr.io</code></td></tr>
         <tr><td><span class="ev">AZURE_RESOURCE_GROUP</span></td><td>e.g. <code>certis-jbs-rg</code></td></tr>
       </tbody>
     </table>
-    <div class="note note-warn"><span class="note-ic">⚠️</span><p>The workflow deploys to Container Apps named <code>certisjbs-webhook</code>, <code>certisjbs-orchestrator</code>, <code>certisjbs-docgen</code>, and job <code>certisjbs-sp-sync</code>. These must match the names used in Steps 11–12.</p></div>
+    <div class="note note-warn"><span class="note-ic">⚠️</span><p>The workflow uses Container App names <code>certisjbs-webhook</code>, <code>certisjbs-orchestrator</code>, <code>certisjbs-docgen</code>, and <code>certisjbs-sp-sync</code> — these must match the names used in Steps 12–13.</p></div>
   </section>
 
-  <!-- Step 16 -->
-  <section id="step16" class="step">
+  <!-- Step 17 -->
+  <section id="step17" class="step">
     <div class="step-hdr">
-      <div class="step-num" style="background:linear-gradient(135deg,#00a870,#0078d4);">16</div>
-      <div class="step-ttl"><div class="step-label">Step 16</div><div class="step-title">Production Hardening Checklist</div></div>
+      <div class="step-num" style="background:linear-gradient(135deg,#00a870,#0078d4);">17</div>
+      <div class="step-ttl"><div class="step-label">Step 17</div><div class="step-title">Production Hardening Checklist</div></div>
     </div>
     <div class="step-rule"></div>
     <ul class="cl">
-      <li>All secrets stored in Azure Key Vault — no plaintext credentials in env-var definitions or terminal history</li>
+      <li>All secrets in Azure Key Vault — no plaintext credentials in env-var definitions or CLI history</li>
       <li>Webhook has external ingress; orchestrator and docgen have <strong>internal-only</strong> ingress</li>
       <li>Teams Bot RS256 JWT validation confirmed — send a request without a Bearer token, expect HTTP 401</li>
       <li>Teams app manifest published to tenant app catalogue (not side-loaded)</li>
       <li>Azure Blob Storage public access disabled (<code>--allow-blob-public-access false</code>)</li>
-      <li>SAS URL expiry set to 15 minutes (<code>DOC_URL_EXPIRY_SECONDS=900</code>)</li>
-      <li>SharePoint App Registration limited to minimum permissions: <code>Files.Read.All</code>, <code>Sites.Read.All</code> only</li>
+      <li>SAS token expiry is 15 minutes (<code>DOC_URL_EXPIRY_SECONDS=900</code>)</li>
+      <li>SharePoint App Registration scoped to minimum permissions: <code>Files.Read.All</code>, <code>Sites.Read.All</code> only</li>
       <li>Azure Key Vault RBAC: <code>Key Vault Secrets User</code> role assigned to ACA managed identities only</li>
-      <li>ACR admin credentials rotated post-deployment — switch to managed identity image pull for production</li>
-      <li>Container App min/max replica counts reviewed per service load profile</li>
-      <li>h2oGPTe collection IDs replaced in <code>src/agent/phase_controller.py</code> and orchestrator redeployed</li>
-      <li>Corporate Word template baked into docgen image (<code>templates/jbs_corporate_template.docx</code>)</li>
-      <li>SharePoint sync job initial manual run completed and verified</li>
-      <li>GitHub Actions CI/CD five secrets configured and a test push to <code>main</code> completed successfully</li>
+      <li>ACR admin credentials rotated post-deployment; switch to managed identity pull for production</li>
+      <li>Container App min/max replica counts reviewed per service</li>
+      <li>h2oGPTe collection IDs replaced in <code>phase_controller.py</code> and orchestrator redeployed</li>
+      <li>Corporate Word template (<code>templates/jbs_corporate_template.docx</code>) baked into docgen image</li>
+      <li>SharePoint sync job first manual run completed and verified</li>
+      <li>GitHub Actions CI/CD secrets configured and first automated deployment tested</li>
       <li>H2O MLOps monitoring configured for h2oGPTe inference latency and error rates</li>
     </ul>
   </section>
@@ -1022,14 +1083,14 @@ az containerapp logs show --name certisjbs-docgen        --resource-group $RG --
     <div class="tr-item">
       <h4>Teams bot not responding to messages</h4>
       <ol class="ol">
-        <li>Confirm webhook is running: <code>curl https://${WEBHOOK_FQDN}/health</code></li>
-        <li>Check messaging endpoint shows a green status in Azure Bot → Configuration</li>
-        <li>Confirm <code>TEAMS_APP_ID</code> matches the <strong>Microsoft App ID</strong> in the Azure Bot resource (not the resource name)</li>
+        <li>Check webhook is running: <code>curl https://${WEBHOOK_FQDN}/health</code></li>
+        <li>Check messaging endpoint in Azure Bot → Configuration shows a green status</li>
+        <li>Verify <code>TEAMS_APP_ID</code> matches the Microsoft App ID in the Azure Bot resource</li>
         <li>Check webhook logs:</li>
       </ol>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp logs show --name certisjbs-webhook --resource-group $RG --follow</pre></div>
-      <p style="margin-top:8px;">5. Confirm orchestrator is reachable from webhook:</p>
+      <p style="margin-top:8px;">5. Confirm orchestrator is reachable:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp exec --name certisjbs-webhook --resource-group $RG \
   --command "curl http://certisjbs-orchestrator/health"</pre></div>
@@ -1038,21 +1099,21 @@ az containerapp logs show --name certisjbs-docgen        --resource-group $RG --
     <div class="tr-item">
       <h4>Webhook returns HTTP 401</h4>
       <ol class="ol">
-        <li>Confirm <code>TEAMS_APP_ID</code> is the Azure Bot's <strong>Microsoft App ID</strong> — copy it from Azure Bot → Configuration</li>
-        <li>Verify the Bot Framework JWKS endpoint is reachable from the webhook container:</li>
+        <li>Confirm <code>TEAMS_APP_ID</code> is correct — it is the Azure Bot's <strong>Microsoft App ID</strong>, not the resource name</li>
+        <li>Verify the JWKS endpoint is reachable from the webhook container:</li>
       </ol>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp exec --name certisjbs-webhook --resource-group $RG \
   --command "curl https://login.botframework.com/v1/.well-known/keys"</pre></div>
-      <p style="margin-top:8px;">3. Confirm <code>PyJWT==2.8.0</code> and <code>cryptography==42.0.5</code> are installed in the webhook image (check <code>requirements.txt</code>)</p>
+      <p style="margin-top:8px;">3. Confirm <code>PyJWT==2.8.0</code> and <code>cryptography==42.0.5</code> are in <code>requirements.txt</code> and installed in the image</p>
     </div>
 
     <div class="tr-item">
-      <h4>Bot sends no reply / HTTP 401 from Bot Framework</h4>
+      <h4>Bot cannot send replies (HTTP 401/403 from Bot Framework)</h4>
       <ol class="ol">
-        <li>Confirm <code>teams-app-password</code> is the <strong>client secret value</strong>, not the client ID</li>
-        <li>Check the secret has not expired: Azure Portal → App Registration → Certificates &amp; secrets</li>
-        <li>Verify the token endpoint is reachable from the orchestrator:</li>
+        <li>Confirm <code>teams-app-password</code> secret value is the <strong>client secret</strong>, not the client ID</li>
+        <li>Check the secret has not expired: Azure Portal → App Registration → <strong>Certificates &amp; secrets</strong></li>
+        <li>Verify the Bot Framework token endpoint is reachable:</li>
       </ol>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp exec --name certisjbs-orchestrator --resource-group $RG \
@@ -1066,41 +1127,34 @@ az containerapp logs show --name certisjbs-docgen        --resource-group $RG --
       </ol>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow</pre></div>
-      <p style="margin-top:8px;">2. Verify the blob container exists: <code>az storage container exists --name certis-jbs-documents --account-name $STORAGE_ACCOUNT</code></p>
-      <p>3. Confirm <code>AZURE_STORAGE_KEY</code> has not been rotated since deployment</p>
-      <p>4. Confirm <code>templates/jbs_corporate_template.docx</code> is in the image (Step 13b)</p>
+      <p style="margin-top:8px;">2. Verify the blob container exists:</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+      <pre>az storage container exists --name certis-jbs-documents --account-name $STORAGE_ACCOUNT</pre></div>
+      <p>3. Confirm <code>AZURE_STORAGE_KEY</code> is correct — not expired or rotated</p>
+      <p>4. Confirm <code>templates/jbs_corporate_template.docx</code> is baked into the image (see Step 13b)</p>
     </div>
 
     <div class="tr-item">
       <h4>RAG returns no context or hallucinates</h4>
       <ol class="ol">
-        <li>Verify collections exist and contain documents:</li>
+        <li>Verify collections exist and are populated:</li>
       </ol>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>python -c "
-from src.rag.h2ogpte_client import H2OGPTeClient
-c = H2OGPTeClient()
-for col in c.client.list_recent_collections(0, 20):
-    print(col.id, col.name)
-"</pre></div>
-      <p style="margin-top:8px;">2. Confirm collection IDs in <code>src/agent/phase_controller.py</code> match the actual IDs shown above</p>
+      <pre>python -c "from src.rag.h2ogpte_client import H2OGPTeClient; c=H2OGPTeClient(); [print(x.id, x.name) for x in c.client.list_recent_collections(0,20)]"</pre></div>
+      <p style="margin-top:8px;">2. Confirm collection IDs in <code>src/agent/phase_controller.py</code> match the actual IDs in h2oGPTe</p>
       <p>3. Check Document AI processing status in h2oGPTe UI</p>
-      <p>4. Confirm admin consent is granted for <code>Files.Read.All</code> and <code>Sites.Read.All</code></p>
+      <p>4. Confirm SharePoint app registration admin consent is granted</p>
     </div>
 
     <div class="tr-item">
       <h4>SharePoint sync job fails or does not run</h4>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre># Inspect job definition and execution history
-az containerapp job show \
-  --name certisjbs-sp-sync --resource-group $RG
+      <pre># Check job definition and last execution status
+az containerapp job show --name certisjbs-sp-sync --resource-group $RG
+az containerapp job execution list --name certisjbs-sp-sync --resource-group $RG --output table
 
-az containerapp job execution list \
-  --name certisjbs-sp-sync --resource-group $RG --output table
-
-# Trigger a manual run
-az containerapp job start \
-  --name certisjbs-sp-sync --resource-group $RG</pre></div>
+# Trigger a manual run to test
+az containerapp job start --name certisjbs-sp-sync --resource-group $RG</pre></div>
     </div>
 
   </section>
