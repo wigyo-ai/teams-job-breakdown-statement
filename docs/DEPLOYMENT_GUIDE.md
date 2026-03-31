@@ -261,16 +261,14 @@ docker compose up --build
 
 ---
 
+> **Copy-paste note:** All `az` commands in Steps 8–13 are written as single lines. Do not split them across multiple lines when running in the terminal.
+
 ## Step 8 — Create Azure Container Registry and Push Images
 
 ```bash
 az group create --name $RG --location $LOCATION
 
-az acr create \
-  --resource-group $RG \
-  --name $ACR_NAME \
-  --sku Basic \
-  --admin-enabled true
+az acr create --resource-group $RG --name $ACR_NAME --sku Basic --admin-enabled true
 
 az acr login --name $ACR_NAME
 export ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
@@ -294,25 +292,12 @@ docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 The Document Generator uploads `.docx` files to Blob Storage and returns a 15-minute SAS URL to the user. The blob container name and key are read from environment variables `AZURE_STORAGE_CONTAINER` and `AZURE_STORAGE_KEY`.
 
 ```bash
-az storage account create \
-  --name $STORAGE_ACCOUNT \
-  --resource-group $RG \
-  --location $LOCATION \
-  --sku Standard_LRS \
-  --kind StorageV2 \
-  --min-tls-version TLS1_2 \
-  --allow-blob-public-access false
+az storage account create --name $STORAGE_ACCOUNT --resource-group $RG --location $LOCATION --sku Standard_LRS --kind StorageV2 --allow-blob-public-access false
 
-az storage container create \
-  --name certis-jbs-documents \
-  --account-name $STORAGE_ACCOUNT \
-  --auth-mode login
+az storage container create --name certis-jbs-documents --account-name $STORAGE_ACCOUNT --auth-mode login
 
-# Retrieve the storage key — stored in Key Vault in Step 9
-export STORAGE_KEY=$(az storage account keys list \
-  --account-name $STORAGE_ACCOUNT \
-  --resource-group $RG \
-  --query "[0].value" -o tsv)
+# Retrieve the storage key — stored in Key Vault in Step 10
+export STORAGE_KEY=$(az storage account keys list --account-name $STORAGE_ACCOUNT --resource-group $RG --query "[0].value" -o tsv)
 ```
 
 Update your `.env`:
@@ -327,25 +312,13 @@ AZURE_STORAGE_KEY=<paste STORAGE_KEY value>
 ## Step 10 — Create Azure Key Vault and Store Secrets
 
 ```bash
-az keyvault create \
-  --name $KV_NAME \
-  --resource-group $RG \
-  --location $LOCATION \
-  --sku standard \
-  --enable-rbac-authorization true
+az keyvault create --name $KV_NAME --resource-group $RG --location $LOCATION --sku standard --enable-rbac-authorization true
 
-# The four secrets used by Container Apps
-az keyvault secret set --vault-name $KV_NAME \
-  --name teams-app-password   --value "<TEAMS_APP_PASSWORD>"
-
-az keyvault secret set --vault-name $KV_NAME \
-  --name h2ogpte-api-key      --value "<H2OGPTE_API_KEY>"
-
-az keyvault secret set --vault-name $KV_NAME \
-  --name azure-client-secret  --value "<AZURE_CLIENT_SECRET>"
-
-az keyvault secret set --vault-name $KV_NAME \
-  --name storage-key          --value "$STORAGE_KEY"
+# The four secrets used by Container Apps (run each line separately)
+az keyvault secret set --vault-name $KV_NAME --name teams-app-password --value "<TEAMS_APP_PASSWORD>"
+az keyvault secret set --vault-name $KV_NAME --name h2ogpte-api-key --value "<H2OGPTE_API_KEY>"
+az keyvault secret set --vault-name $KV_NAME --name azure-client-secret --value "<AZURE_CLIENT_SECRET>"
+az keyvault secret set --vault-name $KV_NAME --name storage-key --value "$STORAGE_KEY"
 ```
 
 ---
@@ -353,10 +326,7 @@ az keyvault secret set --vault-name $KV_NAME \
 ## Step 11 — Create Azure Container Apps Environment
 
 ```bash
-az containerapp env create \
-  --name $ACA_ENV \
-  --resource-group $RG \
-  --location $LOCATION
+az containerapp env create --name $ACA_ENV --resource-group $RG --location $LOCATION
 ```
 
 > **Alternative:** The Bicep template at `deploy/azure/main.bicep` provisions Steps 9–13 in a single command. See `deploy/azure/README.md`.
