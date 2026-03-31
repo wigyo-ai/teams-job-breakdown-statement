@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JBS Platform — Deployment Guide</title>
   <style>
-    /* ── Reset & Base ─────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --h2o-blue:     #0d6efd;
-      --h2o-dark:     #0a1628;
-      --h2o-mid:      #0f2040;
-      --h2o-accent:   #00c4f4;
-      --h2o-green:    #00c58e;
-      --h2o-yellow:   #f5a623;
-      --h2o-red:      #ff4d6d;
-      --sidebar-w:    270px;
+      --az-blue:      #0078d4;
+      --az-dark:      #0a1628;
+      --az-mid:       #0f2040;
+      --az-accent:    #50e6ff;
+      --az-green:     #00c58e;
+      --az-yellow:    #f5a623;
+      --az-red:       #ff4d6d;
+      --az-purple:    #8661c5;
+      --sidebar-w:    280px;
       --text:         #e2e8f0;
-      --text-muted:   #8899aa;
+      --text-muted:   #7a90aa;
       --surface:      #0f1f38;
       --surface2:     #162840;
       --surface3:     #1d3354;
@@ -29,20 +29,19 @@
     }
 
     html { scroll-behavior: smooth; font-size: 15px; }
-
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--h2o-dark);
+      background: var(--az-dark);
       color: var(--text);
       display: flex;
       min-height: 100vh;
       line-height: 1.7;
     }
 
-    /* ── Sidebar ──────────────────────────────────────────────────── */
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
     #sidebar {
       width: var(--sidebar-w);
-      background: var(--h2o-mid);
+      background: var(--az-mid);
       border-right: 1px solid var(--border);
       position: fixed;
       top: 0; left: 0; bottom: 0;
@@ -52,544 +51,361 @@
       flex-direction: column;
     }
 
+    #sidebar::-webkit-scrollbar { width: 4px; }
+    #sidebar::-webkit-scrollbar-track { background: transparent; }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
     #sidebar-header {
-      padding: 20px 18px 14px;
+      padding: 20px 18px 16px;
       border-bottom: 1px solid var(--border);
       background: linear-gradient(135deg, #0a1e40 0%, #0f2a55 100%);
+      flex-shrink: 0;
     }
 
-    #sidebar-header .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 6px;
-    }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 
     .brand-icon {
-      width: 34px; height: 34px;
-      background: linear-gradient(135deg, var(--h2o-accent), var(--h2o-blue));
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--az-accent), var(--az-blue));
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
       font-weight: 900; font-size: 16px; color: #fff;
       flex-shrink: 0;
     }
 
-    #sidebar-header h2 {
-      font-size: 13px; font-weight: 700;
-      color: #fff; line-height: 1.3;
-    }
+    #sidebar-header h2 { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.3; }
 
-    #sidebar-header p {
-      font-size: 11px; color: var(--h2o-accent);
-      padding-left: 44px;
+    .badge-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; letter-spacing: .4px;
     }
+    .badge-azure { background: rgba(0,120,212,.25); color: var(--az-accent); border: 1px solid rgba(80,230,255,.2); }
+    .badge-steps { background: rgba(0,197,142,.15); color: var(--az-green); border: 1px solid rgba(0,197,142,.25); }
 
-    #sidebar nav { padding: 12px 0 20px; flex: 1; }
+    #sidebar nav { flex: 1; padding: 10px 0 20px; }
 
     .nav-section-label {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 14px 18px 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 12px 18px 4px;
     }
 
     #sidebar nav a {
-      display: flex;
-      align-items: center;
-      gap: 9px;
+      display: flex; align-items: center; gap: 10px;
       padding: 7px 18px;
-      font-size: 12.5px;
-      color: #9bb8d4;
+      color: var(--text-muted);
       text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
       border-left: 3px solid transparent;
-      transition: all .18s;
+      transition: all .15s;
+      line-height: 1.3;
     }
 
-    #sidebar nav a:hover { color: #fff; background: rgba(255,255,255,.05); }
+    #sidebar nav a:hover { color: var(--text); background: rgba(255,255,255,.04); }
 
     #sidebar nav a.active {
-      color: var(--h2o-accent);
-      border-left-color: var(--h2o-accent);
-      background: rgba(0,196,244,.07);
+      color: var(--az-accent);
+      border-left-color: var(--az-accent);
+      background: rgba(80,230,255,.06);
+      font-weight: 600;
     }
 
     .nav-num {
-      width: 20px; height: 20px;
+      width: 20px; height: 20px; flex-shrink: 0;
       background: var(--surface3);
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 700;
-      flex-shrink: 0;
-      color: var(--text-muted);
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
     }
 
-    #sidebar nav a.active .nav-num {
-      background: var(--h2o-accent);
-      color: #000;
+    a.active .nav-num {
+      background: rgba(80,230,255,.15);
+      color: var(--az-accent);
     }
 
-    /* ── Main Content ─────────────────────────────────────────────── */
+    .nav-icon { font-size: 14px; flex-shrink: 0; }
+
+    /* ── Main Content ─────────────────────────────────────────────────── */
     #main {
       margin-left: var(--sidebar-w);
       flex: 1;
-      max-width: calc(100vw - var(--sidebar-w));
+      min-width: 0;
+      padding: 40px 48px 80px;
+      max-width: 1000px;
     }
 
-    /* ── Top Bar ──────────────────────────────────────────────────── */
-    #topbar {
-      background: linear-gradient(90deg, #050e1e 0%, #0a1e42 50%, #050e1e 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 22px 48px 20px;
-      position: sticky; top: 0; z-index: 50;
-    }
-
-    #topbar h1 {
-      font-size: 22px; font-weight: 800;
-      background: linear-gradient(90deg, #fff 0%, var(--h2o-accent) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    #topbar .meta {
-      font-size: 12px; color: var(--text-muted); margin-top: 4px;
-      display: flex; align-items: center; gap: 18px;
-    }
-
-    .badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 2px 9px;
-      border-radius: 20px;
-      font-size: 11px; font-weight: 600;
-    }
-
-    .badge-blue  { background: rgba(13,110,253,.2); color: #6da9ff; border: 1px solid rgba(13,110,253,.3); }
-    .badge-green { background: rgba(0,197,142,.18); color: #40e8b0; border: 1px solid rgba(0,197,142,.3); }
-    .badge-warn  { background: rgba(245,166,35,.18); color: #f5c842; border: 1px solid rgba(245,166,35,.3); }
-    .badge-red   { background: rgba(255,77,109,.15); color: #ff7a94; border: 1px solid rgba(255,77,109,.25); }
-
-    /* ── Content Sections ─────────────────────────────────────────── */
-    .content { padding: 40px 48px 80px; }
-
-    section { margin-bottom: 60px; scroll-margin-top: 80px; }
-
-    /* ── Section Headers ──────────────────────────────────────────── */
-    .section-header {
-      display: flex; align-items: center; gap: 14px;
-      margin-bottom: 24px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .step-badge {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, var(--h2o-blue), var(--h2o-accent));
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 14px; color: #fff;
-      flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(13,110,253,.4);
-    }
-
-    .step-badge.prereq { background: linear-gradient(135deg, #6f42c1, #a855f7); box-shadow: 0 4px 12px rgba(111,66,193,.4); }
-    .step-badge.check  { background: linear-gradient(135deg, var(--h2o-green), #00a876); box-shadow: 0 4px 12px rgba(0,197,142,.4); }
-    .step-badge.warn   { background: linear-gradient(135deg, var(--h2o-yellow), #e08800); box-shadow: 0 4px 12px rgba(245,166,35,.4); }
-    .step-badge.trouble { background: linear-gradient(135deg, var(--h2o-red), #c0002a); box-shadow: 0 4px 12px rgba(255,77,109,.35); }
-    .step-badge.arch   { background: linear-gradient(135deg, #0f9d9d, #00c4c4); box-shadow: 0 4px 12px rgba(0,197,197,.35); }
-
-    .section-header h2 {
-      font-size: 20px; font-weight: 700; color: #fff;
-    }
-
-    .section-header .section-desc {
-      font-size: 13px; color: var(--text-muted); margin-top: 2px;
-    }
-
-    h3 {
-      font-size: 15px; font-weight: 700; color: #c9dff5;
-      margin: 28px 0 12px;
-      display: flex; align-items: center; gap: 8px;
-    }
-
-    h3::before {
-      content: '';
-      display: block; width: 3px; height: 16px;
-      background: var(--h2o-accent);
-      border-radius: 2px;
-    }
-
-    p { margin-bottom: 12px; color: #b0c8e0; }
-
-    /* ── Info Cards ───────────────────────────────────────────────── */
-    .card {
-      background: var(--surface);
+    /* ── Page Header ─────────────────────────────────────────────────── */
+    .page-header {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface3) 100%);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px 24px;
+      border-radius: 12px;
+      padding: 36px 40px;
+      margin-bottom: 40px;
+    }
+
+    .page-header .eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--az-accent);
+      margin-bottom: 8px;
+    }
+
+    .page-header h1 {
+      font-size: 28px; font-weight: 800;
+      color: #fff; margin-bottom: 10px; line-height: 1.2;
+    }
+
+    .page-header p { font-size: 14px; color: var(--text-muted); max-width: 620px; }
+
+    .header-meta {
+      display: flex; flex-wrap: wrap; gap: 20px;
+      margin-top: 20px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .meta-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-muted); }
+    .meta-item strong { color: var(--text); }
+
+    /* ── Prerequisites Table ─────────────────────────────────────────── */
+    .prereq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+
+    .prereq-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+
+    .prereq-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .prereq-card h4 { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .prereq-card p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+    /* ── Step Sections ───────────────────────────────────────────────── */
+    .step-section {
+      margin-bottom: 52px;
+      scroll-margin-top: 24px;
+    }
+
+    .step-header {
+      display: flex; align-items: flex-start; gap: 16px;
       margin-bottom: 20px;
     }
 
-    .callout {
+    .step-badge {
+      width: 44px; height: 44px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--az-blue), var(--az-accent));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 900; color: #fff;
+      box-shadow: 0 4px 12px rgba(0,120,212,.35);
+    }
+
+    .step-title-group { flex: 1; }
+    .step-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--az-accent); margin-bottom: 2px; }
+    .step-title { font-size: 22px; font-weight: 800; color: #fff; line-height: 1.2; }
+
+    .step-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--border) 0%, transparent 100%);
+      margin-bottom: 24px;
+    }
+
+    /* ── Sub-steps ───────────────────────────────────────────────────── */
+    .substep {
+      margin-bottom: 28px;
+    }
+
+    .substep-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .substep-dot {
+      width: 26px; height: 26px; flex-shrink: 0;
+      background: var(--surface3);
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--az-accent);
+    }
+
+    .substep h3 { font-size: 15px; font-weight: 700; color: #fff; }
+
+    /* ── Prose ───────────────────────────────────────────────────────── */
+    p { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.75; }
+    p:last-child { margin-bottom: 0; }
+
+    h4.inline-label {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      margin: 16px 0 8px;
+    }
+
+    strong { color: var(--text); font-weight: 600; }
+
+    /* ── Code Blocks ─────────────────────────────────────────────────── */
+    .code-block {
+      position: relative;
+      margin: 14px 0;
       border-radius: var(--radius);
-      padding: 14px 18px;
-      margin: 16px 0;
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      font-size: 13.5px;
-    }
-
-    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-
-    .callout.info    { background: rgba(13,110,253,.1);  border-left: 3px solid var(--h2o-blue);   color: #93c5fd; }
-    .callout.warn    { background: rgba(245,166,35,.1);  border-left: 3px solid var(--h2o-yellow); color: #fcd34d; }
-    .callout.success { background: rgba(0,197,142,.1);   border-left: 3px solid var(--h2o-green);  color: #6ee7b7; }
-    .callout.danger  { background: rgba(255,77,109,.1);  border-left: 3px solid var(--h2o-red);    color: #fca5a5; }
-
-    /* ── Tables ───────────────────────────────────────────────────── */
-    .table-wrap { overflow-x: auto; margin: 16px 0 24px; border-radius: var(--radius); border: 1px solid var(--border); }
-
-    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-
-    thead tr { background: var(--surface3); }
-
-    th {
-      padding: 11px 16px; text-align: left;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: .8px; text-transform: uppercase;
-      color: var(--h2o-accent);
-      white-space: nowrap;
-    }
-
-    td { padding: 10px 16px; border-top: 1px solid var(--border); vertical-align: top; color: #b8cfe6; }
-
-    tr:hover td { background: rgba(255,255,255,.02); }
-
-    td code, th code {
       background: var(--code-bg);
       border: 1px solid var(--border);
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: var(--h2o-accent);
-    }
-
-    /* ── Code Blocks ──────────────────────────────────────────────── */
-    .code-wrap {
-      position: relative;
-      margin: 16px 0 24px;
-      border-radius: var(--radius);
       overflow: hidden;
-      border: 1px solid var(--border);
     }
 
-    .code-header {
-      background: var(--surface3);
-      padding: 8px 16px;
+    .code-block-header {
       display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px;
+      background: rgba(255,255,255,.04);
       border-bottom: 1px solid var(--border);
     }
 
     .code-lang {
-      font-size: 11px; font-weight: 700;
-      letter-spacing: .5px; text-transform: uppercase;
-      color: var(--h2o-accent);
+      font-size: 11px; font-weight: 700; letter-spacing: .5px;
+      text-transform: uppercase; color: var(--text-muted);
     }
 
     .copy-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 3px 10px;
-      border-radius: 5px;
-      font-size: 11px; cursor: pointer;
+      font-size: 11px; font-weight: 600; padding: 3px 10px;
+      background: rgba(80,230,255,.1);
+      border: 1px solid rgba(80,230,255,.2);
+      color: var(--az-accent);
+      border-radius: 4px;
+      cursor: pointer;
       transition: all .15s;
     }
 
-    .copy-btn:hover { background: var(--surface2); color: #fff; border-color: var(--h2o-accent); }
-    .copy-btn.copied { color: var(--h2o-green); border-color: var(--h2o-green); }
+    .copy-btn:hover { background: rgba(80,230,255,.18); }
+    .copy-btn.copied { color: var(--az-green); border-color: rgba(0,197,142,.35); background: rgba(0,197,142,.1); }
 
-    pre {
-      background: var(--code-bg);
-      padding: 18px 20px;
+    .code-block pre {
+      padding: 16px 18px;
       overflow-x: auto;
-      margin: 0;
-    }
-
-    code {
       font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
       font-size: 13px;
       line-height: 1.65;
+      color: #cdd9e5;
     }
 
-    pre code { color: #c8d8f0; }
+    .code-block pre::-webkit-scrollbar { height: 4px; }
+    .code-block pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-    /* Syntax colouring (manual, no lib) */
-    .kw  { color: #7dd3fc; }   /* keywords */
-    .st  { color: #86efac; }   /* strings */
-    .cm  { color: #6b7f95; font-style: italic; }  /* comments */
-    .nm  { color: #fbbf24; }   /* names/vars */
-    .op  { color: var(--h2o-accent); }   /* operators/punct */
-    .nb  { color: #c084fc; }   /* numbers/built-ins */
+    code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 12.5px; background: rgba(80,230,255,.08); color: var(--az-accent); padding: 1px 6px; border-radius: 4px; }
 
-    /* ── Steps / Ordered List ─────────────────────────────────────── */
-    .step-list { list-style: none; counter-reset: steps; }
-
-    .step-list li {
-      counter-increment: steps;
-      padding: 10px 0 10px 44px;
-      position: relative;
-      color: #b0c8e0;
-      font-size: 14px;
-      border-bottom: 1px solid rgba(255,255,255,.04);
+    /* ── Callouts ────────────────────────────────────────────────────── */
+    .callout {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      margin: 14px 0;
+      font-size: 13px; line-height: 1.6;
     }
 
-    .step-list li:last-child { border-bottom: none; }
+    .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout p { font-size: 13px; color: inherit; margin: 0; }
 
-    .step-list li::before {
-      content: counter(steps);
-      position: absolute; left: 0; top: 10px;
-      width: 26px; height: 26px;
-      background: var(--surface3);
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700; color: var(--h2o-accent);
+    .callout-info { background: rgba(0,120,212,.12); border: 1px solid rgba(0,120,212,.3); color: #a8d4f5; }
+    .callout-tip  { background: rgba(0,197,142,.1);  border: 1px solid rgba(0,197,142,.25); color: #80e0c8; }
+    .callout-warn { background: rgba(245,166,35,.1);  border: 1px solid rgba(245,166,35,.25); color: #f5d08c; }
+
+    /* ── Tables ──────────────────────────────────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+    .data-table th {
+      background: var(--surface3); color: var(--az-accent);
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+      border-bottom: 2px solid var(--border);
     }
+    .data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,.02); }
+    .data-table td:first-child { color: var(--text); font-weight: 500; }
 
-    .step-list li strong { color: #e2e8f0; }
-
-    /* ── Checklist ────────────────────────────────────────────────── */
-    .checklist { list-style: none; }
-
+    /* ── Checklist ───────────────────────────────────────────────────── */
+    .checklist { list-style: none; padding: 0; }
     .checklist li {
       display: flex; align-items: flex-start; gap: 10px;
       padding: 8px 0;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-      font-size: 13.5px; color: #b0c8e0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px; color: var(--text-muted);
     }
-
     .checklist li:last-child { border-bottom: none; }
-
-    .checklist input[type="checkbox"] {
-      width: 17px; height: 17px;
-      accent-color: var(--h2o-green);
-      cursor: pointer; flex-shrink: 0; margin-top: 2px;
+    .checklist li::before {
+      content: '☐';
+      font-size: 15px; color: var(--border);
+      flex-shrink: 0; margin-top: 1px;
     }
 
-    .checklist li.done { color: #5a7a6a; text-decoration: line-through; }
+    /* ── Ordered List ────────────────────────────────────────────────── */
+    ol.steps-list { padding-left: 20px; margin: 10px 0; }
+    ol.steps-list li { font-size: 13.5px; color: var(--text-muted); margin-bottom: 7px; padding-left: 4px; }
 
-    /* ── Architecture Diagram ─────────────────────────────────────── */
-    .arch-diagram {
-      background: var(--code-bg);
+    /* ── Troubleshoot ────────────────────────────────────────────────── */
+    .trouble-item {
+      background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px 28px;
-      overflow-x: auto;
-      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
-      font-size: 12px;
-      line-height: 1.7;
-      color: #7eb8d4;
+      border-left: 3px solid var(--az-red);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .trouble-item h4 { font-size: 14px; font-weight: 700; color: #ff8fa3; margin-bottom: 8px; }
+
+    /* ── Utility ─────────────────────────────────────────────────────── */
+    .section-intro { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.75; }
+
+    hr.section-rule {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
     }
 
-    /* ── Phase flow ───────────────────────────────────────────────── */
-    .phase-flow {
-      display: flex; flex-direction: column;
-      gap: 0; margin: 20px 0;
+    /* ── Scroll progress ─────────────────────────────────────────────── */
+    #progress-bar {
+      position: fixed; top: 0; left: var(--sidebar-w); right: 0;
+      height: 2px; background: transparent; z-index: 200;
     }
-
-    .phase-item {
-      display: flex; gap: 0;
+    #progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--az-blue), var(--az-accent));
+      width: 0%;
+      transition: width .1s;
     }
-
-    .phase-spine {
-      display: flex; flex-direction: column; align-items: center;
-      width: 44px; flex-shrink: 0;
-    }
-
-    .phase-dot {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 800;
-      color: #fff; flex-shrink: 0;
-      z-index: 1;
-    }
-
-    .phase-line {
-      width: 2px; flex: 1; min-height: 20px;
-      background: var(--border);
-      margin: 2px 0;
-    }
-
-    .phase-item:last-child .phase-line { display: none; }
-
-    .phase-body {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 18px;
-      margin-bottom: 10px;
-      margin-left: 10px;
-    }
-
-    .phase-body h4 { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
-    .phase-body p  { font-size: 13px; color: var(--text-muted); margin: 0; }
-
-    .p1 { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-    .p2 { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
-    .p3 { background: linear-gradient(135deg, #f59e0b, #b45309); }
-    .p4 { background: linear-gradient(135deg, #06b6d4, #0284c7); }
-    .p5 { background: linear-gradient(135deg, #10b981, #047857); }
-
-    /* ── Component Grid ───────────────────────────────────────────── */
-    .component-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 14px;
-      margin: 16px 0 24px;
-    }
-
-    .component-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      transition: border-color .2s;
-    }
-
-    .component-card:hover { border-color: var(--h2o-accent); }
-
-    .component-card .comp-icon {
-      font-size: 22px; margin-bottom: 8px;
-    }
-
-    .component-card h4 {
-      font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px;
-    }
-
-    .component-card p {
-      font-size: 12px; color: var(--text-muted); margin: 0;
-    }
-
-    .component-card .comp-tech {
-      display: inline-block; margin-top: 8px;
-      font-size: 10.5px; font-weight: 600;
-      padding: 2px 8px; border-radius: 12px;
-      background: rgba(0,196,244,.12);
-      color: var(--h2o-accent);
-      border: 1px solid rgba(0,196,244,.2);
-    }
-
-    /* ── Troubleshooting accordion ────────────────────────────────── */
-    details {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      margin-bottom: 10px;
-      overflow: hidden;
-    }
-
-    summary {
-      padding: 14px 18px;
-      cursor: pointer;
-      font-size: 14px; font-weight: 600;
-      color: #ccddf0;
-      display: flex; align-items: center; gap: 10px;
-      list-style: none;
-      user-select: none;
-    }
-
-    summary::-webkit-details-marker { display: none; }
-
-    summary::after {
-      content: '›';
-      margin-left: auto;
-      font-size: 18px;
-      color: var(--text-muted);
-      transform: rotate(90deg);
-      transition: transform .2s;
-    }
-
-    details[open] summary::after { transform: rotate(270deg); }
-
-    details[open] summary { border-bottom: 1px solid var(--border); }
-
-    .details-body { padding: 16px 18px; }
-
-    .trouble-icon { font-size: 18px; }
-
-    /* ── Print ────────────────────────────────────────────────────── */
-    @media print {
-      #sidebar { display: none; }
-      #main { margin-left: 0; max-width: 100%; }
-      #topbar { position: static; }
-      .copy-btn { display: none; }
-      details { border: 1px solid #ccc; }
-      details[open] { page-break-inside: avoid; }
-    }
-
-    /* ── Responsive ───────────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      :root { --sidebar-w: 0px; }
-      #sidebar { transform: translateX(-100%); }
-      #topbar { padding: 16px 20px; }
-      .content { padding: 24px 20px 60px; }
-    }
-
-    /* ── Scrollbar ────────────────────────────────────────────────── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #2d5a8a; }
-
-    kbd {
-      display: inline-block;
-      padding: 1px 6px;
-      background: var(--surface3);
-      border: 1px solid var(--border);
-      border-bottom-width: 2px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #c9dff5;
-      font-family: monospace;
-    }
-
-    strong { color: #dbeeff; }
-
-    ul { padding-left: 22px; margin-bottom: 12px; }
-    ul li { color: #b0c8e0; font-size: 13.5px; margin-bottom: 5px; }
   </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════ SIDEBAR ═══════════════════ -->
+<!-- Progress bar -->
+<div id="progress-bar"><div id="progress-fill"></div></div>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────── -->
 <aside id="sidebar">
   <div id="sidebar-header">
     <div class="brand">
-      <div class="brand-icon">H2</div>
-      <h2>JBS Automation<br>Platform</h2>
+      <div class="brand-icon">JBS</div>
+      <h2>Certis JBS Platform<br>Deployment Guide</h2>
     </div>
-    <p>Deployment Guide v1.0</p>
+    <div class="badge-row">
+      <span class="badge badge-azure">Azure Container Apps</span>
+      <span class="badge badge-steps">14 Steps</span>
+    </div>
   </div>
 
   <nav>
-    <div class="nav-section-label">Overview</div>
-    <a href="#overview">
-      <span class="nav-num">⊙</span> Architecture Overview
-    </a>
-    <a href="#prerequisites">
-      <span class="nav-num">⊙</span> Prerequisites
-    </a>
+    <div class="nav-section-label">Getting Started</div>
+    <a href="#prereqs"><span class="nav-icon">📋</span> Prerequisites</a>
 
     <div class="nav-section-label">Deployment Steps</div>
     <a href="#step1"><span class="nav-num">1</span> Clone &amp; Configure</a>
     <a href="#step2"><span class="nav-num">2</span> h2oGPTe Collections</a>
-    <a href="#step3"><span class="nav-num">3</span> Azure AD / SharePoint</a>
-    <a href="#step4"><span class="nav-num">4</span> Microsoft Teams Bot</a>
+    <a href="#step3"><span class="nav-num">3</span> Azure AD App Registration</a>
+    <a href="#step4"><span class="nav-num">4</span> Teams Bot Setup</a>
     <a href="#step5"><span class="nav-num">5</span> Build Docker Images</a>
     <a href="#step6"><span class="nav-num">6</span> Create ACR &amp; Push</a>
     <a href="#step7"><span class="nav-num">7</span> Azure Blob Storage</a>
@@ -597,420 +413,403 @@
     <a href="#step9"><span class="nav-num">9</span> ACA Environment</a>
     <a href="#step10"><span class="nav-num">10</span> Deploy Services</a>
     <a href="#step11"><span class="nav-num">11</span> SharePoint Sync Job</a>
-    <a href="#step12"><span class="nav-num">12</span> Post-Deploy Config</a>
+    <a href="#step12"><span class="nav-num">12</span> Post-Deployment Config</a>
     <a href="#step13"><span class="nav-num">13</span> Verify Deployment</a>
+    <a href="#step14"><span class="nav-num">14</span> Production Hardening</a>
 
-    <div class="nav-section-label">Checklists &amp; Reference</div>
-    <a href="#hardening"><span class="nav-num">✓</span> Production Hardening</a>
-    <a href="#troubleshooting"><span class="nav-num">!</span> Troubleshooting</a>
+    <div class="nav-section-label">Reference</div>
+    <a href="#troubleshooting"><span class="nav-icon">🔧</span> Troubleshooting</a>
   </nav>
 </aside>
 
-<!-- ═══════════════════════════════════════════ MAIN ═══════════════════════ -->
-<div id="main">
+<!-- ── Main ─────────────────────────────────────────────────────────── -->
+<main id="main">
 
-  <!-- Top Bar -->
-  <div id="topbar">
-    <h1>JBS Automation Platform — Deployment Guide</h1>
-    <div class="meta">
-      <span class="badge badge-blue">Azure Container Apps</span>
-      <span class="badge badge-green">v1.0.0</span>
-      <span class="badge badge-warn">Certis Security</span>
-      <span style="color:var(--text-muted)">14 Steps · 2024</span>
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="eyebrow">Certis Security Operations · JBS Automation Platform</div>
+    <h1>Deployment Guide</h1>
+    <p>Step-by-step instructions for deploying the Job Breakdown Statement platform on Microsoft Azure Container Apps, integrated with Microsoft Teams via Azure Bot Service and H2O Enterprise h2oGPTe for AI-powered RAG.</p>
+    <div class="header-meta">
+      <div class="meta-item">🏗️ <strong>Platform:</strong> Azure Container Apps</div>
+      <div class="meta-item">💬 <strong>Messaging:</strong> Microsoft Teams</div>
+      <div class="meta-item">🤖 <strong>AI Engine:</strong> H2O Enterprise h2oGPTe</div>
+      <div class="meta-item">📦 <strong>Storage:</strong> Azure Blob Storage</div>
+      <div class="meta-item">🔄 <strong>CI/CD:</strong> GitHub Actions</div>
     </div>
   </div>
 
-  <div class="content">
+  <!-- ── Prerequisites ─────────────────────────────────────────────── -->
+  <section id="prereqs" class="step-section">
+    <div class="step-header">
+      <div class="step-badge" style="background: linear-gradient(135deg,#2d4a6b,#1e3a5f); box-shadow:none;">📋</div>
+      <div class="step-title-group">
+        <div class="step-label">Before you start</div>
+        <div class="step-title">Prerequisites</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
 
-    <!-- ═══ OVERVIEW ══════════════════════════════════════════════════════ -->
-    <section id="overview">
-      <div class="section-header">
-        <div class="step-badge arch">⬡</div>
+    <div class="prereq-grid">
+      <div class="prereq-card">
+        <div class="prereq-icon">☁️</div>
         <div>
-          <h2>Solution Architecture</h2>
-          <div class="section-desc">Multi-layer, cloud-native platform on Azure Container Apps</div>
+          <h4>Azure Subscription</h4>
+          <p>Contributor access to an active Azure subscription</p>
         </div>
       </div>
-
-      <div class="component-grid">
-        <div class="component-card">
-          <div class="comp-icon">🤖</div>
-          <h4>AI &amp; RAG Engine</h4>
-          <p>Conversational agent with SharePoint-grounded knowledge base</p>
-          <span class="comp-tech">H2O Enterprise h2oGPTe</span>
-        </div>
-        <div class="component-card">
-          <div class="comp-icon">📄</div>
-          <h4>Document AI</h4>
-          <p>OCR, entity extraction, and chunking of SOP documents</p>
-          <span class="comp-tech">H2O Document AI</span>
-        </div>
-        <div class="component-card">
-          <div class="comp-icon">📊</div>
-          <h4>Admin Dashboard</h4>
-          <p>Real-time interview monitoring and sync management</p>
-          <span class="comp-tech">H2O Wave</span>
-        </div>
-        <div class="component-card">
-          <div class="comp-icon">☁️</div>
-          <h4>Deployment Platform</h4>
-          <p>Serverless container hosting of all 3 middleware microservices</p>
-          <span class="comp-tech">Azure Container Apps</span>
-        </div>
-        <div class="component-card">
-          <div class="comp-icon">📈</div>
-          <h4>Model Monitoring</h4>
-          <p>Inference latency, drift detection, and alerting</p>
-          <span class="comp-tech">H2O MLOps</span>
-        </div>
-        <div class="component-card">
-          <div class="comp-icon">💾</div>
-          <h4>Session State</h4>
-          <p>Phase state in SQLite/memory. Turn history owned by h2oGPTe natively.</p>
-          <span class="comp-tech">SQLite (no Redis pod)</span>
-        </div>
-        <div class="component-card">
-          <div class="comp-icon">🟦</div>
-          <h4>Messaging Channel</h4>
-          <p>Microsoft Teams via Azure Bot Service — JWT-authenticated Bot Framework Activities</p>
-          <span class="comp-tech">Webhook + FastAPI</span>
-        </div>
-        <div class="component-card">
-          <div class="comp-icon">📝</div>
-          <h4>Document Generator</h4>
-          <p>Renders approved JSON to corporate .docx template</p>
-          <span class="comp-tech">python-docx</span>
-        </div>
-      </div>
-
-      <h3>5-Phase Conversation Flow</h3>
-      <div class="phase-flow">
-        <div class="phase-item">
-          <div class="phase-spine">
-            <div class="phase-dot p1">1</div>
-            <div class="phase-line"></div>
-          </div>
-          <div class="phase-body">
-            <h4>Context &amp; Initiation</h4>
-            <p>Capture: Customer Name, Site Name, Site Category, Job Purpose → load site-specific RAG collection</p>
-          </div>
-        </div>
-        <div class="phase-item">
-          <div class="phase-spine">
-            <div class="phase-dot p2">2</div>
-            <div class="phase-line"></div>
-          </div>
-          <div class="phase-body">
-            <h4>Duty Discovery &amp; Task Sequencing</h4>
-            <p>Suggest tasks from SharePoint SOPs. Capture sequence, trigger, frequency, responsible role, outcome.</p>
-          </div>
-        </div>
-        <div class="phase-item">
-          <div class="phase-spine">
-            <div class="phase-dot p3">3</div>
-            <div class="phase-line"></div>
-          </div>
-          <div class="phase-body">
-            <h4>Safety &amp; Compliance</h4>
-            <p>Capture hazards, PPE, qualifications, accreditations, escalation procedures, comms channels.</p>
-          </div>
-        </div>
-        <div class="phase-item">
-          <div class="phase-spine">
-            <div class="phase-dot p4">4</div>
-            <div class="phase-line"></div>
-          </div>
-          <div class="phase-body">
-            <h4>Review &amp; Approval</h4>
-            <p>Present summary for approval → emit JSON → generate Word .docx → send download link.</p>
-          </div>
-        </div>
-      </div>
-
-      <h3>Data Flow</h3>
-      <div class="arch-diagram">User (Microsoft Teams)
-      │  HTTPS POST — Bot Framework Activity
-      │  JWT Bearer token (RS256, signed by Azure Bot Service)
-      ▼
-Webhook Service (FastAPI · Azure Container Apps)   ← JWT validated
-      │
-      ▼
-Conversation Orchestrator (Python · Azure Container Apps)
-      │  load session from SQLite
-      │  build prompt (phase + RAG context + h2oGPTe history)
-      ▼
-H2O Enterprise h2oGPTe ◄──── SharePoint Collections (per site category)
-      │                              (Corporate / Aviation / Industrial / Maritime / Retail)
-      │  LLM response
-      ▼
-Phase 4 approved ──► JSON ──► Document Generator ──► .docx ──► Azure Blob Storage
-      │
-      ▼
-Reply + download link ──► User (Bot Framework REST API · OAuth2 token)</div>
-    </section>
-
-    <!-- ═══ PREREQUISITES ═════════════════════════════════════════════════ -->
-    <section id="prerequisites">
-      <div class="section-header">
-        <div class="step-badge prereq">✦</div>
+      <div class="prereq-card">
+        <div class="prereq-icon">⚙️</div>
         <div>
-          <h2>Prerequisites</h2>
-          <div class="section-desc">Ensure all of these are in place before starting</div>
+          <h4>Azure CLI v2.55+</h4>
+          <p>With the <code>containerapp</code> extension installed</p>
         </div>
       </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Requirement</th><th>Version / Detail</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Azure Subscription</strong></td><td>Owner or Contributor role on the target subscription</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>H2O Enterprise h2oGPTe</strong></td><td>Licensed instance (cloud or on-prem) with API access</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>H2O Document AI</strong></td><td>Licensed instance for document ingestion</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>Docker</strong></td><td>v24+</td><td><span class="badge badge-blue">Tool</span></td></tr>
-            <tr><td><strong>Azure CLI</strong></td><td>v2.50+ (<code>az login</code> completed, correct subscription selected)</td><td><span class="badge badge-blue">Tool</span></td></tr>
-            <tr><td><strong>Python</strong></td><td>3.11+</td><td><span class="badge badge-blue">Tool</span></td></tr>
-            <tr><td><strong>Microsoft 365 Tenant</strong></td><td>Teams enabled · Azure subscription for Azure Bot resource</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>Azure Bot Resource</strong></td><td>Azure Bot App Registration (App ID + client secret)</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>Azure AD App Registration</strong></td><td>Separate registration with SharePoint Graph API permissions</td><td><span class="badge badge-warn">Required</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ═══ STEP 1 ═════════════════════════════════════════════════════════ -->
-    <section id="step1">
-      <div class="section-header">
-        <div class="step-badge">1</div>
+      <div class="prereq-card">
+        <div class="prereq-icon">🐳</div>
         <div>
-          <h2>Clone and Configure</h2>
-          <div class="section-desc">Set up the project and configure environment variables</div>
+          <h4>Docker v24+</h4>
+          <p>For building and pushing container images</p>
         </div>
       </div>
-
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="cm"># Clone the repository</span>
-git clone https://github.com/certis/jbs-platform.git
-cd jbs-platform
-
-<span class="cm"># Copy the environment template</span>
-cp config/env.template .env</code></pre>
-      </div>
-
-      <p>Edit <code>.env</code> and fill in all values. Key variables to configure:</p>
-
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash — .env</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="cm"># H2O Platform</span>
-<span class="nm">H2OGPTE_ADDRESS</span>=https://your-h2ogpte-instance.h2o.ai
-<span class="nm">H2OGPTE_API_KEY</span>=&lt;from Azure Key Vault after Step 8&gt;
-
-<span class="cm"># Microsoft Teams (Azure Bot Service)</span>
-<span class="nm">TEAMS_APP_ID</span>=&lt;Azure Bot App Registration client ID&gt;
-<span class="nm">TEAMS_APP_PASSWORD</span>=&lt;Azure Bot App Registration client secret&gt;
-
-<span class="cm"># SharePoint / Azure AD</span>
-<span class="nm">AZURE_TENANT_ID</span>=&lt;your Azure tenant ID&gt;
-<span class="nm">AZURE_CLIENT_ID</span>=&lt;app registration client ID&gt;
-<span class="nm">AZURE_CLIENT_SECRET</span>=&lt;app registration client secret&gt;
-<span class="nm">SP_SITE_URL</span>=https://certissecurity.sharepoint.com/sites/operations
-
-<span class="cm"># SharePoint library IDs (get from Graph API Explorer)</span>
-<span class="nm">SP_LIBRARY_CORPORATE</span>=&lt;library ID&gt;
-<span class="nm">SP_LIBRARY_AVIATION</span>=&lt;library ID&gt;
-<span class="nm">SP_LIBRARY_INDUSTRIAL</span>=&lt;library ID&gt;
-<span class="nm">SP_LIBRARY_MARITIME</span>=&lt;library ID&gt;
-<span class="nm">SP_LIBRARY_RETAIL</span>=&lt;library ID&gt;
-
-<span class="cm"># Document Storage (Azure Blob Storage)</span>
-<span class="nm">AZURE_STORAGE_ACCOUNT</span>=certisjbsstorage
-<span class="nm">AZURE_STORAGE_CONTAINER</span>=certis-jbs-documents
-<span class="nm">AZURE_STORAGE_KEY</span>=&lt;from Azure Portal after Step 7&gt;
-
-<span class="cm"># Internal</span>
-<span class="nm">TENANT_ID</span>=certis
-<span class="nm">ORCHESTRATOR_URL</span>=http://jbs-orchestrator-service:8001</code></pre>
-      </div>
-
-      <div class="callout warn">
-        <span class="callout-icon">⚠️</span>
-        <span>Never commit <code>.env</code> to version control. It is included in <code>.gitignore</code>. Use Azure Key Vault for all production secrets (Step 8).</span>
-      </div>
-    </section>
-
-    <!-- ═══ STEP 2 ═════════════════════════════════════════════════════════ -->
-    <section id="step2">
-      <div class="section-header">
-        <div class="step-badge">2</div>
+      <div class="prereq-card">
+        <div class="prereq-icon">🐍</div>
         <div>
-          <h2>Set Up h2oGPTe Collections</h2>
-          <div class="section-desc">Create per-site-category knowledge base collections to power RAG</div>
+          <h4>Python 3.11+</h4>
+          <p>Required for local testing and sync scripts</p>
         </div>
       </div>
+      <div class="prereq-card">
+        <div class="prereq-icon">💬</div>
+        <div>
+          <h4>Microsoft 365 Tenant</h4>
+          <p>Microsoft Teams enabled with admin access</p>
+        </div>
+      </div>
+      <div class="prereq-card">
+        <div class="prereq-icon">🤖</div>
+        <div>
+          <h4>H2O Enterprise h2oGPTe</h4>
+          <p>Licensed HAIC instance — pre-provisioned, no changes required</p>
+        </div>
+      </div>
+    </div>
 
-      <h3>2a — Log in to h2oGPTe</h3>
-      <p>Open your h2oGPTe instance URL in a browser and log in with your h2oGPTe credentials.</p>
+    <p>Install the Container Apps CLI extension if not already present:</p>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>az extension add --name containerapp
+az extension update --name containerapp</pre>
+    </div>
+  </section>
 
-      <h3>2b — Create Collections via h2oGPTe UI</h3>
+  <!-- ── Step 1 ─────────────────────────────────────────────────────── -->
+  <section id="step1" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">1</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 1</div>
+        <div class="step-title">Clone &amp; Configure</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Clone the repository and populate the environment configuration file before proceeding with any Azure provisioning.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>git clone https://github.com/certis/jbs-platform.git
+cd jbs-platform</pre>
+    </div>
+
+    <p>Copy the environment template:</p>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>cp config/env.template .env</pre>
+    </div>
+
+    <p>Edit <code>.env</code> and fill in all values. You will retrieve specific values in subsequent steps:</p>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">env</span><button class="copy-btn">Copy</button></div>
+      <pre># H2O Platform
+H2OGPTE_ADDRESS=https://your-h2ogpte-instance.h2o.ai
+H2OGPTE_API_KEY=&lt;from H2O Secret Manager&gt;
+
+# Microsoft Teams (Azure Bot Service)
+TEAMS_APP_ID=&lt;Azure Bot App Registration client ID — Step 4&gt;
+TEAMS_APP_PASSWORD=&lt;Azure Bot App Registration client secret — Step 4&gt;
+
+# SharePoint / Azure AD
+AZURE_TENANT_ID=&lt;your Azure tenant ID&gt;
+AZURE_CLIENT_ID=&lt;SharePoint app registration client ID — Step 3&gt;
+AZURE_CLIENT_SECRET=&lt;SharePoint app registration client secret — Step 3&gt;
+SP_SITE_URL=https://certissecurity.sharepoint.com/sites/operations
+
+# SharePoint library IDs (retrieve from Graph API Explorer after Step 2)
+SP_LIBRARY_CORPORATE=&lt;library ID&gt;
+SP_LIBRARY_AVIATION=&lt;library ID&gt;
+SP_LIBRARY_INDUSTRIAL=&lt;library ID&gt;
+SP_LIBRARY_MARITIME=&lt;library ID&gt;
+SP_LIBRARY_RETAIL=&lt;library ID&gt;
+
+# Document Storage — Azure Blob Storage (Step 7)
+AZURE_STORAGE_ACCOUNT=certisjbsstorage
+AZURE_STORAGE_CONTAINER=certis-jbs-documents
+AZURE_STORAGE_KEY=&lt;from Azure Portal after Step 7&gt;
+
+# Internal
+TENANT_ID=certis
+ORCHESTRATOR_URL=http://jbs-orchestrator:8001
+DOCUMENT_GENERATOR_URL=http://jbs-docgen:8002</pre>
+    </div>
+  </section>
+
+  <!-- ── Step 2 ─────────────────────────────────────────────────────── -->
+  <section id="step2" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">2</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 2</div>
+        <div class="step-title">Set Up h2oGPTe Collections</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Create the site-category knowledge base collections in h2oGPTe. These are the RAG vector stores queried during every JBS conversation turn.</p>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">2a</div>
+        <h3>Log in to h2oGPTe</h3>
+      </div>
+      <p>Open your h2oGPTe instance URL in a browser and log in with your HAIC credentials.</p>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">2b</div>
+        <h3>Create Collections via h2oGPTe UI</h3>
+      </div>
       <p>Navigate to <strong>Collections → New Collection</strong> and create one collection per site category:</p>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Collection Name</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>collection_corporate</code></td><td>SOPs and historical JBS for Corporate sites</td></tr>
-            <tr><td><code>collection_aviation</code></td><td>SOPs and historical JBS for Aviation sites</td></tr>
-            <tr><td><code>collection_industrial</code></td><td>SOPs and historical JBS for Industrial sites</td></tr>
-            <tr><td><code>collection_maritime</code></td><td>SOPs and historical JBS for Maritime sites</td></tr>
-            <tr><td><code>collection_retail</code></td><td>SOPs and historical JBS for Retail sites</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="callout info">
+      <table class="data-table">
+        <thead><tr><th>Collection Name</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>collection_corporate</code></td><td>SOPs and historical JBS for Corporate sites</td></tr>
+          <tr><td><code>collection_aviation</code></td><td>SOPs and historical JBS for Aviation sites</td></tr>
+          <tr><td><code>collection_industrial</code></td><td>SOPs and historical JBS for Industrial sites</td></tr>
+          <tr><td><code>collection_maritime</code></td><td>SOPs and historical JBS for Maritime sites</td></tr>
+          <tr><td><code>collection_retail</code></td><td>SOPs and historical JBS for Retail sites</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-info">
         <span class="callout-icon">ℹ️</span>
-        <span>Copy each <strong>Collection ID</strong> from the UI — you will need these to update <code>SITE_CATEGORY_COLLECTION_MAP</code> in <code>src/agent/phase_controller.py</code> (Step 12a).</span>
+        <p>Copy each <strong>Collection ID</strong> from the UI after creation — you will need these to update <code>SITE_CATEGORY_COLLECTION_MAP</code> in <code>src/agent/phase_controller.py</code> during Step 12a.</p>
       </div>
+    </div>
 
-      <h3>2c — Configure SharePoint Integration in h2oGPTe</h3>
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">2c</div>
+        <h3>Configure SharePoint Integration in h2oGPTe</h3>
+      </div>
       <p>In h2oGPTe, navigate to <strong>Collections → [Select Collection] → Import → SharePoint Online</strong> and enter:</p>
-      <ul>
-        <li><strong>Tenant ID</strong> — your Azure AD tenant ID</li>
-        <li><strong>Client ID</strong> — Azure app registration client ID</li>
-        <li><strong>Client Secret</strong> — Azure app registration client secret</li>
-        <li><strong>Site URL</strong> — SharePoint site URL</li>
-        <li><strong>Document Library</strong> — select the appropriate library per category</li>
+      <ul style="padding-left:20px; margin-bottom:12px;">
+        <li style="font-size:13px;color:var(--text-muted);margin-bottom:5px;"><strong>Tenant ID:</strong> Your Azure AD tenant ID</li>
+        <li style="font-size:13px;color:var(--text-muted);margin-bottom:5px;"><strong>Client ID:</strong> SharePoint app registration client ID</li>
+        <li style="font-size:13px;color:var(--text-muted);margin-bottom:5px;"><strong>Client Secret:</strong> SharePoint app registration client secret</li>
+        <li style="font-size:13px;color:var(--text-muted);margin-bottom:5px;"><strong>Site URL:</strong> Your SharePoint site URL</li>
+        <li style="font-size:13px;color:var(--text-muted)"><strong>Document Library:</strong> Select the appropriate library per category</li>
       </ul>
       <p>Enable <strong>Auto-sync</strong> and set frequency to <strong>Daily</strong>.</p>
+    </div>
 
-      <h3>2d — Manual Sync (alternative)</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="cm"># From project root, with .env loaded</span>
-python -m src.rag.sharepoint_sync</code></pre>
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">2d</div>
+        <h3>Alternatively — Run Manual Sync via Script</h3>
       </div>
-    </section>
-
-    <!-- ═══ STEP 3 ═════════════════════════════════════════════════════════ -->
-    <section id="step3">
-      <div class="section-header">
-        <div class="step-badge">3</div>
-        <div>
-          <h2>Configure Azure AD App Registration</h2>
-          <div class="section-desc">Grants the platform read access to SharePoint via Microsoft Graph API</div>
-        </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre># From project root, with .env loaded
+python -m src.rag.sharepoint_sync</pre>
       </div>
+    </div>
+  </section>
 
-      <div class="callout info">
-        <span class="callout-icon">ℹ️</span>
-        <span>Skip this step if your Azure AD app registration is already configured with Graph API permissions.</span>
+  <!-- ── Step 3 ─────────────────────────────────────────────────────── -->
+  <section id="step3" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">3</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 3</div>
+        <div class="step-title">Configure Azure AD App Registration for SharePoint</div>
       </div>
+    </div>
+    <div class="step-divider"></div>
+    <div class="callout callout-tip">
+      <span class="callout-icon">✅</span>
+      <p>Skip this step if your Azure AD app registration for SharePoint is already configured.</p>
+    </div>
 
-      <ol class="step-list">
-        <li>Log in to <strong>Azure Portal</strong> → Azure Active Directory → App registrations → <strong>New registration</strong></li>
-        <li>Set Name: <code>CertisJBSPlatform</code> · Supported account types: <strong>Single tenant</strong> → click <strong>Register</strong></li>
-        <li>Under <strong>API permissions</strong>, add Application permissions:<br>
-          <code>Microsoft Graph → Files.Read.All</code><br>
-          <code>Microsoft Graph → Sites.Read.All</code></li>
-        <li>Click <strong>Grant admin consent</strong></li>
-        <li>Under <strong>Certificates &amp; secrets → New client secret</strong> — copy the secret value into <code>.env</code> as <code>AZURE_CLIENT_SECRET</code></li>
-      </ol>
-    </section>
+    <ol class="steps-list" style="margin-top:16px;">
+      <li>Log in to <strong>Azure Portal</strong> → <strong>Azure Active Directory → App registrations → New registration</strong></li>
+      <li>Name: <code>CertisJBSSharePoint</code> · Supported account types: <strong>Single tenant</strong> → click <strong>Register</strong></li>
+      <li>Under <strong>API permissions</strong>, add:
+        <ul style="padding-left:18px; margin-top:5px;">
+          <li style="font-size:13px;color:var(--text-muted);margin-bottom:3px;"><code>Microsoft Graph → Application permissions → Files.Read.All</code></li>
+          <li style="font-size:13px;color:var(--text-muted)"><code>Microsoft Graph → Application permissions → Sites.Read.All</code></li>
+        </ul>
+      </li>
+      <li>Click <strong>Grant admin consent</strong></li>
+      <li>Under <strong>Certificates &amp; secrets → New client secret</strong> — copy the secret value into <code>.env</code> as <code>AZURE_CLIENT_SECRET</code></li>
+      <li>Copy the <strong>Application (client) ID</strong> into <code>.env</code> as <code>AZURE_CLIENT_ID</code></li>
+    </ol>
+  </section>
 
-    <!-- ═══ STEP 4 ═════════════════════════════════════════════════════════ -->
-    <section id="step4">
-      <div class="section-header">
-        <div class="step-badge">4</div>
-        <div>
-          <h2>Configure Microsoft Teams Bot (Azure Bot Service)</h2>
-          <div class="section-desc">Create the Azure Bot resource and connect it to Microsoft Teams</div>
-        </div>
+  <!-- ── Step 4 ─────────────────────────────────────────────────────── -->
+  <section id="step4" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">4</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 4</div>
+        <div class="step-title">Configure Microsoft Teams Bot</div>
       </div>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Create the Azure Bot resource that connects Microsoft Teams to your webhook service via the Bot Framework.</p>
 
-      <h3>4a — Create an Azure Bot resource</h3>
-      <ol class="step-list">
-        <li>Log in to <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → search for <strong>Azure Bot</strong> → <strong>Create</strong></li>
-        <li>Fill in: <strong>Bot handle</strong> = <code>certis-jbs-bot</code>, Pricing tier = <code>Standard</code></li>
-        <li>Under <strong>Microsoft App ID</strong> select <strong>Create new Microsoft App ID</strong></li>
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">4a</div>
+        <h3>Create an Azure Bot resource</h3>
+      </div>
+      <ol class="steps-list">
+        <li>Log in to <strong>Azure Portal</strong> → search for <strong>Azure Bot</strong> → click <strong>Create</strong></li>
+        <li>Bot handle: <code>certis-jbs-bot</code> · Pricing tier: <strong>Standard</strong></li>
+        <li>Microsoft App ID: select <strong>Create new Microsoft App ID</strong></li>
         <li>Click <strong>Review + create → Create</strong></li>
         <li>Once deployed, navigate to the resource → <strong>Configuration</strong></li>
-        <li>Copy the <strong>Microsoft App ID</strong> → <code>TEAMS_APP_ID</code></li>
-        <li>Click <strong>Manage</strong> → <strong>Certificates &amp; secrets → New client secret</strong> → copy value → <code>TEAMS_APP_PASSWORD</code></li>
+        <li>Copy the <strong>Microsoft App ID</strong> → this is your <code>TEAMS_APP_ID</code></li>
+        <li>Click <strong>Manage</strong> → <strong>Certificates &amp; secrets → New client secret</strong> → copy the value → this is your <code>TEAMS_APP_PASSWORD</code></li>
       </ol>
+    </div>
 
-      <h3>4b — Set the messaging endpoint</h3>
-      <p>In the Azure Bot resource → <strong>Configuration</strong>, set:</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">Messaging endpoint</span></div>
-        <pre><code>https://&lt;your-jbs-webhook-host&gt;/webhook/teams</code></pre>
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">4b</div>
+        <h3>Set the messaging endpoint</h3>
       </div>
-
-      <div class="callout warn">
-        <span class="callout-icon">⚠️</span>
-        <span>The webhook service must be deployed (Step 10) and publicly accessible over HTTPS before Azure Bot Service will verify the endpoint. You can enter the URL now and confirm connectivity after deployment.</span>
+      <p>You will set this URL after Step 10b once the webhook Container App is deployed and its FQDN is known.</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">placeholder</span><button class="copy-btn">Copy</button></div>
+        <pre>Messaging endpoint: https://&lt;webhook-app-fqdn&gt;/webhook/teams</pre>
       </div>
+    </div>
 
-      <h3>4c — Enable the Teams channel</h3>
-      <ol class="step-list">
-        <li>In the Azure Bot resource → <strong>Channels</strong></li>
-        <li>Click <strong>Microsoft Teams → Apply</strong> and accept the Terms of Service</li>
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">4c</div>
+        <h3>Enable the Teams channel</h3>
+      </div>
+      <ol class="steps-list">
+        <li>In the Azure Bot resource, navigate to <strong>Channels</strong></li>
+        <li>Click <strong>Microsoft Teams → Apply</strong></li>
+        <li>Accept the Terms of Service</li>
       </ol>
+    </div>
 
-      <h3>4d — Add the bot to your Teams tenant</h3>
-      <ol class="step-list">
-        <li>Create a Teams app manifest using <a href="https://dev.teams.microsoft.com" target="_blank">Teams Developer Portal</a></li>
-        <li>Set the <strong>Bot ID</strong> to your <code>TEAMS_APP_ID</code></li>
-        <li>Upload to your tenant's app catalogue or side-load for testing:<br>
-          Teams → <strong>Apps → Manage your apps → Upload a custom app</strong></li>
-      </ol>
-    </section>
-
-    <!-- ═══ STEP 5 ═════════════════════════════════════════════════════════ -->
-    <section id="step5">
-      <div class="section-header">
-        <div class="step-badge">5</div>
-        <div>
-          <h2>Build Docker Images</h2>
-          <div class="section-desc">Build all three middleware service images locally before pushing to ACR</div>
-        </div>
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">4d</div>
+        <h3>Add the bot to your Teams tenant</h3>
       </div>
+      <p><strong>Option A — Publish to organisation app catalogue (Production):</strong></p>
+      <ol class="steps-list">
+        <li>Create a Teams app manifest via <strong>Teams Developer Portal</strong></li>
+        <li>Set the Bot ID to your <code>TEAMS_APP_ID</code></li>
+        <li>Upload to your tenant's app catalogue</li>
+      </ol>
+      <p style="margin-top:10px;"><strong>Option B — Side-load for testing:</strong></p>
+      <ol class="steps-list">
+        <li>In Teams → <strong>Apps → Manage your apps → Upload a custom app</strong></li>
+        <li>Upload your app package <code>.zip</code></li>
+      </ol>
+    </div>
+  </section>
 
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash — build</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="nm">IMAGE_TAG</span>=1.0.0
+  <!-- ── Step 5 ─────────────────────────────────────────────────────── -->
+  <section id="step5" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">5</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 5</div>
+        <div class="step-title">Build Docker Images</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Build all four service images locally. No Azure credentials are required for this step. Verify images build successfully before proceeding to ACR setup in Step 6.</p>
 
-<span class="cm"># Webhook service</span>
-docker build -f Dockerfile.webhook      -t jbs-webhook:${IMAGE_TAG} .
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>IMAGE_TAG=1.0.0
 
-<span class="cm"># Conversation orchestrator</span>
+# Webhook service (FastAPI — port 8000)
+docker build -f Dockerfile.webhook -t jbs-webhook:${IMAGE_TAG} .
+
+# Conversation orchestrator (FastAPI — port 8001)
 docker build -f Dockerfile.orchestrator -t jbs-orchestrator:${IMAGE_TAG} .
 
-<span class="cm"># Document generator</span>
-docker build -f Dockerfile.document     -t jbs-docgen:${IMAGE_TAG} .</code></pre>
-      </div>
+# Document generator (FastAPI — port 8002)
+docker build -f Dockerfile.document -t jbs-docgen:${IMAGE_TAG} .
 
-      <div class="callout info">
-        <span class="callout-icon">ℹ️</span>
-        <span>The H2O Wave dashboard is not built here — it is deployed via HAIC App Store (Step 12c). The three images above will be tagged and pushed to ACR in Step 6.</span>
-      </div>
-    </section>
+# H2O Wave admin dashboard (deployed via HAIC App Store — not pushed to ACR)
+docker build -f Dockerfile.dashboard -t jbs-dashboard:${IMAGE_TAG} .</pre>
+    </div>
 
-    <!-- ═══ STEP 6 ═════════════════════════════════════════════════════════ -->
-    <section id="step6">
-      <div class="step-header">
-        <div class="step-badge">6</div>
-        <h2>Create Azure Container Registry and Push Images</h2>
-      </div>
-      <p>Create the Azure resource group and container registry, then push the three middleware images.</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="cm"># Define shared variables (reuse throughout remaining steps)</span>
-<span class="nm">RG</span>=certis-jbs-rg
-<span class="nm">LOCATION</span>=australiaeast
-<span class="nm">ACR_NAME</span>=certisjbsacr
-<span class="nm">IMAGE_TAG</span>=1.0.0
+    <p>Verify all images built successfully:</p>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>docker images | grep jbs</pre>
+    </div>
 
-az group create --name $RG --location $LOCATION
+    <p>Expected output:</p>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">output</span><button class="copy-btn">Copy</button></div>
+      <pre>jbs-dashboard       1.0.0   ...
+jbs-docgen          1.0.0   ...
+jbs-orchestrator    1.0.0   ...
+jbs-webhook         1.0.0   ...</pre>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <p>Run all three middleware services locally for pre-deployment testing: <code>docker compose up --build</code> (requires a populated <code>.env</code> file). Services start on ports 8000, 8001, and 8002.</p>
+    </div>
+  </section>
+
+  <!-- ── Step 6 ─────────────────────────────────────────────────────── -->
+  <section id="step6" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">6</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 6</div>
+        <div class="step-title">Create Azure Container Registry &amp; Push Images</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Define shared shell variables used throughout the remaining steps, then create the resource group, ACR, and push the three middleware images.</p>
+
+    <h4 class="inline-label">Define shared variables</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>RG=certis-jbs-rg
+LOCATION=australiaeast        # change to your preferred Azure region
+ACR_NAME=certisjbsacr         # must be globally unique, alphanumeric only
+IMAGE_TAG=1.0.0</pre>
+    </div>
+
+    <h4 class="inline-label">Create resource group and registry</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>az group create --name $RG --location $LOCATION
 
 az acr create \
   --resource-group $RG \
@@ -1019,33 +818,46 @@ az acr create \
   --admin-enabled true
 
 az acr login --name $ACR_NAME
-<span class="nm">ACR_LOGIN_SERVER</span>=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)</pre>
+    </div>
 
-<span class="cm"># Tag and push the three middleware images</span>
+    <h4 class="inline-label">Tag and push the three middleware images</h4>
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre># Webhook service
 docker tag jbs-webhook:${IMAGE_TAG}      ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG}
 docker push ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG}
 
+# Conversation orchestrator
 docker tag jbs-orchestrator:${IMAGE_TAG} ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 
+# Document generator
 docker tag jbs-docgen:${IMAGE_TAG}       ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
-docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</code></pre>
-      </div>
-      <div class="alert alert-info">
-        <span>The H2O Wave dashboard image is deployed separately via HAIC App Store (Step 12c) and is not pushed to ACR.</span>
-      </div>
-    </section>
+docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</pre>
+    </div>
 
-    <!-- ═══ STEP 7 ═════════════════════════════════════════════════════════ -->
-    <section id="step7">
-      <div class="step-header">
-        <div class="step-badge">7</div>
-        <h2>Create Azure Blob Storage Container</h2>
+    <div class="callout callout-info">
+      <span class="callout-icon">ℹ️</span>
+      <p>The H2O Wave dashboard image (<code>jbs-dashboard</code>) is deployed separately via the HAIC App Store (Step 12c) and is <strong>not</strong> pushed to ACR.</p>
+    </div>
+  </section>
+
+  <!-- ── Step 7 ─────────────────────────────────────────────────────── -->
+  <section id="step7" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">7</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 7</div>
+        <div class="step-title">Create Azure Blob Storage Container</div>
       </div>
-      <p>Create the storage account and blob container that will store generated JBS Word documents.</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="nm">STORAGE_ACCOUNT</span>=certisjbsstorage   <span class="cm"># globally unique, 3–24 lowercase alphanumeric</span>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Provision the storage account and blob container that the Document Generator service uses to store generated <code>.docx</code> files and return 15-minute SAS download URLs.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>STORAGE_ACCOUNT=certisjbsstorage   # must be globally unique, 3–24 lowercase alphanumeric
 
 az storage account create \
   --name $STORAGE_ACCOUNT \
@@ -1061,26 +873,30 @@ az storage container create \
   --account-name $STORAGE_ACCOUNT \
   --auth-mode login
 
-<span class="cm"># Retrieve storage key — will be stored in Key Vault in Step 8</span>
-<span class="nm">STORAGE_KEY</span>=$(az storage account keys list \
+# Retrieve the storage key (stored in Key Vault in Step 8)
+STORAGE_KEY=$(az storage account keys list \
   --account-name $STORAGE_ACCOUNT \
   --resource-group $RG \
-  --query "[0].value" -o tsv)</code></pre>
-      </div>
-    </section>
+  --query "[0].value" -o tsv)
+echo "Storage key retrieved — will be stored in Key Vault."</pre>
+    </div>
+  </section>
 
-    <!-- ═══ STEP 8 ═════════════════════════════════════════════════════════ -->
-    <section id="step8">
-      <div class="step-header">
-        <div class="step-badge">8</div>
-        <h2>Create Azure Key Vault and Store Secrets</h2>
+  <!-- ── Step 8 ─────────────────────────────────────────────────────── -->
+  <section id="step8" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">8</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 8</div>
+        <div class="step-title">Create Azure Key Vault &amp; Store Secrets</div>
       </div>
-      <div class="alert alert-warn">
-        <span>Never store secrets in plaintext config files or source control. Azure Key Vault is the only approved store for production credentials.</span>
-      </div>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="nm">KV_NAME</span>=certis-jbs-kv   <span class="cm"># globally unique</span>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">All sensitive credentials are stored in Azure Key Vault. Container Apps reference these secrets directly — no plaintext credentials in environment variables.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>KV_NAME=certis-jbs-kv   # must be globally unique
 
 az keyvault create \
   --name $KV_NAME \
@@ -1088,59 +904,86 @@ az keyvault create \
   --location $LOCATION \
   --sku standard
 
+# Store all secrets — replace placeholder values with your actual credentials
 az keyvault secret set --vault-name $KV_NAME \
-  --name teams-app-password   --value <span class="st">"&lt;your Teams bot client secret&gt;"</span>
+  --name teams-app-password   --value "&lt;your Teams bot client secret&gt;"
 
 az keyvault secret set --vault-name $KV_NAME \
-  --name h2ogpte-api-key      --value <span class="st">"&lt;your h2oGPTe API key&gt;"</span>
+  --name h2ogpte-api-key      --value "&lt;your h2oGPTe API key&gt;"
 
 az keyvault secret set --vault-name $KV_NAME \
-  --name azure-client-secret  --value <span class="st">"&lt;your SharePoint app registration secret&gt;"</span>
+  --name azure-client-secret  --value "&lt;your SharePoint app registration secret&gt;"
 
 az keyvault secret set --vault-name $KV_NAME \
-  --name storage-key          --value <span class="st">"$STORAGE_KEY"</span></code></pre>
+  --name storage-key          --value "$STORAGE_KEY"</pre>
+    </div>
+  </section>
+
+  <!-- ── Step 9 ─────────────────────────────────────────────────────── -->
+  <section id="step9" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">9</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 9</div>
+        <div class="step-title">Create Azure Container Apps Environment</div>
       </div>
-    </section>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">The ACA Environment is the shared networking boundary for all three services. All services in the same environment can reach each other via internal DNS (<code>http://&lt;app-name&gt;</code>).</p>
 
-    <!-- ═══ STEP 9 ═════════════════════════════════════════════════════════ -->
-    <section id="step9">
-      <div class="step-header">
-        <div class="step-badge">9</div>
-        <h2>Create Azure Container Apps Environment</h2>
-      </div>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="nm">ACA_ENV</span>=certis-jbs-env
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>ACA_ENV=certis-jbs-env
 
-<span class="cm"># Register providers (once per subscription)</span>
+# Register required resource providers (only needed once per subscription)
 az provider register --namespace Microsoft.App
 az provider register --namespace Microsoft.OperationalInsights
 
+# Create the Container Apps Environment
 az containerapp env create \
   --name $ACA_ENV \
   --resource-group $RG \
-  --location $LOCATION</code></pre>
-      </div>
-    </section>
+  --location $LOCATION</pre>
+    </div>
 
-    <!-- ═══ STEP 10 ════════════════════════════════════════════════════════ -->
-    <section id="step10">
-      <div class="step-header">
-        <div class="step-badge">10</div>
-        <h2>Deploy Services to Azure Container Apps</h2>
-      </div>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <p><strong>Alternative — Use Bicep:</strong> The Bicep template at <code>deploy/azure/main.bicep</code> provisions the full infrastructure (steps 7–11) in a single command. See <code>deploy/azure/README.md</code> for usage.</p>
+    </div>
+  </section>
 
-      <h3>10a — Retrieve ACR credentials</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="nm">ACR_USERNAME</span>=$(az acr credential show --name $ACR_NAME --query username -o tsv)
-<span class="nm">ACR_PASSWORD</span>=$(az acr credential show --name $ACR_NAME --query <span class="st">"passwords[0].value"</span> -o tsv)</code></pre>
+  <!-- ── Step 10 ────────────────────────────────────────────────────── -->
+  <section id="step10" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">10</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 10</div>
+        <div class="step-title">Deploy Services to Azure Container Apps</div>
       </div>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Deploy the three middleware services. The webhook has <strong>external ingress</strong> (publicly reachable by Teams). The orchestrator and document generator have <strong>internal ingress only</strong>.</p>
 
-      <h3>10b — Deploy Webhook service (public external ingress)</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>az containerapp create \
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">10a</div>
+        <h3>Retrieve ACR credentials</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)</pre>
+      </div>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">10b</div>
+        <h3>Deploy the Webhook service — external ingress</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp create \
   --name jbs-webhook \
   --resource-group $RG \
   --environment $ACA_ENV \
@@ -1150,25 +993,43 @@ az containerapp env create \
   --registry-password $ACR_PASSWORD \
   --ingress external \
   --target-port 8000 \
-  --min-replicas 2 --max-replicas 10 \
-  --cpu 0.5 --memory 1.0Gi \
+  --min-replicas 2 \
+  --max-replicas 10 \
+  --cpu 0.5 \
+  --memory 1.0Gi \
   --env-vars \
-    <span class="nm">TEAMS_APP_ID</span>=<span class="st">"&lt;your bot app ID&gt;"</span> \
-    <span class="nm">ORCHESTRATOR_URL</span>=<span class="st">"http://jbs-orchestrator"</span> \
+    TEAMS_APP_ID="&lt;your bot app ID&gt;" \
+    ORCHESTRATOR_URL="http://jbs-orchestrator" \
   --secrets \
-    teams-app-password=<span class="st">"&lt;your Teams bot client secret&gt;"</span>
-
-<span class="cm"># Get webhook FQDN — set this as the Teams Bot messaging endpoint</span>
-<span class="nm">WEBHOOK_FQDN</span>=$(az containerapp show \
-  --name jbs-webhook --resource-group $RG \
-  --query <span class="st">"properties.configuration.ingress.fqdn"</span> -o tsv)
-echo "Messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</code></pre>
+    teams-app-password="&lt;your Teams bot client secret&gt;"</pre>
       </div>
 
-      <h3>10c — Deploy Orchestrator service (internal ingress only)</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>az containerapp create \
+      <p>Retrieve the webhook FQDN and set it as the Teams Bot messaging endpoint:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>WEBHOOK_FQDN=$(az containerapp show \
+  --name jbs-webhook \
+  --resource-group $RG \
+  --query "properties.configuration.ingress.fqdn" -o tsv)
+
+echo "Set this URL in Azure Bot → Configuration → Messaging endpoint:"
+echo "https://${WEBHOOK_FQDN}/webhook/teams"</pre>
+      </div>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <p>Return to <strong>Azure Portal → Azure Bot → Configuration</strong> and set the <strong>Messaging endpoint</strong> to the URL printed above. The bot will not receive messages until this is set.</p>
+      </div>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">10c</div>
+        <h3>Deploy the Orchestrator service — internal ingress</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp create \
   --name jbs-orchestrator \
   --resource-group $RG \
   --environment $ACA_ENV \
@@ -1178,28 +1039,45 @@ echo "Messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</code></pre>
   --registry-password $ACR_PASSWORD \
   --ingress internal \
   --target-port 8001 \
-  --min-replicas 2 --max-replicas 8 \
-  --cpu 0.5 --memory 1.0Gi \
+  --min-replicas 2 \
+  --max-replicas 8 \
+  --cpu 0.5 \
+  --memory 1.0Gi \
   --env-vars \
-    <span class="nm">H2OGPTE_ADDRESS</span>=<span class="st">"https://your-h2ogpte-instance.h2o.ai"</span> \
-    <span class="nm">AZURE_TENANT_ID</span>=<span class="st">"&lt;tenant ID&gt;"</span> \
-    <span class="nm">AZURE_CLIENT_ID</span>=<span class="st">"&lt;SharePoint client ID&gt;"</span> \
-    <span class="nm">SP_SITE_URL</span>=<span class="st">"https://certissecurity.sharepoint.com/sites/operations"</span> \
-    <span class="nm">TENANT_ID</span>=<span class="st">"certis"</span> \
-    <span class="nm">STATE_BACKEND</span>=<span class="st">"sqlite"</span> \
-    <span class="nm">SQLITE_PATH</span>=<span class="st">"/data/jbs_sessions.db"</span> \
-    <span class="nm">TEAMS_APP_ID</span>=<span class="st">"&lt;your bot app ID&gt;"</span> \
-    <span class="nm">DOCUMENT_GENERATOR_URL</span>=<span class="st">"http://jbs-docgen"</span> \
+    H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
+    AZURE_TENANT_ID="&lt;your Azure tenant ID&gt;" \
+    AZURE_CLIENT_ID="&lt;SharePoint app registration client ID&gt;" \
+    SP_SITE_URL="https://certissecurity.sharepoint.com/sites/operations" \
+    SP_LIBRARY_CORPORATE="&lt;library ID&gt;" \
+    SP_LIBRARY_AVIATION="&lt;library ID&gt;" \
+    SP_LIBRARY_INDUSTRIAL="&lt;library ID&gt;" \
+    SP_LIBRARY_MARITIME="&lt;library ID&gt;" \
+    SP_LIBRARY_RETAIL="&lt;library ID&gt;" \
+    TENANT_ID="certis" \
+    STATE_BACKEND="sqlite" \
+    SQLITE_PATH="/data/jbs_sessions.db" \
+    SESSION_TTL_HOURS="24" \
+    TEAMS_APP_ID="&lt;your bot app ID&gt;" \
+    DOCUMENT_GENERATOR_URL="http://jbs-docgen" \
   --secrets \
-    h2ogpte-api-key=<span class="st">"&lt;your h2oGPTe API key&gt;"</span> \
-    teams-app-password=<span class="st">"&lt;your Teams bot client secret&gt;"</span> \
-    azure-client-secret=<span class="st">"&lt;your SharePoint secret&gt;"</span></code></pre>
+    h2ogpte-api-key="&lt;your h2oGPTe API key&gt;" \
+    teams-app-password="&lt;your Teams bot client secret&gt;" \
+    azure-client-secret="&lt;your SharePoint app registration secret&gt;"</pre>
       </div>
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <p>For multi-replica session state, set <code>STATE_BACKEND=external_redis</code> and add a <code>REDIS_URL</code> secret pointing to an <strong>Azure Cache for Redis</strong> managed instance.</p>
+      </div>
+    </div>
 
-      <h3>10d — Deploy Document Generator service (internal ingress only)</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>az containerapp create \
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">10d</div>
+        <h3>Deploy the Document Generator service — internal ingress</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp create \
   --name jbs-docgen \
   --resource-group $RG \
   --environment $ACA_ENV \
@@ -1209,377 +1087,461 @@ echo "Messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</code></pre>
   --registry-password $ACR_PASSWORD \
   --ingress internal \
   --target-port 8002 \
-  --min-replicas 1 --max-replicas 4 \
-  --cpu 0.5 --memory 1.0Gi \
+  --min-replicas 1 \
+  --max-replicas 4 \
+  --cpu 0.5 \
+  --memory 1.0Gi \
   --env-vars \
-    <span class="nm">AZURE_STORAGE_ACCOUNT</span>=<span class="st">"$STORAGE_ACCOUNT"</span> \
-    <span class="nm">AZURE_STORAGE_CONTAINER</span>=<span class="st">"certis-jbs-documents"</span> \
-    <span class="nm">BLOB_PREFIX</span>=<span class="st">"jbs-documents/"</span> \
-    <span class="nm">DOC_URL_EXPIRY_SECONDS</span>=<span class="st">"900"</span> \
+    AZURE_STORAGE_ACCOUNT="$STORAGE_ACCOUNT" \
+    AZURE_STORAGE_CONTAINER="certis-jbs-documents" \
+    BLOB_PREFIX="jbs-documents/" \
+    DOC_URL_EXPIRY_SECONDS="900" \
   --secrets \
-    storage-key=<span class="st">"$STORAGE_KEY"</span></code></pre>
+    storage-key="$STORAGE_KEY"</pre>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- ═══ STEP 11 ════════════════════════════════════════════════════════ -->
-    <section id="step11">
-      <div class="step-header">
-        <div class="step-badge">11</div>
-        <h2>Deploy SharePoint Sync as ACA Scheduled Job</h2>
+  <!-- ── Step 11 ────────────────────────────────────────────────────── -->
+  <section id="step11" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">11</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 11</div>
+        <div class="step-title">Deploy SharePoint Sync as ACA Scheduled Job</div>
       </div>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>az containerapp job create \
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Create an ACA Scheduled Job that runs the SharePoint sync pipeline daily at 02:00 UTC, keeping all h2oGPTe collections fresh with the latest SOP documents.</p>
+
+    <div class="code-block">
+      <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre>az containerapp job create \
   --name jbs-sharepoint-sync \
   --resource-group $RG \
   --environment $ACA_ENV \
   --trigger-type Schedule \
-  --cron-expression <span class="st">"0 2 * * *"</span> \
+  --cron-expression "0 2 * * *" \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} \
   --registry-server $ACR_LOGIN_SERVER \
   --registry-username $ACR_USERNAME \
   --registry-password $ACR_PASSWORD \
   --replica-timeout 1800 \
-  --cpu 0.5 --memory 1.0Gi \
-  --command <span class="st">"python"</span> <span class="st">"-m"</span> <span class="st">"src.rag.sharepoint_sync"</span> \
+  --cpu 0.5 \
+  --memory 1.0Gi \
+  --command "python" "-m" "src.rag.sharepoint_sync" \
   --env-vars \
-    <span class="nm">H2OGPTE_ADDRESS</span>=<span class="st">"https://your-h2ogpte-instance.h2o.ai"</span> \
-    <span class="nm">AZURE_TENANT_ID</span>=<span class="st">"&lt;tenant ID&gt;"</span> \
-    <span class="nm">AZURE_CLIENT_ID</span>=<span class="st">"&lt;SharePoint client ID&gt;"</span> \
-    <span class="nm">SP_SITE_URL</span>=<span class="st">"https://certissecurity.sharepoint.com/sites/operations"</span> \
+    H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
+    AZURE_TENANT_ID="&lt;your Azure tenant ID&gt;" \
+    AZURE_CLIENT_ID="&lt;SharePoint app registration client ID&gt;" \
+    SP_SITE_URL="https://certissecurity.sharepoint.com/sites/operations" \
+    SP_LIBRARY_CORPORATE="&lt;library ID&gt;" \
+    SP_LIBRARY_AVIATION="&lt;library ID&gt;" \
+    SP_LIBRARY_INDUSTRIAL="&lt;library ID&gt;" \
+    SP_LIBRARY_MARITIME="&lt;library ID&gt;" \
+    SP_LIBRARY_RETAIL="&lt;library ID&gt;" \
   --secrets \
-    h2ogpte-api-key=<span class="st">"&lt;your h2oGPTe API key&gt;"</span> \
-    azure-client-secret=<span class="st">"&lt;your SharePoint secret&gt;"</span></code></pre>
-      </div>
-    </section>
+    h2ogpte-api-key="&lt;your h2oGPTe API key&gt;" \
+    azure-client-secret="&lt;your SharePoint app registration secret&gt;"</pre>
+    </div>
+  </section>
 
-    <!-- ═══ STEP 12 ════════════════════════════════════════════════════════ -->
-    <section id="step12">
-      <div class="step-header">
-        <div class="step-badge">12</div>
-        <h2>Post-Deployment Configuration</h2>
+  <!-- ── Step 12 ────────────────────────────────────────────────────── -->
+  <section id="step12" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">12</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 12</div>
+        <div class="step-title">Post-Deployment Configuration</div>
       </div>
+    </div>
+    <div class="step-divider"></div>
 
-      <h3>12a — Update h2oGPTe Collection IDs</h3>
-      <p>After creating collections in Step 2b, update <code>src/agent/phase_controller.py</code>:</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>SITE_CATEGORY_COLLECTION_MAP = {
-    <span class="st">"Corporate"</span>:   <span class="st">"col_xxxxxxxx"</span>,  <span class="cm"># Replace with real IDs from h2oGPTe UI</span>
-    <span class="st">"Aviation"</span>:    <span class="st">"col_yyyyyyyy"</span>,
-    <span class="st">"Industrial"</span>:  <span class="st">"col_zzzzzzzz"</span>,
-    <span class="st">"Maritime"</span>:    <span class="st">"col_aaaaaaaa"</span>,
-    <span class="st">"Retail"</span>:      <span class="st">"col_bbbbbbbb"</span>,
-}</code></pre>
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">12a</div>
+        <h3>Update h2oGPTe Collection IDs</h3>
+      </div>
+      <p>After creating collections in Step 2b, update the mapping in <code>src/agent/phase_controller.py</code> with the real collection IDs:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">python</span><button class="copy-btn">Copy</button></div>
+        <pre>SITE_CATEGORY_COLLECTION_MAP = {
+    "Corporate":   "col_xxxxxxxx",  # Replace with real collection IDs from h2oGPTe
+    "Aviation":    "col_yyyyyyyy",
+    "Industrial":  "col_zzzzzzzz",
+    "Maritime":    "col_aaaaaaaa",
+    "Retail":      "col_bbbbbbbb",
+}</pre>
       </div>
       <p>Rebuild and redeploy the orchestrator after this change:</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>docker build -f Dockerfile.orchestrator -t ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} .
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>docker build -f Dockerfile.orchestrator \
+  -t ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
-az containerapp update --name jbs-orchestrator --resource-group $RG \
-  --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}</code></pre>
-      </div>
 
-      <h3>12b — Upload the corporate Word template</h3>
-      <p>Place the approved template at <code>templates/jbs_corporate_template.docx</code>, then rebuild and redeploy the document generator:</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>docker build -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
+az containerapp update \
+  --name jbs-orchestrator \
+  --resource-group $RG \
+  --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}</pre>
+      </div>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">12b</div>
+        <h3>Upload the corporate Word template</h3>
+      </div>
+      <p>Place the approved corporate JBS Word template at:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">path</span><button class="copy-btn">Copy</button></div>
+        <pre>templates/jbs_corporate_template.docx</pre>
+      </div>
+      <p>Rebuild and redeploy the document generator:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>docker build -f Dockerfile.document \
+  -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
-az containerapp update --name jbs-docgen --resource-group $RG \
-  --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</code></pre>
-      </div>
 
-      <h3>12c — Deploy H2O Wave Admin Dashboard</h3>
-      <p>The Wave dashboard is deployed via HAIC App Store (not Azure Container Apps):</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>cd dashboard
-h2o bundle
-<span class="cm"># Produces: certis-jbs-dashboard-1.0.0.wave</span></code></pre>
+az containerapp update \
+  --name jbs-docgen \
+  --resource-group $RG \
+  --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</pre>
       </div>
-      <ol class="step-list">
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">12c</div>
+        <h3>Deploy the H2O Wave Admin Dashboard</h3>
+      </div>
+      <p>The Wave dashboard is deployed natively in HAIC via the App Store — it is <strong>not</strong> deployed as an Azure Container App.</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>cd dashboard
+h2o bundle
+# Produces: certis-jbs-dashboard-1.0.0.wave</pre>
+      </div>
+      <ol class="steps-list" style="margin-top:10px;">
         <li>Log in to HAIC console → <strong>App Store → Import App</strong></li>
         <li>Upload <code>certis-jbs-dashboard-1.0.0.wave</code></li>
-        <li>Set visibility to <strong>Private</strong> and click <strong>Deploy</strong></li>
+        <li>Set app visibility to <strong>Private</strong></li>
+        <li>Configure environment variables: <code>ORCHESTRATOR_URL</code>, <code>H2OGPTE_ADDRESS</code></li>
+        <li>Click <strong>Deploy</strong></li>
       </ol>
+    </div>
 
-      <h3>12d — Initial knowledge base population</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="cm"># Trigger a manual SharePoint sync run</span>
-az containerapp job start \
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">12d</div>
+        <h3>Initial knowledge base population</h3>
+      </div>
+      <p>Trigger a manual SharePoint sync to pre-populate all collections before the first user session:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp job start \
+  --name jbs-sharepoint-sync \
+  --resource-group $RG
+
+# Monitor the job run
+az containerapp job execution list \
+  --name jbs-sharepoint-sync \
+  --resource-group $RG \
+  --output table</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Step 13 ────────────────────────────────────────────────────── -->
+  <section id="step13" class="step-section">
+    <div class="step-header">
+      <div class="step-badge">13</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 13</div>
+        <div class="step-title">Verify Deployment</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">13a</div>
+        <h3>Check Container App statuses</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp list --resource-group $RG --output table</pre>
+      </div>
+      <p>Expected output:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">output</span><button class="copy-btn">Copy</button></div>
+        <pre>Name                  ResourceGroup    Location        ProvisioningState
+--------------------  ---------------  --------------  -----------------
+jbs-webhook           certis-jbs-rg    australiaeast   Succeeded
+jbs-orchestrator      certis-jbs-rg    australiaeast   Succeeded
+jbs-docgen            certis-jbs-rg    australiaeast   Succeeded</pre>
+      </div>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">13b</div>
+        <h3>Test the webhook health endpoint</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>curl https://${WEBHOOK_FQDN}/health
+# Expected: {"status": "ok"}</pre>
+      </div>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">13c</div>
+        <h3>Test h2oGPTe RAG connectivity</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>python -c "
+from src.rag.h2ogpte_client import H2OGPTeClient
+client = H2OGPTeClient()
+collections = client.client.list_recent_collections(0, 10)
+print('Collections:', [c.name for c in collections])
+"</pre>
+      </div>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">13d</div>
+        <h3>Verify the Teams messaging endpoint</h3>
+      </div>
+      <p>In <strong>Azure Portal → Azure Bot → Configuration</strong>, the messaging endpoint should show a green checkmark. Use <strong>Test in Web Chat</strong> to send a test message and confirm the bot responds.</p>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">13e</div>
+        <h3>Send an end-to-end test message via Teams</h3>
+      </div>
+      <ol class="steps-list">
+        <li>Open Microsoft Teams and find the JBS bot (search by name or via the app catalogue)</li>
+        <li>Send: <code>Hello</code></li>
+        <li>Expected: Bot greets and asks for Customer Name and Site Name</li>
+        <li>Reply with site details and proceed through all 4 phases</li>
+        <li>Approve the JBS summary and confirm the download link points to <code>*.blob.core.windows.net</code></li>
+      </ol>
+    </div>
+
+    <div class="substep">
+      <div class="substep-header">
+        <div class="substep-dot">13f</div>
+        <h3>Stream service logs</h3>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre># Webhook logs
+az containerapp logs show \
+  --name jbs-webhook \
+  --resource-group $RG \
+  --follow
+
+# Orchestrator logs
+az containerapp logs show \
+  --name jbs-orchestrator \
+  --resource-group $RG \
+  --follow
+
+# Document generator logs
+az containerapp logs show \
+  --name jbs-docgen \
+  --resource-group $RG \
+  --follow</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Step 14 ────────────────────────────────────────────────────── -->
+  <section id="step14" class="step-section">
+    <div class="step-header">
+      <div class="step-badge" style="background: linear-gradient(135deg,#00c58e,#0078d4);">14</div>
+      <div class="step-title-group">
+        <div class="step-label">Step 14</div>
+        <div class="step-title">Production Hardening Checklist</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <p class="section-intro">Complete all items before accepting live production traffic.</p>
+
+    <ul class="checklist">
+      <li>All secrets stored in Azure Key Vault — no plaintext credentials in source control or CLI history</li>
+      <li>Webhook Container App has external ingress with HTTPS enforced</li>
+      <li>Orchestrator and Document Generator Container Apps have <strong>internal-only</strong> ingress</li>
+      <li>Teams Bot RS256 JWT Bearer token validation tested — invalid token returns HTTP 401</li>
+      <li>Teams Bot app manifest published to tenant app catalogue (not just side-loaded)</li>
+      <li>Azure Blob Storage container has public access disabled (<code>--allow-blob-public-access false</code>)</li>
+      <li>Blob SAS token URLs use 15-minute expiry (<code>DOC_URL_EXPIRY_SECONDS=900</code>)</li>
+      <li>SharePoint App Registration uses minimum required permissions: <code>Files.Read.All</code>, <code>Sites.Read.All</code></li>
+      <li>Azure Key Vault access policies restrict secret reading to ACA managed identities only</li>
+      <li>ACR admin credentials rotated after initial deployment — use managed identity for production</li>
+      <li>Container App scaling rules reviewed: min-replicas set correctly per service</li>
+      <li>SharePoint sync ACA Job schedule confirmed and first manual run succeeded</li>
+      <li>h2oGPTe collection IDs updated in <code>phase_controller.py</code> and orchestrator redeployed</li>
+      <li>Corporate Word template baked into document generator image and service redeployed</li>
+      <li>H2O MLOps monitoring alerts configured for h2oGPTe inference latency and error rate</li>
+      <li>Penetration test of public webhook Container App endpoint completed</li>
+    </ul>
+  </section>
+
+  <hr class="section-rule">
+
+  <!-- ── Troubleshooting ───────────────────────────────────────────── -->
+  <section id="troubleshooting" class="step-section">
+    <div class="step-header">
+      <div class="step-badge" style="background: linear-gradient(135deg,#6b2d2d,#a03030); box-shadow:0 4px 12px rgba(160,48,48,.35);">🔧</div>
+      <div class="step-title-group">
+        <div class="step-label">Reference</div>
+        <div class="step-title">Troubleshooting</div>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+
+    <div class="trouble-item">
+      <h4>Bot not responding to messages</h4>
+      <ol class="steps-list">
+        <li>Stream webhook logs: <code>az containerapp logs show --name jbs-webhook --resource-group $RG --follow</code></li>
+        <li>Verify the Teams messaging endpoint shows a green status in Azure Portal → Azure Bot → Configuration</li>
+        <li>Confirm <code>ORCHESTRATOR_URL</code> is reachable from the webhook Container App:</li>
+      </ol>
+      <div class="code-block" style="margin-top:10px;">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp exec --name jbs-webhook --resource-group $RG \
+  --command "curl http://jbs-orchestrator/health"</pre>
+      </div>
+      <p style="margin-top:10px;">4. Check <code>TEAMS_APP_ID</code> matches the Microsoft App ID shown in the Azure Bot resource</p>
+    </div>
+
+    <div class="trouble-item">
+      <h4>Webhook returns HTTP 401</h4>
+      <ol class="steps-list">
+        <li>Confirm <code>TEAMS_APP_ID</code> in webhook env matches the Azure Bot App Registration client ID</li>
+        <li>Verify the JWKS endpoint is reachable:</li>
+      </ol>
+      <div class="code-block" style="margin-top:10px;">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp exec --name jbs-webhook --resource-group $RG \
+  --command "curl https://login.botframework.com/v1/.well-known/keys"</pre>
+      </div>
+      <p style="margin-top:10px;">3. Check that <code>PyJWT</code> and <code>cryptography</code> are installed in the webhook image</p>
+    </div>
+
+    <div class="trouble-item">
+      <h4>Bot cannot send replies (HTTP 401/403 from Teams)</h4>
+      <ol class="steps-list">
+        <li>Confirm <code>teams-app-password</code> secret value is the client <strong>secret</strong> (not the client ID)</li>
+        <li>Verify the secret has not expired: Azure Portal → App Registration → Certificates &amp; secrets</li>
+        <li>Check orchestrator logs for token acquisition errors:</li>
+      </ol>
+      <div class="code-block" style="margin-top:10px;">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp logs show --name jbs-orchestrator --resource-group $RG --follow</pre>
+      </div>
+    </div>
+
+    <div class="trouble-item">
+      <h4>RAG returning no context / hallucinating</h4>
+      <ol class="steps-list">
+        <li>Verify collections are populated:</li>
+      </ol>
+      <div class="code-block" style="margin-top:10px;">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>python -c "from src.rag.h2ogpte_client import H2OGPTeClient; c=H2OGPTeClient(); print(c.client.list_recent_collections(0,10))"</pre>
+      </div>
+      <p style="margin-top:10px;">2. Check Document AI processing status in h2oGPTe UI</p>
+      <p>3. Confirm SharePoint Graph API permissions (<code>Files.Read.All</code>, <code>Sites.Read.All</code>) are granted with admin consent</p>
+    </div>
+
+    <div class="trouble-item">
+      <h4>Document generation fails</h4>
+      <ol class="steps-list">
+        <li>Check document generator logs:</li>
+      </ol>
+      <div class="code-block" style="margin-top:10px;">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre>az containerapp logs show --name jbs-docgen --resource-group $RG --follow</pre>
+      </div>
+      <p style="margin-top:10px;">2. Verify Azure Blob Storage container exists and <code>storage-key</code> secret is correct</p>
+      <p>3. Confirm <code>jbs_corporate_template.docx</code> is present in the container image under <code>templates/</code></p>
+    </div>
+
+    <div class="trouble-item">
+      <h4>SharePoint sync not running</h4>
+      <div class="code-block" style="margin-top:8px;">
+        <div class="code-block-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre># Check job status and execution history
+az containerapp job show \
   --name jbs-sharepoint-sync \
   --resource-group $RG
 
 az containerapp job execution list \
   --name jbs-sharepoint-sync \
-  --resource-group $RG --output table</code></pre>
-      </div>
-    </section>
+  --resource-group $RG \
+  --output table
 
-    <!-- ═══ STEP 13 ════════════════════════════════════════════════════════ -->
-    <section id="step13">
-      <div class="step-header">
-        <div class="step-badge">13</div>
-        <h2>Verify Deployment</h2>
-      </div>
-
-      <h3>13a — Check Container App statuses</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>az containerapp list --resource-group $RG --output table</code></pre>
-      </div>
-
-      <h3>13b — Test webhook health</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>curl https://${WEBHOOK_FQDN}/health
-<span class="cm"># Expected: {"status": "ok"}</span></code></pre>
-      </div>
-
-      <h3>13c — Test h2oGPTe RAG Collections</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>python -c <span class="st">"
-from src.rag.h2ogpte_client import H2OGPTeClient
-import asyncio
-
-async def test():
-    client = H2OGPTeClient()
-    collections = client.client.list_recent_collections(0, 10)
-    print('Collections:', [c.name for c in collections])
-
-asyncio.run(test())
-"</span></code></pre>
-      </div>
-
-      <h3>13d — Verify Teams messaging endpoint</h3>
-      <p>In Azure Portal → Azure Bot → <strong>Configuration</strong>, the messaging endpoint should show a green checkmark. Use <strong>Test in Web Chat</strong> to send a test message.</p>
-
-      <h3>13e — End-to-end Teams test</h3>
-      <ol class="step-list">
-        <li>Open Teams, find the JBS bot, send: <code>Hello</code></li>
-        <li>Bot should greet and ask for Customer Name and Site Name</li>
-        <li>Complete all 4 phases</li>
-        <li>On approval, confirm the download link points to <code>*.blob.core.windows.net</code></li>
-      </ol>
-
-      <h3>13f — Stream service logs</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>az containerapp logs show --name jbs-webhook --resource-group $RG --follow
-az containerapp logs show --name jbs-orchestrator --resource-group $RG --follow
-az containerapp logs show --name jbs-docgen --resource-group $RG --follow</code></pre>
-      </div>
-    </section>
-
-    <!-- ═══ PRODUCTION HARDENING ══════════════════════════════════════════ -->
-    <section id="hardening">
-      <div class="section-header">
-        <div class="step-badge check">✓</div>
-        <div>
-          <h2>Production Hardening Checklist</h2>
-          <div class="section-desc">Complete all items before going live — click to mark as done</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <ul class="checklist" id="checklist">
-          <li><input type="checkbox" onchange="toggleDone(this)"> All secrets stored in Azure Key Vault — no plaintext credentials in source control</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Webhook Container App has external ingress with HTTPS enforced</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Orchestrator and Document Generator Container Apps have internal-only ingress</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Teams Bot RS256 JWT Bearer token validation tested — invalid token returns HTTP 401</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Teams Bot app manifest published to tenant app catalogue (not just side-loaded)</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Azure Blob Storage container has public access disabled</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Blob SAS token URLs use 15-minute expiry (DOC_URL_EXPIRY_SECONDS=900)</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> SharePoint App Registration uses minimum permissions: Files.Read.All, Sites.Read.All</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Azure Key Vault access policies restrict secret reading to ACA managed identities only</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> ACR admin credentials rotated after initial deployment (use managed identity for production)</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Container App scaling rules reviewed: min-replicas set correctly per service</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> SharePoint sync ACA Job schedule confirmed and first manual run succeeded</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> h2oGPTe collection IDs updated in phase_controller.py and orchestrator redeployed</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Corporate Word template baked into document generator image and redeployed</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> MLOps monitoring alerts configured for h2oGPTe inference latency and error rate</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Penetration test of public webhook Container App endpoint completed</li>
-        </ul>
-      </div>
-
-      <div id="checklist-progress" class="callout info" style="display:none">
-        <span class="callout-icon">📋</span>
-        <span id="checklist-status"></span>
-      </div>
-    </section>
-
-    <!-- ═══ TROUBLESHOOTING ════════════════════════════════════════════════ -->
-    <section id="troubleshooting">
-      <div class="section-header">
-        <div class="step-badge trouble">!</div>
-        <div>
-          <h2>Troubleshooting</h2>
-          <div class="section-desc">Common issues and how to resolve them</div>
-        </div>
-      </div>
-
-      <details>
-        <summary><span class="trouble-icon">💬</span> Bot not responding to messages</summary>
-        <div class="details-body">
-          <ol class="step-list">
-            <li>Check webhook service logs:
-              <div class="code-wrap" style="margin-top:10px">
-                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>az containerapp logs show --name jbs-webhook --resource-group $RG --follow</code></pre>
-              </div>
-            </li>
-            <li>Verify the Teams messaging endpoint shows green status in Azure Portal → Azure Bot → Configuration</li>
-            <li>Confirm <code>TEAMS_APP_ID</code> in the webhook env matches the Azure Bot App Registration</li>
-            <li>Confirm orchestrator is reachable from the webhook Container App:
-              <div class="code-wrap" style="margin-top:10px">
-                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>az containerapp exec --name jbs-webhook --resource-group $RG \
-  --command "curl http://jbs-orchestrator/health"</code></pre>
-              </div>
-            </li>
-          </ol>
-        </div>
-      </details>
-
-      <details>
-        <summary><span class="trouble-icon">🧠</span> RAG returning no context / responses hallucinating</summary>
-        <div class="details-body">
-          <ol class="step-list">
-            <li>Verify collections are populated:
-              <div class="code-wrap" style="margin-top:10px">
-                <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>python -c "from src.rag.h2ogpte_client import H2OGPTeClient; c=H2OGPTeClient(); print(c.client.list_recent_collections(0,10))"</code></pre>
-              </div>
-            </li>
-            <li>Check Document AI processing status in the h2oGPTe UI — look for ingestion errors</li>
-            <li>Confirm SharePoint Graph API permissions are admin-consented in Azure Portal</li>
-          </ol>
-        </div>
-      </details>
-
-      <details>
-        <summary><span class="trouble-icon">📄</span> Document generation fails</summary>
-        <div class="details-body">
-          <ol class="step-list">
-            <li>Check document generator logs:
-              <div class="code-wrap" style="margin-top:10px">
-                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>az containerapp logs show --name jbs-docgen --resource-group $RG --follow</code></pre>
-              </div>
-            </li>
-            <li>Verify Azure Blob Storage container exists and credentials are valid:
-              <div class="code-wrap" style="margin-top:10px">
-                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>az storage blob list --container-name certis-jbs-documents \
-  --account-name certisjbsstorage --output table</code></pre>
-              </div>
-            </li>
-            <li>Confirm <code>jbs_corporate_template.docx</code> is present in the container image — check Dockerfile.document</li>
-          </ol>
-        </div>
-      </details>
-
-      <details>
-        <summary><span class="trouble-icon">💾</span> Session state lost after orchestrator Container App restart</summary>
-        <div class="details-body">
-          <p>If <code>STATE_BACKEND=memory</code>, state is lost on restart by design. Switch to <code>sqlite</code> for restart-safe state:</p>
-          <ol class="step-list">
-            <li>Set <code>STATE_BACKEND=sqlite</code> and <code>SQLITE_PATH=/data/jbs_sessions.db</code> in the orchestrator Container App env vars</li>
-            <li>Mount an Azure Files volume at <code>/data</code> on the orchestrator Container App so the SQLite file survives restarts</li>
-          </ol>
-          <p>Note: conversation turn history is never lost regardless of state backend — it lives in h2oGPTe natively via <code>conversation_id</code>.</p>
-        </div>
-      </details>
-
-      <details>
-        <summary><span class="trouble-icon">🔄</span> SharePoint sync ACA Job not running</summary>
-        <div class="details-body">
-          <ol class="step-list">
-            <li>Check ACA Job execution history:
-              <div class="code-wrap" style="margin-top:10px">
-                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>az containerapp job execution list \
+# Trigger a manual run
+az containerapp job start \
   --name jbs-sharepoint-sync \
-  --resource-group $RG --output table</code></pre>
-              </div>
-            </li>
-            <li>Trigger a manual sync run:
-              <div class="code-wrap" style="margin-top:10px">
-                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>az containerapp job start \
-  --name jbs-sharepoint-sync \
-  --resource-group $RG</code></pre>
-              </div>
-            </li>
-          </ol>
-        </div>
-      </details>
+  --resource-group $RG</pre>
+      </div>
+    </div>
+  </section>
 
-    </section>
-
-  </div><!-- /content -->
-</div><!-- /main -->
+</main>
 
 <script>
-  // ── Active nav link on scroll ──────────────────────────────────────────
-  const sections = document.querySelectorAll('section[id]');
-  const navLinks  = document.querySelectorAll('#sidebar nav a');
-
-  function updateActiveLink() {
-    let current = '';
-    sections.forEach(s => {
-      const top = s.getBoundingClientRect().top;
-      if (top <= 100) current = s.id;
+  // ── Copy to clipboard ─────────────────────────────────────────────────
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+      });
     });
-    navLinks.forEach(a => {
-      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+
+  // ── Scroll progress bar ───────────────────────────────────────────────
+  const fill = document.getElementById('progress-fill');
+  window.addEventListener('scroll', () => {
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    fill.style.width = (window.scrollY / total * 100) + '%';
+  });
+
+  // ── Active nav link via IntersectionObserver ──────────────────────────
+  const navLinks = document.querySelectorAll('#sidebar nav a');
+  const sections = Array.from(navLinks)
+    .map(a => document.querySelector(a.getAttribute('href')))
+    .filter(Boolean);
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navLinks.forEach(a => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+        });
+        // Scroll active link into view within sidebar
+        const activeLink = document.querySelector(`#sidebar nav a[href="#${id}"]`);
+        if (activeLink) {
+          activeLink.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      }
     });
-  }
+  }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
 
-  document.getElementById('main').addEventListener('scroll', updateActiveLink);
-  window.addEventListener('scroll', updateActiveLink);
-  updateActiveLink();
-
-  // ── Copy-to-clipboard ─────────────────────────────────────────────────
-  function copyCode(btn) {
-    const pre = btn.closest('.code-wrap').querySelector('pre');
-    const text = pre.innerText;
-    navigator.clipboard.writeText(text).then(() => {
-      btn.textContent = 'Copied!';
-      btn.classList.add('copied');
-      setTimeout(() => {
-        btn.textContent = 'Copy';
-        btn.classList.remove('copied');
-      }, 2000);
-    });
-  }
-
-  // ── Checklist progress ────────────────────────────────────────────────
-  function toggleDone(cb) {
-    cb.closest('li').classList.toggle('done', cb.checked);
-    updateProgress();
-  }
-
-  function updateProgress() {
-    const all     = document.querySelectorAll('#checklist input[type="checkbox"]');
-    const checked = document.querySelectorAll('#checklist input[type="checkbox"]:checked');
-    const pct     = Math.round((checked.length / all.length) * 100);
-    const el      = document.getElementById('checklist-progress');
-    const st      = document.getElementById('checklist-status');
-
-    el.style.display = 'flex';
-    if (pct === 100) {
-      el.className = 'callout success';
-      st.textContent = '✅ All production hardening checks complete. Platform is ready for go-live.';
-    } else {
-      el.className = 'callout info';
-      st.textContent = `${checked.length} of ${all.length} checks complete (${pct}%)`;
-    }
-  }
+  sections.forEach(s => observer.observe(s));
 </script>
 </body>
 </html>
