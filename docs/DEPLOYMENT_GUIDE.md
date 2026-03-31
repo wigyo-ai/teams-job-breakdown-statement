@@ -313,8 +313,19 @@ AZURE_STORAGE_KEY=<paste STORAGE_KEY value>
 
 ```bash
 az keyvault create --name $KV_NAME --resource-group $RG --location $LOCATION --sku standard --enable-rbac-authorization true
+```
 
-# The four secrets used by Container Apps (run each line separately)
+The vault uses Azure RBAC for access control. Assign yourself the **Key Vault Secrets Officer** role before setting secrets:
+
+```bash
+az role assignment create --role "Key Vault Secrets Officer" \
+  --assignee $(az ad signed-in-user show --query id -o tsv) \
+  --scope $(az keyvault show --name $KV_NAME --resource-group $RG --query id -o tsv)
+```
+
+Wait ~30 seconds for the role assignment to propagate, then set the four secrets:
+
+```bash
 az keyvault secret set --vault-name $KV_NAME --name teams-app-password --value "<TEAMS_APP_PASSWORD>"
 az keyvault secret set --vault-name $KV_NAME --name h2ogpte-api-key --value "<H2OGPTE_API_KEY>"
 az keyvault secret set --vault-name $KV_NAME --name azure-client-secret --value "<AZURE_CLIENT_SECRET>"
