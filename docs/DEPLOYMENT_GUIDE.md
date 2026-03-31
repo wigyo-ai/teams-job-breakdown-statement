@@ -20,13 +20,21 @@ The platform consists of three middleware services deployed on **Azure Container
 
 | Requirement | Notes |
 |---|---|
-| Azure CLI v2.55+ | With `containerapp` extension: `az extension add --name containerapp` |
+| Azure CLI v2.55+ | `brew install azure-cli` or see [docs.microsoft.com](https://docs.microsoft.com/cli/azure/install-azure-cli) |
+| Azure CLI containerapp extension | `az extension add --name containerapp` |
 | Docker v24+ | For building and pushing images |
 | Python 3.11+ | For local testing and running sync scripts |
 | Azure subscription | Contributor access |
 | Microsoft 365 tenant | Teams enabled, admin access to Azure AD |
 | H2O Enterprise h2oGPTe | Licensed HAIC instance — pre-provisioned, no changes required |
 | H2O Document AI | Licensed HAIC instance — pre-provisioned, no changes required |
+
+Install the containerapp extension before starting:
+
+```bash
+az extension add --name containerapp
+az login
+```
 
 ---
 
@@ -54,8 +62,8 @@ SESSION_TTL_HOURS=24
 # REDIS_URL=rediss://:password@your-redis.cache.windows.net:6380/0  # only if external_redis
 
 # ── Microsoft Teams — Azure Bot Service ─────────────────────────────────────
-TEAMS_APP_ID=                             # Azure Bot App Registration client ID  (Step 5)
-TEAMS_APP_PASSWORD=                       # Azure Bot App Registration client secret (Step 5)
+TEAMS_APP_ID=                             # Azure Bot App Registration client ID  (Step 6)
+TEAMS_APP_PASSWORD=                       # Azure Bot App Registration client secret (Step 6)
 
 # ── SharePoint / Microsoft Graph API ────────────────────────────────────────
 AZURE_TENANT_ID=                          # Azure AD tenant ID
@@ -69,9 +77,9 @@ SP_LIBRARY_MARITIME=
 SP_LIBRARY_RETAIL=
 
 # ── Azure Blob Storage ───────────────────────────────────────────────────────
-AZURE_STORAGE_ACCOUNT=certisjbsstorage    # Set after Step 7
+AZURE_STORAGE_ACCOUNT=certisjbsstorage    # Set after Step 9
 AZURE_STORAGE_CONTAINER=certis-jbs-documents
-AZURE_STORAGE_KEY=                        # Set after Step 7
+AZURE_STORAGE_KEY=                        # Set after Step 9
 BLOB_PREFIX=jbs-documents/
 DOC_URL_EXPIRY_SECONDS=900                # SAS URL validity (seconds) — default 15 min
 
@@ -293,11 +301,19 @@ The Document Generator uploads `.docx` files to Blob Storage and returns a 15-mi
 
 ```bash
 az storage account create --name $STORAGE_ACCOUNT --resource-group $RG --location $LOCATION --sku Standard_LRS --kind StorageV2 --allow-blob-public-access false
+```
 
-az storage container create --name certis-jbs-documents --account-name $STORAGE_ACCOUNT --auth-mode login
+> **DNS propagation:** Wait ~30–60 seconds after the account is created before running the next commands. The blob endpoint (`certisjbsstorage.blob.core.windows.net`) may not resolve immediately.
 
-# Retrieve the storage key — stored in Key Vault in Step 10
+Retrieve the storage key, then create the container using it:
+
+```bash
 export STORAGE_KEY=$(az storage account keys list --account-name $STORAGE_ACCOUNT --resource-group $RG --query "[0].value" -o tsv)
+
+# Verify the key was retrieved
+echo $STORAGE_KEY
+
+az storage container create --name certis-jbs-documents --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY
 ```
 
 Update your `.env`:
@@ -318,9 +334,7 @@ az keyvault create --name $KV_NAME --resource-group $RG --location $LOCATION --s
 The vault uses Azure RBAC for access control. Assign yourself the **Key Vault Secrets Officer** role before setting secrets:
 
 ```bash
-az role assignment create --role "Key Vault Secrets Officer" \
-  --assignee $(az ad signed-in-user show --query id -o tsv) \
-  --scope $(az keyvault show --name $KV_NAME --resource-group $RG --query id -o tsv)
+az role assignment create --role "Key Vault Secrets Officer" --assignee $(az ad signed-in-user show --query id -o tsv) --scope $(az keyvault show --name $KV_NAME --resource-group $RG --query id -o tsv)
 ```
 
 Wait ~30 seconds for the role assignment to propagate, then set the four secrets:
@@ -330,6 +344,12 @@ az keyvault secret set --vault-name $KV_NAME --name teams-app-password --value "
 az keyvault secret set --vault-name $KV_NAME --name h2ogpte-api-key --value "<H2OGPTE_API_KEY>"
 az keyvault secret set --vault-name $KV_NAME --name azure-client-secret --value "<AZURE_CLIENT_SECRET>"
 az keyvault secret set --vault-name $KV_NAME --name storage-key --value "$STORAGE_KEY"
+```
+
+Verify all four secrets are stored:
+
+```bash
+az keyvault secret list --vault-name $KV_NAME --query "[].name" -o tsv
 ```
 
 ---
