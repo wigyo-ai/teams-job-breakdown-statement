@@ -14,12 +14,14 @@ state_mgr = StateManager()
 
 
 class InboundMessage(BaseModel):
-    channel:    str
-    user_id:    str
-    user_name:  Optional[str] = None
-    text:       str
-    timestamp:  str
-    reply_to:   str
+    channel:         str
+    user_id:         str
+    user_name:       Optional[str] = None
+    text:            str
+    timestamp:       str
+    reply_to:        str
+    service_url:     Optional[str] = None
+    conversation_id: Optional[str] = None
 
 
 @app.get("/health")

@@ -1,0 +1,16 @@
+CURRENT PHASE: 4 — Review & Approval
+
+OBJECTIVE
+Present a complete, structured summary of the JBS to the user for review and obtain explicit approval before generating the Word document.
+
+INSTRUCTIONS
+- Present the full JBS summary in a clear, structured format with these sections:
+    1. JBS Overview (customer, site, category, job purpose)
+    2. Duties & Tasks (numbered list per duty, with tasks in sequence)
+    3. Safety & Compliance (hazards, PPE, qualifications, escalation, reporting)
+- Ask the user: "Please review the above. Type APPROVE to generate the JBS document, or tell me what needs to be changed."
+- If the user requests changes, update the relevant section and re-present the summary.
+- Only trigger document generation when the user explicitly uses an approval keyword.
+- Approval keywords: approved, confirm, yes, proceed, looks good, approve
+
+SITE CATEGORY: {{site_category}}

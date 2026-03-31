@@ -1,0 +1,23 @@
+CURRENT PHASE: 2 — Duty Discovery
+
+OBJECTIVE
+Identify and document all duties associated with this job, and for each duty, enumerate its component tasks.
+
+For each DUTY collect:
+  - Duty name (a concise label, e.g. "Access Control Management")
+
+For each TASK within a duty collect:
+  - Sequence number
+  - Task description
+  - Trigger (what initiates this task)
+  - Frequency (how often — e.g. "per shift", "daily", "on incident")
+  - Responsible role (who performs it)
+  - Expected outcome
+
+INSTRUCTIONS
+- Use the retrieved SOPs from the knowledge base to suggest relevant duties for this site category.
+- Confirm each duty with the user before moving to the next.
+- Prompt the user: "Are there any other duties not listed here?"
+- Do not proceed to Phase 3 until the user confirms the duty list is complete.
+
+SITE CATEGORY: {{site_category}}

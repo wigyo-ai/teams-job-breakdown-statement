@@ -1,13 +1,17 @@
 # =============================================================================
-# Certis JBS Platform — Helm Values
+# Certis JBS Platform — Reference Configuration
 #
-# This chart deploys ONLY the custom services that cannot run natively on HAIC:
+# This file documents the environment variable mapping for the three middleware
+# services deployed on Azure Container Apps (ACA):
 #   1. Webhook Service      (FastAPI — receives Microsoft Teams events via Azure Bot Service)
 #   2. Conversation Orchestrator (FastAPI — phase state machine + h2oGPTe calls)
 #   3. Document Generator   (Python — renders .docx from approved JBS JSON)
-#   4. SharePoint Sync CronJob (runs daily to keep h2oGPTe collections fresh)
+#   4. SharePoint Sync      (ACA Scheduled Job — runs daily to keep h2oGPTe collections fresh)
 #
-# NOT in this chart (managed natively on HAIC):
+# Primary deployment uses `az containerapp` commands — see docs/DEPLOYMENT_GUIDE.md.
+# The env-vars listed here map directly to ACA --env-vars / --secrets parameters.
+#
+# NOT deployed via this chart (managed separately):
 #   - Admin Dashboard  → deploy via `h2o bundle` + HAIC App Store
 #   - Redis            → eliminated; h2oGPTe owns conversation history natively
 #   - h2oGPTe          → licensed HAIC service, pre-provisioned
@@ -16,7 +20,7 @@
 # =============================================================================
 
 global:
-  registry: registry.your-haic-cluster.h2o.ai/certis
+  registry: myregistry.azurecr.io/certis
   imageTag: "1.0.0"
   imagePullPolicy: Always
   tenantId: "certis"
@@ -48,7 +52,7 @@ webhook:
   ingress:
     enabled: true
     className: nginx
-    host: jbs-webhook.your-haic-cluster.h2o.ai   # Must be publicly reachable by Azure Bot Service
+    host: <your-webhook-app>.azurecontainerapps.io   # Must be publicly reachable by Azure Bot Service
     tlsSecret: jbs-webhook-tls
   env:
     plain:
@@ -91,7 +95,6 @@ orchestrator:
       SP_LIBRARY_INDUSTRIAL: "<PLACEHOLDER>"
       SP_LIBRARY_MARITIME: "<PLACEHOLDER>"
       SP_LIBRARY_RETAIL: "<PLACEHOLDER>"
-      MOZART_API_BASE_URL: "https://mozart.certis.internal/api/v1"
       TENANT_ID: "certis"
       SESSION_TTL_HOURS: "24"
       # State backend: "memory" (single replica), "sqlite" (restart-safe), or
@@ -105,9 +108,6 @@ orchestrator:
       AZURE_CLIENT_SECRET:
         name: certis-jbs-secrets
         key: azure-client-secret
-      MOZART_API_KEY:
-        name: certis-jbs-secrets
-        key: mozart-api-key
       # Only needed if STATE_BACKEND=external_redis
       # REDIS_URL:
       #   name: certis-jbs-secrets
@@ -115,7 +115,7 @@ orchestrator:
 
 # -----------------------------------------------------------------------------
 # 3. Document Generator
-#    Internal only. Renders approved JBS JSON to .docx, uploads to S3.
+#    Internal only. Renders approved JBS JSON to .docx, uploads to Azure Blob Storage.
 # -----------------------------------------------------------------------------
 documentGenerator:
   replicaCount: 1
@@ -130,15 +130,14 @@ documentGenerator:
       memory: "1Gi"
   env:
     plain:
-      S3_BUCKET: "certis-jbs-documents"
-      S3_ENDPOINT_URL: "https://storage.your-haic-cluster.h2o.ai"
-      S3_PREFIX: "jbs-documents/"
+      AZURE_STORAGE_ACCOUNT: "<your storage account name>"
+      AZURE_STORAGE_CONTAINER: "certis-jbs-documents"
+      BLOB_PREFIX: "jbs-documents/"
       DOC_URL_EXPIRY_SECONDS: "900"
-      AWS_ACCESS_KEY_ID: "<PLACEHOLDER>"
     secret:
-      AWS_SECRET_ACCESS_KEY:
+      AZURE_STORAGE_KEY:
         name: certis-jbs-secrets
-        key: s3-secret-access-key
+        key: storage-key
 
 # -----------------------------------------------------------------------------
 # 4. SharePoint Sync CronJob

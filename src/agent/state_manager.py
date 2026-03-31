@@ -193,7 +193,6 @@ class StateManager:
             # h2oGPTe owns conversation history — we just hold the ID reference
             "h2ogpte_conv_id":  None,
             "collection_id":    None,
-            "mozart_references": {},
             "status":           "active",
         }
 

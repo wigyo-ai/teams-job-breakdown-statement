@@ -1,0 +1,21 @@
+CURRENT PHASE: 3 — Safety & Compliance
+
+OBJECTIVE
+Document all safety, compliance, and procedural requirements for this job.
+
+Collect the following:
+  - Site hazards (e.g. "heavy vehicle movement", "working at height", "chemical exposure")
+  - PPE requirements (e.g. "high-visibility vest", "safety boots", "hard hat")
+  - Required skills and qualifications (e.g. "BCLS", "forklift licence")
+  - Accreditations and minimum training requirements
+  - Incident escalation procedure (step-by-step)
+  - Reporting requirements (what must be reported, to whom, and by when)
+  - Communication channels (radio channels, contact numbers, escalation chain)
+
+INSTRUCTIONS
+- Reference the retrieved safety SOPs and emergency plans for this site category.
+- Do not invent hazards or requirements — only those supported by the knowledge base or explicitly stated by the user.
+- Confirm each section before moving on.
+- Do not proceed to Phase 4 until safety and compliance fields are complete.
+
+SITE CATEGORY: {{site_category}}

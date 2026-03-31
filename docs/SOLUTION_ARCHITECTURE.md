@@ -2,7 +2,7 @@
 
 ## 1. Architecture Overview
 
-The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud (HAIC)**. It uses **H2O Enterprise h2oGPTe** as the core AI and RAG engine, with external integrations for messaging (Microsoft Teams via Azure Bot Service), document sources (SharePoint), reference systems (Mozart), and document generation (python-docx).
+The platform is a multi-layer, cloud-native solution. The three middleware services (webhook, orchestrator, document generator) are deployed on **Azure Container Apps (ACA)**. **H2O Enterprise h2oGPTe** remains on HAIC as the core AI and RAG engine. External integrations cover messaging (Microsoft Teams via Azure Bot Service), document sources (SharePoint), and document generation (python-docx).
 
 ---
 
@@ -19,11 +19,11 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
                                │  JWT Bearer token (RS256, validated on receipt)
                                ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                H2O AI CLOUD (HAIC) — Kubernetes Cluster                     │
+│                    AZURE CONTAINER APPS ENVIRONMENT                         │
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │                 LAYER 1: INGESTION & WEBHOOK SERVICE                 │   │
-│  │                   (FastAPI — deployed as HAIC App)                   │   │
+│  │              (FastAPI — Azure Container Apps, external ingress)      │   │
 │  │                                                                      │   │
 │  │   • Receives Bot Framework Activity events from Microsoft Teams      │   │
 │  │   • Validates RS256 JWT Bearer token (Azure Bot Service JWKS)        │   │
@@ -34,10 +34,10 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 │                            ▼                                                │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │              LAYER 2: CONVERSATION ORCHESTRATOR                      │   │
-│  │              (Python Service — deployed as HAIC App)                 │   │
+│  │           (Python Service — Azure Container Apps, internal)          │   │
 │  │                                                                      │   │
 │  │   • Maintains per-user conversation state in SQLite                  │   │
-│  │   • Enforces 5-phase interview flow (Phase 1 → 5)                    │   │
+│  │   • Enforces 4-phase interview flow (Phase 1 → 4)                    │   │
 │  │   • Builds prompt context window for each turn                       │   │
 │  │   • Enforces anti-hallucination rules (RAG-only responses)           │   │
 │  │   • Dispatches to h2oGPTe API                                        │   │
@@ -45,26 +45,26 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 │  │                                                                      │   │
 │  │   State Store: SQLite (default) / external managed Redis             │   │
 │  └──────┬───────────────────┬──────────────────────────────────────────┘   │
-│         │                   │                                               │
-│         ▼                   ▼                                               │
-│  ┌─────────────┐   ┌────────────────────────────────────────────────────┐   │
-│  │   LAYER 3:  │   │               LAYER 4: RAG & AI ENGINE             │   │
-│  │   MOZART    │   │         H2O Enterprise h2oGPTe (HAIC Service)      │   │
-│  │ INTEGRATION │   │                                                    │   │
-│  │             │   │  ┌─────────────────┐   ┌───────────────────────┐   │   │
-│  │  REST API   │   │  │  Collections:   │   │   LLM Inference       │   │   │
-│  │  Client     │   │  │  • Corporate    │   │   (llama3/mistral or  │   │   │
-│  │             │   │  │  • Aviation     │   │    custom fine-tuned  │   │   │
-│  │  Fetches:   │   │  │  • Industrial   │   │    model via LLM      │   │   │
-│  │  • Site IDs │   │  │  • Maritime     │   │    Studio)            │   │   │
-│  │  • Doc refs │   │  │  • Retail       │   │                       │   │   │
-│  │  • SOPs     │   │  └────────┬────────┘   └───────────────────────┘   │   │
-│  └─────────────┘   │           │  Vector Search (hnswlib)               │   │
-│         │          └───────────┼────────────────────────────────────────┘   │
-│         │                      │                                            │
-│         ▼                      ▼                                            │
+│                            │                                                │
+│                            ▼                                                │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │              LAYER 5: KNOWLEDGE BASE PIPELINE                        │   │
+│  │               LAYER 3: RAG & AI ENGINE                               │   │
+│  │         H2O Enterprise h2oGPTe (HAIC Service)                        │   │
+│  │                                                                      │   │
+│  │  ┌─────────────────┐   ┌───────────────────────┐                     │   │
+│  │  │  Collections:   │   │   LLM Inference       │                     │   │
+│  │  │  • Corporate    │   │   (llama3/mistral or  │                     │   │
+│  │  │  • Aviation     │   │    custom fine-tuned  │                     │   │
+│  │  │  • Industrial   │   │    model via LLM      │                     │   │
+│  │  │  • Maritime     │   │    Studio)            │                     │   │
+│  │  │  • Retail       │   │                       │                     │   │
+│  │  └────────┬────────┘   └───────────────────────┘                     │   │
+│  │           │  Vector Search (hnswlib)                                 │   │
+│  └───────────┼────────────────────────────────────────────────────────┘    │
+│              │                                                              │
+│              ▼                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │              LAYER 4: KNOWLEDGE BASE PIPELINE                        │   │
 │  │                                                                      │   │
 │  │   SharePoint Online ──► Microsoft Graph API                          │   │
 │  │          │                     │                                     │   │
@@ -76,17 +76,17 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │              LAYER 6: DOCUMENT GENERATION SERVICE                    │   │
-│  │              (Python — deployed as HAIC App)                         │   │
+│  │              LAYER 5: DOCUMENT GENERATION SERVICE                    │   │
+│  │              (Python — deployed as Azure Container Apps)             │   │
 │  │                                                                      │   │
 │  │   Receives: Approved JBS JSON (<JBS_DATA> payload)                   │   │
 │  │   Processes: Maps JSON fields to corporate Word template             │   │
-│  │   Outputs: Signed .docx URL (stored in HAIC object store / S3)       │   │
+│  │   Outputs: Signed .docx URL (stored in Azure Blob Storage)           │   │
 │  │   Notifies: Sends download link back to user via Teams Bot API       │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │              LAYER 7: ADMIN DASHBOARD                                │   │
+│  │              LAYER 6: ADMIN DASHBOARD                                │   │
 │  │              (H2O Wave — deployed as HAIC App)                       │   │
 │  │                                                                      │   │
 │  │   • View all active JBS interviews and their current phase           │   │
@@ -105,18 +105,17 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 
 | Component | Technology | Role | Hosting |
 |---|---|---|---|
-| Webhook Service | FastAPI (Python) | Receive & validate Teams Bot Framework events | **Helm** |
-| Conversation Orchestrator | Python service | Phase state machine, prompt builder, Teams reply sender | **Helm** |
+| Webhook Service | FastAPI (Python) | Receive & validate Teams Bot Framework events | **Azure Container Apps** |
+| Conversation Orchestrator | Python service | Phase state machine, prompt builder, Teams reply sender | **Azure Container Apps** |
 | Session State | SQLite (default) or external managed Redis | Per-user phase state (TTL: 24h) | **In-process** (no Redis pod) |
 | Conversation History | H2O Enterprise h2oGPTe (native) | Full turn history via conversation_id | **h2oGPTe — no Redis needed** |
 | AI + RAG Engine | H2O Enterprise h2oGPTe | LLM inference + vector search | HAIC Service (pre-provisioned) |
 | Knowledge Base | h2oGPTe Collections | Per-category SOPs and historical JBS | h2oGPTe |
-| Document Ingestion Pipeline | H2O Document AI + Graph API | Sync SharePoint → Vector Store | **Helm** (CronJob) |
-| Mozart Connector | Python REST client | Fetch site/document references | Inline in Orchestrator |
-| Document Generator | python-docx (Python) | Render approved JSON to .docx | **Helm** |
+| Document Ingestion Pipeline | H2O Document AI + Graph API | Sync SharePoint → Vector Store | **Azure Container Apps Job (scheduled)** |
+| Document Generator | python-docx (Python) | Render approved JSON to .docx | **Azure Container Apps** |
 | Admin Dashboard | H2O Wave | Monitoring, management UI | **HAIC App Store** (native — not Helm) |
 | Model Monitoring | H2O MLOps | Track inference latency, drift | HAIC Service (pre-provisioned) |
-| Object Storage | S3-compatible (HAIC) | Store generated .docx files | HAIC Storage |
+| Object Storage | Azure Blob Storage | Store generated .docx files | Azure Storage |
 
 ---
 
@@ -128,7 +127,7 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
 3. Webhook Service validates RS256 JWT Bearer token (against Bot Framework JWKS)
 4. Webhook Service extracts text + user AAD object ID, normalises to internal schema
 5. Conversation Orchestrator loads user session from SQLite
-6. Orchestrator determines current Phase (1–5)
+6. Orchestrator determines current Phase (1–4)
 7. Orchestrator builds prompt:
      - System prompt (phase-specific instructions + anti-hallucination rules)
      - Retrieved RAG context (from h2oGPTe Collection for this site category)
@@ -136,10 +135,9 @@ The platform is a multi-layer, cloud-native solution deployed on **H2O AI Cloud 
      - User's latest message
 8. Orchestrator calls h2oGPTe API → LLM generates response
 9. Orchestrator updates SQLite session (new phase state, extracted fields)
-10. If Phase 4: Mozart connector fetches reference document metadata
-11. If Phase 5 (user approves): JSON emitted → Document Generator
-12. Document Generator renders .docx, stores in HAIC object store
-13. Orchestrator obtains OAuth2 token from Azure AD (Bot Framework scope),
+10. If Phase 4 (user approves): JSON emitted → Document Generator
+11. Document Generator renders .docx, stores in Azure Blob Storage
+12. Orchestrator obtains OAuth2 token from Azure AD (Bot Framework scope),
     POSTs reply Activity to Teams via Bot Framework REST API
 ```
 
@@ -175,13 +173,12 @@ h2oGPTe Collection (per site category)
 | Concern | Control |
 |---|---|
 | Webhook authenticity | RS256 JWT Bearer token validation (Azure Bot Service JWKS — `login.botframework.com`) |
-| API keys | H2O Secret Manager (HAIC) — never in plaintext config |
+| API keys | Azure Key Vault — never in plaintext config |
 | User identity | Azure AD Object ID (`aadObjectId`) used as stable user identifier |
-| Document access | Signed S3 URLs (15-minute expiry) |
+| Document access | Azure Blob SAS token URLs (15-minute expiry) |
 | SharePoint auth | Azure AD App Registration (OAuth 2.0 client credentials) |
 | Teams Bot auth | Azure AD client credentials flow (Bot Framework scope) — token cached in-process |
-| Mozart auth | API Key stored in H2O Secret Manager |
-| Network | All inter-service communication within HAIC cluster (no public exposure of internal services) |
+| Network | Webhook: ACA external ingress (HTTPS). Orchestrator and Document Generator: ACA internal ingress only. |
 | RBAC | HAIC role-based access for admin dashboard users |
 
 ---
@@ -207,11 +204,7 @@ h2oGPTe Collection (per site category)
 │                │          reporting_requirements,    │
 │                │          comms_channels[]           │
 │                ▼                                     │
-│             Phase 4: Mozart Integration              │
-│                │  Fields: mozart_site_id,            │
-│                │          reference_doc_ids[]        │
-│                ▼                                     │
-│             Phase 5: Review & Approval               │
+│             Phase 4: Review & Approval               │
 │                │  Actions: present_summary →         │
 │                │           await_approval →          │
 │                │           emit_JBS_DATA_JSON →      │
@@ -262,17 +255,6 @@ h2oGPTe Collection (per site category)
     "incident_escalation": "string",
     "reporting_requirements": "string",
     "communication_channels": ["string"]
-  },
-  "mozart_references": {
-    "site_id": "string",
-    "reference_documents": [
-      {
-        "doc_id": "string",
-        "doc_title": "string",
-        "doc_type": "SOP | Emergency Plan | Policy",
-        "mozart_url": "string"
-      }
-    ]
   }
 }
 ```
@@ -288,5 +270,5 @@ h2oGPTe Collection (per site category)
 | Knowledge base freshness | SharePoint sync within 24 hours |
 | Session persistence | 24-hour TTL (extendable) |
 | Document generation time | < 30 seconds |
-| Availability | 99.5% (HAIC SLA) |
+| Availability | 99.95% (Azure Container Apps SLA) |
 | Data residency | Configurable per HAIC deployment region |

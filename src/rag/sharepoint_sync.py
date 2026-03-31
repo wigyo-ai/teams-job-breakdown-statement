@@ -1,7 +1,7 @@
 """
 SharePoint → h2oGPTe sync pipeline.
 Pulls documents changed in last 24h and ingests them into per-category collections.
-Runs as a Kubernetes CronJob (daily 02:00 UTC) or on-demand via admin dashboard.
+Runs as an Azure Container Apps Scheduled Job (daily 02:00 UTC) or on-demand via admin dashboard.
 """
 
 import os

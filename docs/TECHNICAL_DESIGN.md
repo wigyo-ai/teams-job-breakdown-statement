@@ -9,62 +9,52 @@ certis-jbs-platform/
 │   ├── SOLUTION_ARCHITECTURE.md
 │   ├── TECHNICAL_DESIGN.md
 │   ├── DEPLOYMENT_GUIDE.md
-│   └── CONFIGURATION_REFERENCE.md
+│   ├── CONFIGURATION_REFERENCE.md
+│   ├── deployment-guide.html       # Interactive HTML deployment guide
+│   └── solution-diagram.html       # Interactive architecture diagram
 ├── src/
-│   ├── webhook/                    # Webhook receiver service (FastAPI)
+│   ├── webhook/                    # Webhook receiver service (FastAPI, port 8000)
 │   │   ├── main.py
 │   │   ├── teams.py                # Microsoft Teams Bot Framework event parser
 │   │   └── schema.py
-│   ├── agent/                      # Conversation orchestrator
-│   │   ├── orchestrator.py
-│   │   ├── phase_controller.py
-│   │   ├── prompt_builder.py
-│   │   ├── state_manager.py
-│   │   └── phases/
-│   │       ├── phase1_context.py
-│   │       ├── phase2_duties.py
-│   │       ├── phase3_safety.py
-│   │       ├── phase4_mozart.py
-│   │       └── phase5_review.py
+│   ├── agent/                      # Conversation orchestrator (FastAPI, port 8001)
+│   │   ├── server.py               # FastAPI entrypoint (/health, /process)
+│   │   ├── orchestrator.py         # 4-phase state machine + Teams reply sender
+│   │   ├── phase_controller.py     # Phase transitions, field extraction, approval detection
+│   │   ├── prompt_builder.py       # Assembles system prompt from phase prompt files
+│   │   └── state_manager.py        # Session persistence (memory / sqlite / external_redis)
 │   ├── rag/
-│   │   ├── h2ogpte_client.py       # h2oGPTe API wrapper
-│   │   ├── collection_manager.py   # Manage per-category collections
-│   │   └── sharepoint_sync.py      # SharePoint → h2oGPTe ingestion
+│   │   ├── h2ogpte_client.py       # h2oGPTe API wrapper (LLM + RAG)
+│   │   └── sharepoint_sync.py      # SharePoint → h2oGPTe ingestion (ACA scheduled job)
 │   ├── integrations/
-│   │   ├── mozart_client.py        # Mozart REST API client
-│   │   └── graph_api_client.py     # Microsoft Graph API client
-│   └── document/
-│       ├── generator.py            # python-docx renderer
-│       └── jbs_template.docx       # Corporate Word template
-├── dashboard/
-│   ├── app.py                      # H2O Wave admin dashboard
-│   └── cards/
-│       ├── interview_monitor.py
-│       ├── document_library.py
-│       └── sync_manager.py
+│   │   └── graph_api_client.py     # Microsoft Graph API client (SharePoint access)
+│   └── document/                   # Document generator service (FastAPI, port 8002)
+│       ├── server.py               # FastAPI entrypoint (/health, /generate)
+│       └── generator.py            # python-docx renderer + Azure Blob Storage upload
 ├── config/
-│   ├── settings.py                 # Pydantic settings model
 │   └── prompts/
-│       ├── system_base.txt
-│       ├── phase1.txt
-│       ├── phase2.txt
-│       ├── phase3.txt
-│       ├── phase4.txt
-│       └── phase5.txt
+│       ├── system_base.txt         # Core JBS assistant persona + anti-hallucination rules
+│       ├── phase1.txt              # Phase 1: Context & Initiation prompt
+│       ├── phase2.txt              # Phase 2: Duty Discovery prompt
+│       ├── phase3.txt              # Phase 3: Safety & Compliance prompt
+│       └── phase4.txt              # Phase 4: Review & Approval prompt
 ├── templates/
-│   └── jbs_corporate_template.docx
+│   └── jbs_corporate_template.docx # Word template with {BOOKMARK} placeholders
 ├── deploy/
-│   ├── helm/
-│   │   ├── Chart.yaml
-│   │   └── values.yaml
-│   └── k8s/
-│       ├── webhook-deployment.yaml
-│       ├── orchestrator-deployment.yaml
-│       └── document-generator-deployment.yaml
+│   ├── azure/
+│   │   ├── main.bicep              # Bicep IaC — provisions full ACA environment
+│   │   └── README.md               # Bicep deployment instructions
+│   └── helm/
+│       ├── Chart.yaml              # Reference Helm chart (not primary deployment)
+│       └── values.yaml             # Reference env-var mapping for ACA parameters
+├── .github/
+│   └── workflows/
+│       └── deploy.yml              # CI/CD: build → push to ACR → az containerapp update
+├── docker-compose.yml              # Local development environment (3 services)
 ├── Dockerfile.webhook
 ├── Dockerfile.orchestrator
 ├── Dockerfile.document
-├── Dockerfile.dashboard
+├── Dockerfile.dashboard            # Built locally; deployed via HAIC App Store
 └── requirements.txt
 ```
 
@@ -186,13 +176,11 @@ from .state_manager import StateManager
 from .phase_controller import PhaseController
 from .prompt_builder import PromptBuilder
 from ..rag.h2ogpte_client import H2OGPTeClient
-from ..integrations.mozart_client import MozartClient
-from ..document.generator import DocumentGenerator
+
+DOCUMENT_GENERATOR_URL = os.environ.get("DOCUMENT_GENERATOR_URL", "http://localhost:8002")
 
 state_mgr = StateManager()
 h2ogpte   = H2OGPTeClient()
-mozart    = MozartClient()
-doc_gen   = DocumentGenerator()
 
 # In-process OAuth2 token cache for the Bot Framework API
 _bot_token_cache: dict = {"token": None, "expires_at": 0}
@@ -213,14 +201,16 @@ async def process_message(msg: dict):
     )
     session["h2ogpte_conv_id"] = conv_id
 
-    if phase_ctrl.current_phase == 4:
-        mozart_site_id = phase_ctrl.extract_mozart_site_id(msg["text"])
-        if mozart_site_id:
-            session["collected_fields"]["mozart_site_id"] = mozart_site_id
-            session["mozart_references"] = await mozart.get_references(mozart_site_id)
-
-    if phase_ctrl.current_phase == 5 and phase_ctrl.is_approved(msg["text"]):
-        doc_url = await doc_gen.generate(phase_ctrl.build_jbs_json(session))
+    if phase_ctrl.current_phase == 4 and phase_ctrl.is_approved(msg["text"]):
+        jbs_json = phase_ctrl.build_jbs_json(session)
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{DOCUMENT_GENERATOR_URL}/generate",
+                json={"jbs_json": jbs_json},
+                timeout=60,
+            )
+            resp.raise_for_status()
+            doc_url = resp.json()["download_url"]
         response_text = (
             "Your JBS document has been generated and is ready for download.\n\n"
             f"Download link (valid 15 minutes):\n{doc_url}"
@@ -292,7 +282,7 @@ class StateManager:
     """
     Three backends selectable via STATE_BACKEND env var:
       memory         — single replica only (dev/test)
-      sqlite         — restart-safe, default for HAIC single-replica
+      sqlite         — restart-safe, default for Azure Container Apps single-replica
       external_redis — multi-replica (use a managed Redis service, not a Helm pod)
     """
     def __init__(self):
@@ -322,8 +312,7 @@ PHASE_REQUIRED_FIELDS = {
     1: ["customer_name", "site_name", "site_category", "job_purpose"],
     2: ["duties"],
     3: ["hazards", "ppe_requirements", "escalation_procedure"],
-    4: ["mozart_site_id"],
-    5: []  # Review only
+    4: [],
 }
 
 SITE_CATEGORY_COLLECTION_MAP = {
@@ -355,7 +344,7 @@ class PhaseController:
 
     def is_approved(self, user_text: str) -> bool:
         approval_keywords = ["approved", "confirm", "yes", "proceed", "looks good"]
-        if self.current_phase == 5:
+        if self.current_phase == 4:
             return any(k in user_text.lower() for k in approval_keywords)
         return False
 
@@ -374,8 +363,7 @@ class PhaseController:
                 "authorized_by":  f.get("authorized_by", "")
             },
             "duties":            f.get("duties", []),
-            "safety_compliance": f.get("safety_compliance", {}),
-            "mozart_references": session.get("mozart_references", {})
+            "safety_compliance": f.get("safety_compliance", {})
         }
 ```
 
@@ -463,99 +451,79 @@ async def sync_sharepoint_to_h2ogpte():
 
 ---
 
-## 8. Mozart Integration Client
-
-**File:** `src/integrations/mozart_client.py`
-
-```python
-import os, httpx
-
-class MozartClient:
-    def __init__(self):
-        self.base_url = os.environ["MOZART_API_BASE_URL"]
-        self.api_key  = os.environ["MOZART_API_KEY"]
-
-    async def get_references(self, site_id: str) -> dict:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(
-                f"{self.base_url}/sites/{site_id}/documents",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                timeout=15
-            )
-            r.raise_for_status()
-            data = r.json()
-        return {
-            "site_id": site_id,
-            "reference_documents": [
-                {"doc_id": d["id"], "doc_title": d["title"],
-                 "doc_type": d.get("type", "SOP"), "mozart_url": d.get("url", "")}
-                for d in data.get("documents", [])
-            ]
-        }
-```
-
----
-
-## 9. Document Generator
+## 8. Document Generator
 
 **File:** `src/document/generator.py`
 
 ```python
-import os, json, uuid, boto3
+import os, json, uuid
+from datetime import datetime, timezone, timedelta
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from docx import Document
 from docx.shared import Pt, RGBColor
 
+TEMPLATE_PATH   = os.path.join(os.path.dirname(__file__), "../../templates/jbs_corporate_template.docx")
+AZURE_ACCOUNT   = os.environ.get("AZURE_STORAGE_ACCOUNT", "")
+AZURE_CONTAINER = os.environ.get("AZURE_STORAGE_CONTAINER", "certis-jbs-documents")
+BLOB_PREFIX     = os.environ.get("BLOB_PREFIX", "jbs-documents/")
+URL_EXPIRY      = int(os.environ.get("DOC_URL_EXPIRY_SECONDS", "900"))
+
 class DocumentGenerator:
     def __init__(self):
-        self.s3 = boto3.client(
-            "s3",
-            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        account_key = os.environ["AZURE_STORAGE_KEY"]
+        conn_str = (
+            f"DefaultEndpointsProtocol=https;"
+            f"AccountName={AZURE_ACCOUNT};"
+            f"AccountKey={account_key};"
+            f"EndpointSuffix=core.windows.net"
         )
+        self.blob_service = BlobServiceClient.from_connection_string(conn_str)
+        self.account_key  = account_key
 
     async def generate(self, jbs_json: dict) -> str:
-        doc = Document(os.path.join(os.path.dirname(__file__), "jbs_template.docx"))
+        doc = Document(TEMPLATE_PATH)
         self._populate_document(doc, jbs_json)
-        filename  = f"JBS_{jbs_json['metadata']['site_name']}_{uuid.uuid4().hex[:8]}.docx"
+        site       = jbs_json["metadata"]["site_name"].replace(" ", "_")
+        filename   = f"JBS_{site}_{uuid.uuid4().hex[:8]}.docx"
         local_path = f"/tmp/{filename}"
         doc.save(local_path)
-        s3_key = f"{os.environ.get('S3_PREFIX', 'jbs-documents/')}{filename}"
-        self.s3.upload_file(local_path, os.environ["S3_BUCKET"], s3_key)
-        return self.s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": os.environ["S3_BUCKET"], "Key": s3_key},
-            ExpiresIn=int(os.environ.get("DOC_URL_EXPIRY_SECONDS", 900))
+        blob_name  = f"{BLOB_PREFIX}{filename}"
+        container_client = self.blob_service.get_container_client(AZURE_CONTAINER)
+        with open(local_path, "rb") as data:
+            container_client.upload_blob(name=blob_name, data=data, overwrite=True)
+        expiry    = datetime.now(timezone.utc) + timedelta(seconds=URL_EXPIRY)
+        sas_token = generate_blob_sas(
+            account_name=AZURE_ACCOUNT,
+            container_name=AZURE_CONTAINER,
+            blob_name=blob_name,
+            account_key=self.account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=expiry,
         )
+        return f"https://{AZURE_ACCOUNT}.blob.core.windows.net/{AZURE_CONTAINER}/{blob_name}?{sas_token}"
 ```
 
 ---
 
-## 10. H2O Wave Admin Dashboard
+## 9. H2O Wave Admin Dashboard
 
-**File:** `dashboard/app.py`
+The admin dashboard is a H2O Wave application deployed via the **HAIC App Store** — it is NOT deployed as an Azure Container App. Build the dashboard image using `Dockerfile.dashboard` and deploy via `h2o bundle deploy` through the HAIC console (see Step 12c in `docs/DEPLOYMENT_GUIDE.md`).
 
-```python
-from h2o_wave import main, app, Q, ui
-import httpx, os
+The dashboard connects to the Orchestrator service via `ORCHESTRATOR_URL` (internal ACA ingress) to:
+- List active JBS interview sessions and their current phase (`GET /sessions`)
+- Trigger on-demand SharePoint sync (`POST /admin/sync`)
+- Display generated document metadata from Azure Blob Storage
 
-ORCHESTRATOR_URL = os.environ["ORCHESTRATOR_URL"]
+**Key environment variables for the dashboard:**
 
-@app("/jbs-dashboard")
-async def serve(q: Q):
-    if not q.client.initialized:
-        await _setup_page(q)
-        q.client.initialized = True
-    if q.args.refresh_interviews:
-        await _load_interviews(q)
-    if q.args.trigger_sync:
-        await _trigger_sharepoint_sync(q)
-    await q.page.save()
-```
+| Variable | Description |
+|---|---|
+| `ORCHESTRATOR_URL` | Internal ACA URL of the orchestrator service |
+| `H2OGPTE_ADDRESS` | h2oGPTe instance URL (for metrics display) |
 
 ---
 
-## 11. Prompt Templates
+## 10. Prompt Templates
 
 **File:** `config/prompts/system_base.txt`
 ```
@@ -620,26 +588,12 @@ If a required field cannot be determined from user input and is not in the knowl
 
 **File:** `config/prompts/phase4.txt`
 ```
-You are currently in Phase 4: Mozart Integration.
-
-Ask the user if there are reference documents (Emergency Plans, SOPs, Policies) stored in Mozart that should be linked to this JBS.
-
-If yes, ask for:
-- The Mozart Site ID
-- Any specific Document IDs to link
-
-Explain that these will be retrieved automatically and embedded as references in the final document.
-```
-
-**File:** `config/prompts/phase5.txt`
-```
-You are currently in Phase 5: Review & Authorization.
+You are currently in Phase 4: Review & Authorization.
 
 Present a clear, structured summary of ALL collected information covering:
 1. Site details (customer, site, category, purpose)
 2. All duties and tasks (with sequence, trigger, frequency, role, outcome)
 3. Safety & compliance requirements
-4. Mozart references (if any)
 
 Ask the user to review and either:
 - Type APPROVE or CONFIRM to authorize document generation
@@ -649,21 +603,20 @@ Do not generate the document until explicit approval is received.
 When approved, respond with the approval confirmation. The system will then generate the Word document automatically.
 ```
 
+
 ---
 
-## 12. Environment Variables Reference
+## 11. Environment Variables Reference
 
 | Variable | Service | Description |
 |---|---|---|
 | `H2OGPTE_ADDRESS` | Orchestrator | h2oGPTe server URL |
-| `H2OGPTE_API_KEY` | Orchestrator | h2oGPTe API key (from H2O Secret Manager) |
+| `H2OGPTE_API_KEY` | Orchestrator | h2oGPTe API key (from Azure Key Vault) |
 | `STATE_BACKEND` | Orchestrator | `memory` \| `sqlite` \| `external_redis` |
 | `SQLITE_PATH` | Orchestrator | SQLite file path (when `STATE_BACKEND=sqlite`) |
 | `SESSION_TTL_HOURS` | Orchestrator | Session time-to-live in hours (default: 24) |
 | `TEAMS_APP_ID` | Webhook + Orchestrator | Azure Bot App Registration client ID |
 | `TEAMS_APP_PASSWORD` | Orchestrator | Azure Bot App Registration client secret |
-| `MOZART_API_BASE_URL` | Orchestrator | Mozart REST API base URL |
-| `MOZART_API_KEY` | Orchestrator | Mozart API authentication key |
 | `AZURE_TENANT_ID` | Sync pipeline | Azure AD tenant ID for SharePoint auth |
 | `AZURE_CLIENT_ID` | Sync pipeline | Azure AD app client ID |
 | `AZURE_CLIENT_SECRET` | Sync pipeline | Azure AD app client secret |
@@ -673,9 +626,9 @@ When approved, respond with the approval confirmation. The system will then gene
 | `SP_LIBRARY_INDUSTRIAL` | Sync pipeline | SharePoint library ID for Industrial SOPs |
 | `SP_LIBRARY_MARITIME` | Sync pipeline | SharePoint library ID for Maritime SOPs |
 | `SP_LIBRARY_RETAIL` | Sync pipeline | SharePoint library ID for Retail SOPs |
-| `S3_BUCKET` | Document Gen | S3 bucket name for generated documents |
-| `S3_ENDPOINT_URL` | Document Gen | S3-compatible endpoint (HAIC object store) |
-| `AWS_ACCESS_KEY_ID` | Document Gen | S3 access key |
-| `AWS_SECRET_ACCESS_KEY` | Document Gen | S3 secret key |
+| `AZURE_STORAGE_ACCOUNT` | Document Gen | Azure Storage account name |
+| `AZURE_STORAGE_CONTAINER` | Document Gen | Blob container name (default: `certis-jbs-documents`) |
+| `AZURE_STORAGE_KEY` | Document Gen | Storage account access key (store in Azure Key Vault) |
+| `BLOB_PREFIX` | Document Gen | Blob name prefix for stored documents (default: `jbs-documents/`) |
 | `ORCHESTRATOR_URL` | Webhook, Dashboard | Internal URL of orchestrator service |
 | `TENANT_ID` | Orchestrator | Certis tenant identifier |

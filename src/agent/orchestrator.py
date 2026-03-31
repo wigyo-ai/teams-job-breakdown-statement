@@ -1,8 +1,9 @@
 """
 Conversation Orchestrator
-Manages the 5-phase JBS interview state machine.
+Manages the 4-phase JBS interview state machine.
 Delegates LLM inference + conversation history to h2oGPTe.
 Phase state + collected fields stored in StateManager (memory/sqlite/external_redis).
+Document generation is performed by the Document Generator service via HTTP.
 """
 
 import os
@@ -12,13 +13,11 @@ from .state_manager import StateManager
 from .phase_controller import PhaseController
 from .prompt_builder import PromptBuilder
 from ..rag.h2ogpte_client import H2OGPTeClient
-from ..integrations.mozart_client import MozartClient
-from ..document.generator import DocumentGenerator
+
+DOCUMENT_GENERATOR_URL = os.environ.get("DOCUMENT_GENERATOR_URL", "http://localhost:8002")
 
 state_mgr = StateManager()
 h2ogpte   = H2OGPTeClient()
-mozart    = MozartClient()
-doc_gen   = DocumentGenerator()
 
 # Simple in-process cache for the Bot Framework OAuth token
 _bot_token_cache: dict = {"token": None, "expires_at": 0}
@@ -49,18 +48,17 @@ async def process_message(msg: dict):
     )
     session["h2ogpte_conv_id"] = conv_id
 
-    # Phase 4: Mozart reference enrichment
-    if phase_ctrl.current_phase == 4:
-        mozart_site_id = phase_ctrl.extract_mozart_site_id(msg["text"])
-        if mozart_site_id:
-            session["collected_fields"]["mozart_site_id"] = mozart_site_id
-            refs = await mozart.get_references(mozart_site_id)
-            session["mozart_references"] = refs
-
-    # Phase 5: detect user approval and trigger document generation
-    if phase_ctrl.current_phase == 5 and phase_ctrl.is_approved(msg["text"]):
+    # Phase 4: detect user approval and trigger document generation
+    if phase_ctrl.current_phase == 4 and phase_ctrl.is_approved(msg["text"]):
         jbs_json = phase_ctrl.build_jbs_json(session)
-        doc_url  = await doc_gen.generate(jbs_json)
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{DOCUMENT_GENERATOR_URL}/generate",
+                json={"jbs_json": jbs_json},
+                timeout=60,
+            )
+            resp.raise_for_status()
+            doc_url = resp.json()["download_url"]
         response_text = (
             "Your JBS document has been generated and is ready for download.\n\n"
             f"Download link (valid 15 minutes):\n{doc_url}"

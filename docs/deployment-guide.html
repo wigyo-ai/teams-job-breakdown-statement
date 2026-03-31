@@ -591,12 +591,14 @@
     <a href="#step3"><span class="nav-num">3</span> Azure AD / SharePoint</a>
     <a href="#step4"><span class="nav-num">4</span> Microsoft Teams Bot</a>
     <a href="#step5"><span class="nav-num">5</span> Build Docker Images</a>
-    <a href="#step6"><span class="nav-num">6</span> H2O Secret Manager</a>
-    <a href="#step7"><span class="nav-num">7</span> Deploy via Helm</a>
-    <a href="#step8"><span class="nav-num">8</span> Wave Dashboard</a>
-    <a href="#step9"><span class="nav-num">9</span> MLOps Monitoring</a>
-    <a href="#step10"><span class="nav-num">10</span> Verify Deployment</a>
-    <a href="#step11"><span class="nav-num">11</span> Post-Deploy Config</a>
+    <a href="#step6"><span class="nav-num">6</span> Create ACR &amp; Push</a>
+    <a href="#step7"><span class="nav-num">7</span> Azure Blob Storage</a>
+    <a href="#step8"><span class="nav-num">8</span> Azure Key Vault</a>
+    <a href="#step9"><span class="nav-num">9</span> ACA Environment</a>
+    <a href="#step10"><span class="nav-num">10</span> Deploy Services</a>
+    <a href="#step11"><span class="nav-num">11</span> SharePoint Sync Job</a>
+    <a href="#step12"><span class="nav-num">12</span> Post-Deploy Config</a>
+    <a href="#step13"><span class="nav-num">13</span> Verify Deployment</a>
 
     <div class="nav-section-label">Checklists &amp; Reference</div>
     <a href="#hardening"><span class="nav-num">✓</span> Production Hardening</a>
@@ -611,10 +613,10 @@
   <div id="topbar">
     <h1>JBS Automation Platform — Deployment Guide</h1>
     <div class="meta">
-      <span class="badge badge-blue">H2O AI Cloud</span>
+      <span class="badge badge-blue">Azure Container Apps</span>
       <span class="badge badge-green">v1.0.0</span>
       <span class="badge badge-warn">Certis Security</span>
-      <span style="color:var(--text-muted)">13 Steps · 2024</span>
+      <span style="color:var(--text-muted)">14 Steps · 2024</span>
     </div>
   </div>
 
@@ -626,7 +628,7 @@
         <div class="step-badge arch">⬡</div>
         <div>
           <h2>Solution Architecture</h2>
-          <div class="section-desc">Multi-layer, cloud-native platform on H2O AI Cloud (HAIC)</div>
+          <div class="section-desc">Multi-layer, cloud-native platform on Azure Container Apps</div>
         </div>
       </div>
 
@@ -652,8 +654,8 @@
         <div class="component-card">
           <div class="comp-icon">☁️</div>
           <h4>Deployment Platform</h4>
-          <p>Kubernetes-based cloud hosting of all 4 microservices</p>
-          <span class="comp-tech">H2O AI Cloud (HAIC)</span>
+          <p>Serverless container hosting of all 3 middleware microservices</p>
+          <span class="comp-tech">Azure Container Apps</span>
         </div>
         <div class="component-card">
           <div class="comp-icon">📈</div>
@@ -719,17 +721,7 @@
             <div class="phase-line"></div>
           </div>
           <div class="phase-body">
-            <h4>Mozart Integration</h4>
-            <p>Link reference documents (SOPs, Emergency Plans) from Mozart via Site ID and Document IDs.</p>
-          </div>
-        </div>
-        <div class="phase-item">
-          <div class="phase-spine">
-            <div class="phase-dot p5">5</div>
-            <div class="phase-line"></div>
-          </div>
-          <div class="phase-body">
-            <h4>Review &amp; Document Generation</h4>
+            <h4>Review &amp; Approval</h4>
             <p>Present summary for approval → emit JSON → generate Word .docx → send download link.</p>
           </div>
         </div>
@@ -740,10 +732,10 @@
       │  HTTPS POST — Bot Framework Activity
       │  JWT Bearer token (RS256, signed by Azure Bot Service)
       ▼
-Webhook Service (FastAPI · HAIC)          ← JWT validated
+Webhook Service (FastAPI · Azure Container Apps)   ← JWT validated
       │
       ▼
-Conversation Orchestrator (Python · HAIC)
+Conversation Orchestrator (Python · Azure Container Apps)
       │  load session from SQLite
       │  build prompt (phase + RAG context + h2oGPTe history)
       ▼
@@ -751,9 +743,7 @@ H2O Enterprise h2oGPTe ◄──── SharePoint Collections (per site category
       │                              (Corporate / Aviation / Industrial / Maritime / Retail)
       │  LLM response
       ▼
-Phase 4 only ──► Mozart API ──► reference document metadata
-      │
-Phase 5 approved ──► JSON ──► Document Generator ──► .docx ──► S3
+Phase 4 approved ──► JSON ──► Document Generator ──► .docx ──► Azure Blob Storage
       │
       ▼
 Reply + download link ──► User (Bot Framework REST API · OAuth2 token)</div>
@@ -773,17 +763,15 @@ Reply + download link ──► User (Bot Framework REST API · OAuth2 token)</d
         <table>
           <thead><tr><th>Requirement</th><th>Version / Detail</th><th>Status</th></tr></thead>
           <tbody>
-            <tr><td><strong>H2O AI Cloud (HAIC)</strong></td><td>Managed or Hybrid Cloud environment with cluster access</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>H2O Enterprise h2oGPTe</strong></td><td>Licensed instance provisioned on HAIC</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>H2O Document AI</strong></td><td>Licensed instance on HAIC</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>Azure Subscription</strong></td><td>Owner or Contributor role on the target subscription</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>H2O Enterprise h2oGPTe</strong></td><td>Licensed instance (cloud or on-prem) with API access</td><td><span class="badge badge-warn">Required</span></td></tr>
+            <tr><td><strong>H2O Document AI</strong></td><td>Licensed instance for document ingestion</td><td><span class="badge badge-warn">Required</span></td></tr>
             <tr><td><strong>Docker</strong></td><td>v24+</td><td><span class="badge badge-blue">Tool</span></td></tr>
-            <tr><td><strong>kubectl</strong></td><td>v1.27+ configured for HAIC cluster</td><td><span class="badge badge-blue">Tool</span></td></tr>
-            <tr><td><strong>Helm</strong></td><td>v3.12+</td><td><span class="badge badge-blue">Tool</span></td></tr>
+            <tr><td><strong>Azure CLI</strong></td><td>v2.50+ (<code>az login</code> completed, correct subscription selected)</td><td><span class="badge badge-blue">Tool</span></td></tr>
             <tr><td><strong>Python</strong></td><td>3.11+</td><td><span class="badge badge-blue">Tool</span></td></tr>
             <tr><td><strong>Microsoft 365 Tenant</strong></td><td>Teams enabled · Azure subscription for Azure Bot resource</td><td><span class="badge badge-warn">Required</span></td></tr>
             <tr><td><strong>Azure Bot Resource</strong></td><td>Azure Bot App Registration (App ID + client secret)</td><td><span class="badge badge-warn">Required</span></td></tr>
             <tr><td><strong>Azure AD App Registration</strong></td><td>Separate registration with SharePoint Graph API permissions</td><td><span class="badge badge-warn">Required</span></td></tr>
-            <tr><td><strong>Mozart API</strong></td><td>API key and base URL from Mozart administrator</td><td><span class="badge badge-warn">Required</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -815,15 +803,11 @@ cp config/env.template .env</code></pre>
         <div class="code-header"><span class="code-lang">bash — .env</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
         <pre><code><span class="cm"># H2O Platform</span>
 <span class="nm">H2OGPTE_ADDRESS</span>=https://your-h2ogpte-instance.h2o.ai
-<span class="nm">H2OGPTE_API_KEY</span>=&lt;from H2O Secret Manager&gt;
+<span class="nm">H2OGPTE_API_KEY</span>=&lt;from Azure Key Vault after Step 8&gt;
 
 <span class="cm"># Microsoft Teams (Azure Bot Service)</span>
 <span class="nm">TEAMS_APP_ID</span>=&lt;Azure Bot App Registration client ID&gt;
 <span class="nm">TEAMS_APP_PASSWORD</span>=&lt;Azure Bot App Registration client secret&gt;
-
-<span class="cm"># Mozart</span>
-<span class="nm">MOZART_API_BASE_URL</span>=https://mozart.certis.internal/api/v1
-<span class="nm">MOZART_API_KEY</span>=&lt;from Mozart admin&gt;
 
 <span class="cm"># SharePoint / Azure AD</span>
 <span class="nm">AZURE_TENANT_ID</span>=&lt;your Azure tenant ID&gt;
@@ -838,11 +822,10 @@ cp config/env.template .env</code></pre>
 <span class="nm">SP_LIBRARY_MARITIME</span>=&lt;library ID&gt;
 <span class="nm">SP_LIBRARY_RETAIL</span>=&lt;library ID&gt;
 
-<span class="cm"># Document storage</span>
-<span class="nm">S3_BUCKET</span>=certis-jbs-documents
-<span class="nm">S3_ENDPOINT_URL</span>=https://storage.your-haic-cluster.h2o.ai
-<span class="nm">AWS_ACCESS_KEY_ID</span>=&lt;key&gt;
-<span class="nm">AWS_SECRET_ACCESS_KEY</span>=&lt;secret&gt;
+<span class="cm"># Document Storage (Azure Blob Storage)</span>
+<span class="nm">AZURE_STORAGE_ACCOUNT</span>=certisjbsstorage
+<span class="nm">AZURE_STORAGE_CONTAINER</span>=certis-jbs-documents
+<span class="nm">AZURE_STORAGE_KEY</span>=&lt;from Azure Portal after Step 7&gt;
 
 <span class="cm"># Internal</span>
 <span class="nm">TENANT_ID</span>=certis
@@ -851,7 +834,7 @@ cp config/env.template .env</code></pre>
 
       <div class="callout warn">
         <span class="callout-icon">⚠️</span>
-        <span>Never commit <code>.env</code> to version control. It is included in <code>.gitignore</code>. Use H2O Secret Manager for all production secrets (Step 7).</span>
+        <span>Never commit <code>.env</code> to version control. It is included in <code>.gitignore</code>. Use Azure Key Vault for all production secrets (Step 8).</span>
       </div>
     </section>
 
@@ -866,7 +849,7 @@ cp config/env.template .env</code></pre>
       </div>
 
       <h3>2a — Log in to h2oGPTe</h3>
-      <p>Open your h2oGPTe instance URL in a browser and log in with your HAIC credentials.</p>
+      <p>Open your h2oGPTe instance URL in a browser and log in with your h2oGPTe credentials.</p>
 
       <h3>2b — Create Collections via h2oGPTe UI</h3>
       <p>Navigate to <strong>Collections → New Collection</strong> and create one collection per site category:</p>
@@ -964,7 +947,7 @@ python -m src.rag.sharepoint_sync</code></pre>
 
       <div class="callout warn">
         <span class="callout-icon">⚠️</span>
-        <span>The webhook service must be deployed (Step 7) and publicly accessible over HTTPS before Azure Bot Service will verify the endpoint. You can enter the URL now and confirm connectivity after deployment.</span>
+        <span>The webhook service must be deployed (Step 10) and publicly accessible over HTTPS before Azure Bot Service will verify the endpoint. You can enter the URL now and confirm connectivity after deployment.</span>
       </div>
 
       <h3>4c — Enable the Teams channel</h3>
@@ -982,270 +965,381 @@ python -m src.rag.sharepoint_sync</code></pre>
       </ol>
     </section>
 
-    <!-- ═══ STEP 6 ═════════════════════════════════════════════════════════ -->
-    <section id="step6">
+    <!-- ═══ STEP 5 ═════════════════════════════════════════════════════════ -->
+    <section id="step5">
       <div class="section-header">
-        <div class="step-badge">6</div>
+        <div class="step-badge">5</div>
         <div>
           <h2>Build Docker Images</h2>
-          <div class="section-desc">Build and push all four service images to the HAIC registry</div>
+          <div class="section-desc">Build all three middleware service images locally before pushing to ACR</div>
         </div>
       </div>
 
       <div class="code-wrap">
         <div class="code-header"><span class="code-lang">bash — build</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="cm"># Webhook service</span>
-docker build -f Dockerfile.webhook    -t certis-jbs-webhook:1.0.0 .
+        <pre><code><span class="nm">IMAGE_TAG</span>=1.0.0
+
+<span class="cm"># Webhook service</span>
+docker build -f Dockerfile.webhook      -t jbs-webhook:${IMAGE_TAG} .
 
 <span class="cm"># Conversation orchestrator</span>
-docker build -f Dockerfile.orchestrator -t certis-jbs-orchestrator:1.0.0 .
+docker build -f Dockerfile.orchestrator -t jbs-orchestrator:${IMAGE_TAG} .
 
 <span class="cm"># Document generator</span>
-docker build -f Dockerfile.document   -t certis-jbs-docgen:1.0.0 .
-
-<span class="cm"># H2O Wave admin dashboard</span>
-docker build -f Dockerfile.dashboard  -t certis-jbs-dashboard:1.0.0 .</code></pre>
+docker build -f Dockerfile.document     -t jbs-docgen:${IMAGE_TAG} .</code></pre>
       </div>
 
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span>The H2O Wave dashboard is not built here — it is deployed via HAIC App Store (Step 12c). The three images above will be tagged and pushed to ACR in Step 6.</span>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 6 ═════════════════════════════════════════════════════════ -->
+    <section id="step6">
+      <div class="step-header">
+        <div class="step-badge">6</div>
+        <h2>Create Azure Container Registry and Push Images</h2>
+      </div>
+      <p>Create the Azure resource group and container registry, then push the three middleware images.</p>
       <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash — push to HAIC registry</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="nm">REGISTRY</span>=registry.your-haic-cluster.h2o.ai/certis
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="cm"># Define shared variables (reuse throughout remaining steps)</span>
+<span class="nm">RG</span>=certis-jbs-rg
+<span class="nm">LOCATION</span>=australiaeast
+<span class="nm">ACR_NAME</span>=certisjbsacr
+<span class="nm">IMAGE_TAG</span>=1.0.0
 
-docker tag certis-jbs-webhook:1.0.0      <span class="st">${REGISTRY}</span>/jbs-webhook:1.0.0
-docker tag certis-jbs-orchestrator:1.0.0 <span class="st">${REGISTRY}</span>/jbs-orchestrator:1.0.0
-docker tag certis-jbs-docgen:1.0.0       <span class="st">${REGISTRY}</span>/jbs-docgen:1.0.0
-docker tag certis-jbs-dashboard:1.0.0    <span class="st">${REGISTRY}</span>/jbs-dashboard:1.0.0
+az group create --name $RG --location $LOCATION
 
-docker push <span class="st">${REGISTRY}</span>/jbs-webhook:1.0.0
-docker push <span class="st">${REGISTRY}</span>/jbs-orchestrator:1.0.0
-docker push <span class="st">${REGISTRY}</span>/jbs-docgen:1.0.0
-docker push <span class="st">${REGISTRY}</span>/jbs-dashboard:1.0.0</code></pre>
+az acr create \
+  --resource-group $RG \
+  --name $ACR_NAME \
+  --sku Basic \
+  --admin-enabled true
+
+az acr login --name $ACR_NAME
+<span class="nm">ACR_LOGIN_SERVER</span>=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+
+<span class="cm"># Tag and push the three middleware images</span>
+docker tag jbs-webhook:${IMAGE_TAG}      ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG}
+docker push ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG}
+
+docker tag jbs-orchestrator:${IMAGE_TAG} ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
+docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
+
+docker tag jbs-docgen:${IMAGE_TAG}       ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
+docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</code></pre>
+      </div>
+      <div class="alert alert-info">
+        <span>The H2O Wave dashboard image is deployed separately via HAIC App Store (Step 12c) and is not pushed to ACR.</span>
       </div>
     </section>
 
     <!-- ═══ STEP 7 ═════════════════════════════════════════════════════════ -->
     <section id="step7">
-      <div class="section-header">
+      <div class="step-header">
         <div class="step-badge">7</div>
-        <div>
-          <h2>Store Secrets in H2O Secret Manager</h2>
-          <div class="section-desc">All sensitive credentials must be stored in HAIC — never in plaintext config</div>
-        </div>
+        <h2>Create Azure Blob Storage Container</h2>
       </div>
-
-      <div class="callout danger">
-        <span class="callout-icon">🔐</span>
-        <span>Never store secrets in <code>values.yaml</code> or any file committed to version control. HAIC Secret Manager is the only approved store for production credentials.</span>
-      </div>
-
+      <p>Create the storage account and blob container that will store generated JBS Word documents.</p>
       <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash — h2octl</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>h2octl secret create --name h2ogpte-api-key        --value <span class="st">"&lt;your key&gt;"</span>
-h2octl secret create --name teams-app-password    --value <span class="st">"&lt;your Teams bot client secret&gt;"</span>
-h2octl secret create --name whatsapp-access-token  --value <span class="st">"&lt;your token&gt;"</span>
-h2octl secret create --name telegram-bot-token     --value <span class="st">"&lt;your token&gt;"</span>
-h2octl secret create --name mozart-api-key         --value <span class="st">"&lt;your key&gt;"</span>
-h2octl secret create --name azure-client-secret    --value <span class="st">"&lt;your secret&gt;"</span>
-h2octl secret create --name redis-password         --value <span class="st">"&lt;your password&gt;"</span>
-h2octl secret create --name s3-secret-access-key   --value <span class="st">"&lt;your key&gt;"</span></code></pre>
-      </div>
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="nm">STORAGE_ACCOUNT</span>=certisjbsstorage   <span class="cm"># globally unique, 3–24 lowercase alphanumeric</span>
 
-      <p>The Helm chart references these secrets by name via <code>secretKeyRef</code> — no plaintext values appear in the deployed manifests.</p>
+az storage account create \
+  --name $STORAGE_ACCOUNT \
+  --resource-group $RG \
+  --location $LOCATION \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --min-tls-version TLS1_2 \
+  --allow-blob-public-access false
+
+az storage container create \
+  --name certis-jbs-documents \
+  --account-name $STORAGE_ACCOUNT \
+  --auth-mode login
+
+<span class="cm"># Retrieve storage key — will be stored in Key Vault in Step 8</span>
+<span class="nm">STORAGE_KEY</span>=$(az storage account keys list \
+  --account-name $STORAGE_ACCOUNT \
+  --resource-group $RG \
+  --query "[0].value" -o tsv)</code></pre>
+      </div>
     </section>
 
     <!-- ═══ STEP 8 ═════════════════════════════════════════════════════════ -->
     <section id="step8">
-      <div class="section-header">
+      <div class="step-header">
         <div class="step-badge">8</div>
-        <div>
-          <h2>Deploy via Helm</h2>
-          <div class="section-desc">Install all platform services into the HAIC Kubernetes cluster</div>
-        </div>
+        <h2>Create Azure Key Vault and Store Secrets</h2>
       </div>
-
-      <div class="callout info">
-        <span class="callout-icon">ℹ️</span>
-        <span>This chart deploys <strong>3 services only</strong>: Webhook, Orchestrator, Document Generator (+ CronJob). The Admin Dashboard is deployed via HAIC App Store (Step 9). Redis is eliminated — h2oGPTe owns conversation history natively.</span>
+      <div class="alert alert-warn">
+        <span>Never store secrets in plaintext config files or source control. Azure Key Vault is the only approved store for production credentials.</span>
       </div>
-
-      <h3>8a — Edit values.yaml</h3>
-      <p>Update all <code>&lt;PLACEHOLDER&gt;</code> values in <code>deploy/helm/values.yaml</code>:</p>
-
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">yaml — values.yaml (key sections)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="kw">global</span>:
-  registry: registry.your-haic-cluster.h2o.ai/certis
-  imageTag: <span class="st">"1.0.0"</span>
-  tenantId: <span class="st">"certis"</span>
-  orchestratorUrl: <span class="st">"http://jbs-orchestrator-service:8001"</span>
-
-<span class="kw">webhook</span>:
-  replicaCount: 2
-  ingress:
-    host: jbs-webhook.your-haic-cluster.h2o.ai
-    tlsSecret: jbs-webhook-tls
-  env:
-    plain:
-      <span class="nm">TEAMS_APP_ID</span>: <span class="st">"&lt;your bot app ID&gt;"</span>
-    secret:
-      <span class="nm">TEAMS_APP_PASSWORD</span>:
-        name: certis-jbs-secrets
-        key: teams-app-password
-
-<span class="kw">orchestrator</span>:
-  replicaCount: 2
-  env:
-    plain:
-      <span class="nm">H2OGPTE_ADDRESS</span>: <span class="st">"https://your-h2ogpte-instance.h2o.ai"</span>
-      <span class="nm">AZURE_TENANT_ID</span>: <span class="st">"&lt;tenant ID&gt;"</span>
-      <span class="nm">MOZART_API_BASE_URL</span>: <span class="st">"https://mozart.certis.internal/api/v1"</span>
-      <span class="nm">TEAMS_APP_ID</span>: <span class="st">"&lt;your bot app ID&gt;"</span>
-      <span class="cm"># No Redis config needed — h2oGPTe handles conversation history</span>
-      <span class="nm">STATE_BACKEND</span>: <span class="st">"sqlite"</span>     <span class="cm"># phase state only (tiny payload)</span>
-      <span class="nm">SQLITE_PATH</span>: <span class="st">"/data/jbs_sessions.db"</span>
-    secret:
-      <span class="nm">TEAMS_APP_PASSWORD</span>:
-        name: certis-jbs-secrets
-        key: teams-app-password
-
-<span class="kw">syncCronJob</span>:
-  schedule: <span class="st">"0 2 * * *"</span>   <span class="cm"># Daily at 02:00 UTC</span></code></pre>
-      </div>
-
-      <h3>8b — Install with Helm</h3>
       <div class="code-wrap">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="cm"># Create the Kubernetes namespace</span>
-kubectl create namespace certis-jbs
+        <pre><code><span class="nm">KV_NAME</span>=certis-jbs-kv   <span class="cm"># globally unique</span>
 
-<span class="cm"># Deploy all services</span>
-helm install certis-jbs deploy/helm/ \
-  --namespace certis-jbs \
-  --values deploy/helm/values.yaml \
-  --wait</code></pre>
-      </div>
+az keyvault create \
+  --name $KV_NAME \
+  --resource-group $RG \
+  --location $LOCATION \
+  --sku standard
 
-      <div class="callout success">
-        <span class="callout-icon">✅</span>
-        <span>The <code>--wait</code> flag holds until all pods reach <code>Running</code> state. Typically takes 2–4 minutes on first deploy.</span>
+az keyvault secret set --vault-name $KV_NAME \
+  --name teams-app-password   --value <span class="st">"&lt;your Teams bot client secret&gt;"</span>
+
+az keyvault secret set --vault-name $KV_NAME \
+  --name h2ogpte-api-key      --value <span class="st">"&lt;your h2oGPTe API key&gt;"</span>
+
+az keyvault secret set --vault-name $KV_NAME \
+  --name azure-client-secret  --value <span class="st">"&lt;your SharePoint app registration secret&gt;"</span>
+
+az keyvault secret set --vault-name $KV_NAME \
+  --name storage-key          --value <span class="st">"$STORAGE_KEY"</span></code></pre>
       </div>
     </section>
 
     <!-- ═══ STEP 9 ═════════════════════════════════════════════════════════ -->
     <section id="step9">
-      <div class="section-header">
+      <div class="step-header">
         <div class="step-badge">9</div>
-        <div>
-          <h2>Deploy H2O Wave Dashboard</h2>
-          <div class="section-desc">Package and publish the admin dashboard as a native HAIC App</div>
-        </div>
+        <h2>Create Azure Container Apps Environment</h2>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="nm">ACA_ENV</span>=certis-jbs-env
+
+<span class="cm"># Register providers (once per subscription)</span>
+az provider register --namespace Microsoft.App
+az provider register --namespace Microsoft.OperationalInsights
+
+az containerapp env create \
+  --name $ACA_ENV \
+  --resource-group $RG \
+  --location $LOCATION</code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 10 ════════════════════════════════════════════════════════ -->
+    <section id="step10">
+      <div class="step-header">
+        <div class="step-badge">10</div>
+        <h2>Deploy Services to Azure Container Apps</h2>
       </div>
 
-      <h3>9a — Bundle the Wave App</h3>
+      <h3>10a — Retrieve ACR credentials</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code><span class="nm">ACR_USERNAME</span>=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+<span class="nm">ACR_PASSWORD</span>=$(az acr credential show --name $ACR_NAME --query <span class="st">"passwords[0].value"</span> -o tsv)</code></pre>
+      </div>
+
+      <h3>10b — Deploy Webhook service (public external ingress)</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>az containerapp create \
+  --name jbs-webhook \
+  --resource-group $RG \
+  --environment $ACA_ENV \
+  --image ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG} \
+  --registry-server $ACR_LOGIN_SERVER \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --ingress external \
+  --target-port 8000 \
+  --min-replicas 2 --max-replicas 10 \
+  --cpu 0.5 --memory 1.0Gi \
+  --env-vars \
+    <span class="nm">TEAMS_APP_ID</span>=<span class="st">"&lt;your bot app ID&gt;"</span> \
+    <span class="nm">ORCHESTRATOR_URL</span>=<span class="st">"http://jbs-orchestrator"</span> \
+  --secrets \
+    teams-app-password=<span class="st">"&lt;your Teams bot client secret&gt;"</span>
+
+<span class="cm"># Get webhook FQDN — set this as the Teams Bot messaging endpoint</span>
+<span class="nm">WEBHOOK_FQDN</span>=$(az containerapp show \
+  --name jbs-webhook --resource-group $RG \
+  --query <span class="st">"properties.configuration.ingress.fqdn"</span> -o tsv)
+echo "Messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</code></pre>
+      </div>
+
+      <h3>10c — Deploy Orchestrator service (internal ingress only)</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>az containerapp create \
+  --name jbs-orchestrator \
+  --resource-group $RG \
+  --environment $ACA_ENV \
+  --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} \
+  --registry-server $ACR_LOGIN_SERVER \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --ingress internal \
+  --target-port 8001 \
+  --min-replicas 2 --max-replicas 8 \
+  --cpu 0.5 --memory 1.0Gi \
+  --env-vars \
+    <span class="nm">H2OGPTE_ADDRESS</span>=<span class="st">"https://your-h2ogpte-instance.h2o.ai"</span> \
+    <span class="nm">AZURE_TENANT_ID</span>=<span class="st">"&lt;tenant ID&gt;"</span> \
+    <span class="nm">AZURE_CLIENT_ID</span>=<span class="st">"&lt;SharePoint client ID&gt;"</span> \
+    <span class="nm">SP_SITE_URL</span>=<span class="st">"https://certissecurity.sharepoint.com/sites/operations"</span> \
+    <span class="nm">TENANT_ID</span>=<span class="st">"certis"</span> \
+    <span class="nm">STATE_BACKEND</span>=<span class="st">"sqlite"</span> \
+    <span class="nm">SQLITE_PATH</span>=<span class="st">"/data/jbs_sessions.db"</span> \
+    <span class="nm">TEAMS_APP_ID</span>=<span class="st">"&lt;your bot app ID&gt;"</span> \
+    <span class="nm">DOCUMENT_GENERATOR_URL</span>=<span class="st">"http://jbs-docgen"</span> \
+  --secrets \
+    h2ogpte-api-key=<span class="st">"&lt;your h2oGPTe API key&gt;"</span> \
+    teams-app-password=<span class="st">"&lt;your Teams bot client secret&gt;"</span> \
+    azure-client-secret=<span class="st">"&lt;your SharePoint secret&gt;"</span></code></pre>
+      </div>
+
+      <h3>10d — Deploy Document Generator service (internal ingress only)</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>az containerapp create \
+  --name jbs-docgen \
+  --resource-group $RG \
+  --environment $ACA_ENV \
+  --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} \
+  --registry-server $ACR_LOGIN_SERVER \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --ingress internal \
+  --target-port 8002 \
+  --min-replicas 1 --max-replicas 4 \
+  --cpu 0.5 --memory 1.0Gi \
+  --env-vars \
+    <span class="nm">AZURE_STORAGE_ACCOUNT</span>=<span class="st">"$STORAGE_ACCOUNT"</span> \
+    <span class="nm">AZURE_STORAGE_CONTAINER</span>=<span class="st">"certis-jbs-documents"</span> \
+    <span class="nm">BLOB_PREFIX</span>=<span class="st">"jbs-documents/"</span> \
+    <span class="nm">DOC_URL_EXPIRY_SECONDS</span>=<span class="st">"900"</span> \
+  --secrets \
+    storage-key=<span class="st">"$STORAGE_KEY"</span></code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 11 ════════════════════════════════════════════════════════ -->
+    <section id="step11">
+      <div class="step-header">
+        <div class="step-badge">11</div>
+        <h2>Deploy SharePoint Sync as ACA Scheduled Job</h2>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>az containerapp job create \
+  --name jbs-sharepoint-sync \
+  --resource-group $RG \
+  --environment $ACA_ENV \
+  --trigger-type Schedule \
+  --cron-expression <span class="st">"0 2 * * *"</span> \
+  --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} \
+  --registry-server $ACR_LOGIN_SERVER \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --replica-timeout 1800 \
+  --cpu 0.5 --memory 1.0Gi \
+  --command <span class="st">"python"</span> <span class="st">"-m"</span> <span class="st">"src.rag.sharepoint_sync"</span> \
+  --env-vars \
+    <span class="nm">H2OGPTE_ADDRESS</span>=<span class="st">"https://your-h2ogpte-instance.h2o.ai"</span> \
+    <span class="nm">AZURE_TENANT_ID</span>=<span class="st">"&lt;tenant ID&gt;"</span> \
+    <span class="nm">AZURE_CLIENT_ID</span>=<span class="st">"&lt;SharePoint client ID&gt;"</span> \
+    <span class="nm">SP_SITE_URL</span>=<span class="st">"https://certissecurity.sharepoint.com/sites/operations"</span> \
+  --secrets \
+    h2ogpte-api-key=<span class="st">"&lt;your h2oGPTe API key&gt;"</span> \
+    azure-client-secret=<span class="st">"&lt;your SharePoint secret&gt;"</span></code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 12 ════════════════════════════════════════════════════════ -->
+    <section id="step12">
+      <div class="step-header">
+        <div class="step-badge">12</div>
+        <h2>Post-Deployment Configuration</h2>
+      </div>
+
+      <h3>12a — Update h2oGPTe Collection IDs</h3>
+      <p>After creating collections in Step 2b, update <code>src/agent/phase_controller.py</code>:</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>SITE_CATEGORY_COLLECTION_MAP = {
+    <span class="st">"Corporate"</span>:   <span class="st">"col_xxxxxxxx"</span>,  <span class="cm"># Replace with real IDs from h2oGPTe UI</span>
+    <span class="st">"Aviation"</span>:    <span class="st">"col_yyyyyyyy"</span>,
+    <span class="st">"Industrial"</span>:  <span class="st">"col_zzzzzzzz"</span>,
+    <span class="st">"Maritime"</span>:    <span class="st">"col_aaaaaaaa"</span>,
+    <span class="st">"Retail"</span>:      <span class="st">"col_bbbbbbbb"</span>,
+}</code></pre>
+      </div>
+      <p>Rebuild and redeploy the orchestrator after this change:</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>docker build -f Dockerfile.orchestrator -t ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} .
+docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
+az containerapp update --name jbs-orchestrator --resource-group $RG \
+  --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}</code></pre>
+      </div>
+
+      <h3>12b — Upload the corporate Word template</h3>
+      <p>Place the approved template at <code>templates/jbs_corporate_template.docx</code>, then rebuild and redeploy the document generator:</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>docker build -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
+docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
+az containerapp update --name jbs-docgen --resource-group $RG \
+  --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</code></pre>
+      </div>
+
+      <h3>12c — Deploy H2O Wave Admin Dashboard</h3>
+      <p>The Wave dashboard is deployed via HAIC App Store (not Azure Container Apps):</p>
       <div class="code-wrap">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
         <pre><code>cd dashboard
 h2o bundle
 <span class="cm"># Produces: certis-jbs-dashboard-1.0.0.wave</span></code></pre>
       </div>
-
-      <div class="callout success">
-        <span class="callout-icon">✅</span>
-        <span>H2O Wave is a <strong>native HAIC citizen</strong> — the App Store is purpose-built for Wave apps. This is the correct deployment path. Do not deploy the dashboard via Helm.</span>
-      </div>
-
-      <h3>9b — Import to HAIC App Store</h3>
       <ol class="step-list">
-        <li>Log in to HAIC console → navigate to <strong>App Store → Import App</strong></li>
+        <li>Log in to HAIC console → <strong>App Store → Import App</strong></li>
         <li>Upload <code>certis-jbs-dashboard-1.0.0.wave</code></li>
-        <li>Set app visibility to <strong>Private</strong> (internal users only)</li>
-        <li>Configure environment variables: <code>ORCHESTRATOR_URL</code> pointing to the internal orchestrator service</li>
-        <li>Click <strong>Deploy</strong> — HAIC assigns a public HTTPS subdomain automatically</li>
+        <li>Set visibility to <strong>Private</strong> and click <strong>Deploy</strong></li>
       </ol>
 
-      <p>The dashboard is accessible at your HAIC App Store URL: <code>https://&lt;instance-uuid&gt;.wave.h2o.ai</code> (or custom domain if configured).</p>
-    </section>
-
-    <!-- ═══ STEP 10 ════════════════════════════════════════════════════════ -->
-    <section id="step10">
-      <div class="section-header">
-        <div class="step-badge">10</div>
-        <div>
-          <h2>Configure H2O MLOps Monitoring</h2>
-          <div class="section-desc">Track inference latency, error rates, and data drift</div>
-        </div>
-      </div>
-
-      <h3>10a — Register the Inference Endpoint</h3>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code><span class="kw">from</span> h2o_mlops <span class="kw">import</span> Client
-
-mlops = Client(
-    url=<span class="st">"https://mlops.your-haic-cluster.h2o.ai"</span>,
-    token=<span class="st">"&lt;token&gt;"</span>
-)
-
-deployment = mlops.create_deployment(
-    name=<span class="st">"certis-jbs-llm-inference"</span>,
-    description=<span class="st">"JBS Conversation Agent — h2oGPTe inference monitoring"</span>
-)
-
-<span class="nb">print</span>(<span class="st">f"Deployment ID: </span>{deployment.id}<span class="st">"</span>)</code></pre>
-      </div>
-
-      <h3>10b — Configure Alert Thresholds</h3>
-      <p>In the HAIC MLOps console navigate to <strong>Deployments → certis-jbs-llm-inference</strong>:</p>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Metric</th><th>Threshold</th><th>Action</th></tr></thead>
-          <tbody>
-            <tr><td>Response latency p95</td><td>&gt; 8 seconds</td><td>Alert via email / Slack</td></tr>
-            <tr><td>Error rate</td><td>&gt; 2%</td><td>Alert via email / Slack</td></tr>
-            <tr><td>Data drift score</td><td>&gt; 0.3</td><td>Notify team, review RAG collections</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ═══ STEP 11 ════════════════════════════════════════════════════════ -->
-    <section id="step11">
-      <div class="section-header">
-        <div class="step-badge check">11</div>
-        <div>
-          <h2>Verify Deployment</h2>
-          <div class="section-desc">Run through all checks to confirm a healthy deployment</div>
-        </div>
-      </div>
-
-      <h3>11a — Check Pod Health</h3>
+      <h3>12d — Initial knowledge base population</h3>
       <div class="code-wrap">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>kubectl get pods -n certis-jbs</code></pre>
+        <pre><code><span class="cm"># Trigger a manual SharePoint sync run</span>
+az containerapp job start \
+  --name jbs-sharepoint-sync \
+  --resource-group $RG
+
+az containerapp job execution list \
+  --name jbs-sharepoint-sync \
+  --resource-group $RG --output table</code></pre>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 13 ════════════════════════════════════════════════════════ -->
+    <section id="step13">
+      <div class="step-header">
+        <div class="step-badge">13</div>
+        <h2>Verify Deployment</h2>
       </div>
 
-      <p>Expected output:</p>
+      <h3>13a — Check Container App statuses</h3>
       <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">expected output</span></div>
-        <pre><code>NAME                                     READY   STATUS    RESTARTS
-certis-jbs-webhook-7d4f9b-xxxx           1/1     Running   0
-certis-jbs-webhook-7d4f9b-yyyy           1/1     Running   0
-certis-jbs-orchestrator-6c8d7b-xxxx      1/1     Running   0
-certis-jbs-orchestrator-6c8d7b-yyyy      1/1     Running   0
-certis-jbs-docgen-5b6c8a-xxxx            1/1     Running   0
-certis-jbs-redis-0                       1/1     Running   0</code></pre>
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>az containerapp list --resource-group $RG --output table</code></pre>
       </div>
 
-      <h3>11b — Verify Teams Messaging Endpoint</h3>
-      <p>In the Azure Bot resource → <strong>Configuration</strong>, the messaging endpoint should show a green checkmark once the webhook service is running. Use <strong>Test in Web Chat</strong> to send a quick test message.</p>
+      <h3>13b — Test webhook health</h3>
       <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">bash — health check</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>curl https://jbs-webhook.your-haic-cluster.h2o.ai/health
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><code>curl https://${WEBHOOK_FQDN}/health
 <span class="cm"># Expected: {"status": "ok"}</span></code></pre>
       </div>
 
-      <h3>11c — Test h2oGPTe RAG Collections</h3>
+      <h3>13c — Test h2oGPTe RAG Collections</h3>
       <div class="code-wrap">
         <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
         <pre><code>python -c <span class="st">"
@@ -1261,61 +1355,23 @@ asyncio.run(test())
 "</span></code></pre>
       </div>
 
-      <h3>11d — End-to-End Teams Test</h3>
+      <h3>13d — Verify Teams messaging endpoint</h3>
+      <p>In Azure Portal → Azure Bot → <strong>Configuration</strong>, the messaging endpoint should show a green checkmark. Use <strong>Test in Web Chat</strong> to send a test message.</p>
+
+      <h3>13e — End-to-end Teams test</h3>
       <ol class="step-list">
-        <li>Open Microsoft Teams and find the JBS bot (search by name or via app catalogue)</li>
-        <li>Send: <kbd>Hello</kbd></li>
-        <li>Expected: bot greets and asks for Customer Name and Site Name</li>
-        <li>Reply with site details and proceed through all 5 phases</li>
+        <li>Open Teams, find the JBS bot, send: <code>Hello</code></li>
+        <li>Bot should greet and ask for Customer Name and Site Name</li>
+        <li>Complete all 4 phases</li>
+        <li>On approval, confirm the download link points to <code>*.blob.core.windows.net</code></li>
       </ol>
 
-      <h3>11e — Verify Admin Dashboard</h3>
-      <ol class="step-list">
-        <li>Navigate to <code>https://jbs-admin.your-haic-cluster.h2o.ai</code></li>
-        <li>Verify the test interview appears in the Active Interviews table</li>
-        <li>Verify SharePoint sync status is shown in the Sync panel</li>
-      </ol>
-    </section>
-
-    <!-- ═══ STEP 12 ════════════════════════════════════════════════════════ -->
-    <section id="step12">
-      <div class="section-header">
-        <div class="step-badge">12</div>
-        <div>
-          <h2>Post-Deployment Configuration</h2>
-          <div class="section-desc">Final configuration tasks after services are running</div>
-        </div>
-      </div>
-
-      <h3>12a — Update h2oGPTe Collection IDs</h3>
-      <p>After creating collections in Step 2b, update the mapping in <code>src/agent/phase_controller.py</code>:</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>SITE_CATEGORY_COLLECTION_MAP = {
-    <span class="st">"Corporate"</span>:   <span class="st">"col_xxxxxxxx"</span>,  <span class="cm"># Replace with real IDs from h2oGPTe UI</span>
-    <span class="st">"Aviation"</span>:    <span class="st">"col_yyyyyyyy"</span>,
-    <span class="st">"Industrial"</span>:  <span class="st">"col_zzzzzzzz"</span>,
-    <span class="st">"Maritime"</span>:    <span class="st">"col_aaaaaaaa"</span>,
-    <span class="st">"Retail"</span>:      <span class="st">"col_bbbbbbbb"</span>,
-}</code></pre>
-      </div>
-      <p>Rebuild and redeploy the orchestrator image after this change.</p>
-
-      <h3>12b — Upload the Corporate Word Template</h3>
-      <p>Place the approved corporate JBS Word template with bookmarks at:</p>
-      <div class="code-wrap">
-        <div class="code-header"><span class="code-lang">path</span></div>
-        <pre><code>src/document/jbs_template.docx</code></pre>
-      </div>
-      <p>Required template bookmarks: <code>{CUSTOMER_NAME}</code>, <code>{SITE_NAME}</code>, <code>{SITE_CATEGORY}</code>, <code>{JOB_PURPOSE}</code>, <code>{GENERATED_AT}</code>, <code>{AUTHORIZED_BY}</code>. Rebuild the document generator image.</p>
-
-      <h3>12c — Initial Knowledge Base Population</h3>
+      <h3>13f — Stream service logs</h3>
       <div class="code-wrap">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <pre><code>kubectl create job --from=cronjob/certis-jbs-sharepoint-sync \
-  initial-sync -n certis-jbs
-
-kubectl logs -f job/initial-sync -n certis-jbs</code></pre>
+        <pre><code>az containerapp logs show --name jbs-webhook --resource-group $RG --follow
+az containerapp logs show --name jbs-orchestrator --resource-group $RG --follow
+az containerapp logs show --name jbs-docgen --resource-group $RG --follow</code></pre>
       </div>
     </section>
 
@@ -1331,20 +1387,22 @@ kubectl logs -f job/initial-sync -n certis-jbs</code></pre>
 
       <div class="card">
         <ul class="checklist" id="checklist">
-          <li><input type="checkbox" onchange="toggleDone(this)"> All secrets stored in H2O Secret Manager — no plaintext in <code>values.yaml</code></li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Session state backend confirmed: <code>sqlite</code> for single-replica, <code>external_redis</code> (managed service) for multi-replica — no Redis pod deployed via Helm</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Ingress TLS certificates issued and valid for both webhook and dashboard hosts</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> All secrets stored in Azure Key Vault — no plaintext credentials in source control</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Webhook Container App has external ingress with HTTPS enforced</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Orchestrator and Document Generator Container Apps have internal-only ingress</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Teams Bot RS256 JWT Bearer token validation tested — invalid token returns HTTP 401</li>
           <li><input type="checkbox" onchange="toggleDone(this)"> Teams Bot app manifest published to tenant app catalogue (not just side-loaded)</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> HAIC RBAC configured — only authorised roles access admin dashboard</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> S3 bucket policy restricts access to document generator service account only</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> SharePoint App Registration uses minimum permissions: <code>Files.Read.All</code>, <code>Sites.Read.All</code></li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Mozart API key rotated from default</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> MLOps monitoring alerts configured and test alerts fired successfully</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Pod resource limits set in Helm values (CPU / memory)</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Horizontal Pod Autoscaler (HPA) configured for webhook and orchestrator</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Document download URLs use short-lived presigned S3 URLs (15-minute expiry)</li>
-          <li><input type="checkbox" onchange="toggleDone(this)"> Penetration test of public webhook endpoint completed</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Azure Blob Storage container has public access disabled</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Blob SAS token URLs use 15-minute expiry (DOC_URL_EXPIRY_SECONDS=900)</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> SharePoint App Registration uses minimum permissions: Files.Read.All, Sites.Read.All</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Azure Key Vault access policies restrict secret reading to ACA managed identities only</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> ACR admin credentials rotated after initial deployment (use managed identity for production)</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Container App scaling rules reviewed: min-replicas set correctly per service</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> SharePoint sync ACA Job schedule confirmed and first manual run succeeded</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> h2oGPTe collection IDs updated in phase_controller.py and orchestrator redeployed</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Corporate Word template baked into document generator image and redeployed</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> MLOps monitoring alerts configured for h2oGPTe inference latency and error rate</li>
+          <li><input type="checkbox" onchange="toggleDone(this)"> Penetration test of public webhook Container App endpoint completed</li>
         </ul>
       </div>
 
@@ -1371,16 +1429,16 @@ kubectl logs -f job/initial-sync -n certis-jbs</code></pre>
             <li>Check webhook service logs:
               <div class="code-wrap" style="margin-top:10px">
                 <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>kubectl logs -l app=jbs-webhook -n certis-jbs --tail=50</code></pre>
+                <pre><code>az containerapp logs show --name jbs-webhook --resource-group $RG --follow</code></pre>
               </div>
             </li>
             <li>Verify the Teams messaging endpoint shows green status in Azure Portal → Azure Bot → Configuration</li>
             <li>Confirm <code>TEAMS_APP_ID</code> in the webhook env matches the Azure Bot App Registration</li>
-            <li>Confirm orchestrator is reachable from the webhook pod:
+            <li>Confirm orchestrator is reachable from the webhook Container App:
               <div class="code-wrap" style="margin-top:10px">
                 <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>kubectl exec -it deploy/certis-jbs-webhook -n certis-jbs -- \
-  curl http://jbs-orchestrator-service:8001/health</code></pre>
+                <pre><code>az containerapp exec --name jbs-webhook --resource-group $RG \
+  --command "curl http://jbs-orchestrator/health"</code></pre>
               </div>
             </li>
           </ol>
@@ -1410,44 +1468,51 @@ kubectl logs -f job/initial-sync -n certis-jbs</code></pre>
             <li>Check document generator logs:
               <div class="code-wrap" style="margin-top:10px">
                 <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>kubectl logs -l app=jbs-docgen -n certis-jbs --tail=50</code></pre>
+                <pre><code>az containerapp logs show --name jbs-docgen --resource-group $RG --follow</code></pre>
               </div>
             </li>
-            <li>Verify S3 bucket exists and credentials are valid — test with <code>aws s3 ls s3://certis-jbs-documents</code></li>
-            <li>Confirm <code>jbs_template.docx</code> is present in the container image — check Dockerfile.document</li>
+            <li>Verify Azure Blob Storage container exists and credentials are valid:
+              <div class="code-wrap" style="margin-top:10px">
+                <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><code>az storage blob list --container-name certis-jbs-documents \
+  --account-name certisjbsstorage --output table</code></pre>
+              </div>
+            </li>
+            <li>Confirm <code>jbs_corporate_template.docx</code> is present in the container image — check Dockerfile.document</li>
           </ol>
         </div>
       </details>
 
       <details>
-        <summary><span class="trouble-icon">💾</span> Session state lost after orchestrator pod restart</summary>
+        <summary><span class="trouble-icon">💾</span> Session state lost after orchestrator Container App restart</summary>
         <div class="details-body">
           <p>If <code>STATE_BACKEND=memory</code>, state is lost on restart by design. Switch to <code>sqlite</code> for restart-safe state:</p>
           <ol class="step-list">
-            <li>Set <code>STATE_BACKEND=sqlite</code> and <code>SQLITE_PATH=/data/jbs_sessions.db</code> in Helm values</li>
-            <li>Mount a PersistentVolume at <code>/data</code> on the orchestrator pod so the SQLite file survives restarts</li>
-            <li>For multi-replica deployments, use <code>STATE_BACKEND=external_redis</code> with a managed Redis URL (e.g. AWS ElastiCache) — do not deploy a Redis pod via Helm</li>
+            <li>Set <code>STATE_BACKEND=sqlite</code> and <code>SQLITE_PATH=/data/jbs_sessions.db</code> in the orchestrator Container App env vars</li>
+            <li>Mount an Azure Files volume at <code>/data</code> on the orchestrator Container App so the SQLite file survives restarts</li>
           </ol>
           <p>Note: conversation turn history is never lost regardless of state backend — it lives in h2oGPTe natively via <code>conversation_id</code>.</p>
         </div>
       </details>
 
       <details>
-        <summary><span class="trouble-icon">🔄</span> SharePoint sync not running</summary>
+        <summary><span class="trouble-icon">🔄</span> SharePoint sync ACA Job not running</summary>
         <div class="details-body">
           <ol class="step-list">
-            <li>Check CronJob and recent job status:
+            <li>Check ACA Job execution history:
               <div class="code-wrap" style="margin-top:10px">
                 <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>kubectl get cronjobs -n certis-jbs
-kubectl get jobs -n certis-jbs</code></pre>
+                <pre><code>az containerapp job execution list \
+  --name jbs-sharepoint-sync \
+  --resource-group $RG --output table</code></pre>
               </div>
             </li>
-            <li>Trigger a manual sync:
+            <li>Trigger a manual sync run:
               <div class="code-wrap" style="margin-top:10px">
                 <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                <pre><code>kubectl create job --from=cronjob/certis-jbs-sharepoint-sync \
-  manual-sync-$(date +%s) -n certis-jbs</code></pre>
+                <pre><code>az containerapp job start \
+  --name jbs-sharepoint-sync \
+  --resource-group $RG</code></pre>
               </div>
             </li>
           </ol>

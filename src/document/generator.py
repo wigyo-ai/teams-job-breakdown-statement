@@ -1,30 +1,35 @@
 """
 Document Generator
 Renders approved JBS JSON to a corporate Word (.docx) file,
-uploads to S3-compatible storage, and returns a presigned download URL.
+uploads to Azure Blob Storage, and returns a SAS download URL.
 """
 
 import os
 import json
 import uuid
-import boto3
+from datetime import datetime, timezone, timedelta
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from docx import Document
 from docx.shared import Pt, RGBColor
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "../../templates/jbs_corporate_template.docx")
-S3_BUCKET  = os.environ.get("S3_BUCKET", "certis-jbs-documents")
-S3_PREFIX  = os.environ.get("S3_PREFIX", "jbs-documents/")
-URL_EXPIRY = int(os.environ.get("DOC_URL_EXPIRY_SECONDS", "900"))
+TEMPLATE_PATH   = os.path.join(os.path.dirname(__file__), "../../templates/jbs_corporate_template.docx")
+AZURE_ACCOUNT   = os.environ.get("AZURE_STORAGE_ACCOUNT", "")
+AZURE_CONTAINER = os.environ.get("AZURE_STORAGE_CONTAINER", "certis-jbs-documents")
+BLOB_PREFIX     = os.environ.get("BLOB_PREFIX", "jbs-documents/")
+URL_EXPIRY      = int(os.environ.get("DOC_URL_EXPIRY_SECONDS", "900"))
 
 
 class DocumentGenerator:
     def __init__(self):
-        self.s3 = boto3.client(
-            "s3",
-            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        account_key = os.environ["AZURE_STORAGE_KEY"]
+        conn_str = (
+            f"DefaultEndpointsProtocol=https;"
+            f"AccountName={AZURE_ACCOUNT};"
+            f"AccountKey={account_key};"
+            f"EndpointSuffix=core.windows.net"
         )
+        self.blob_service = BlobServiceClient.from_connection_string(conn_str)
+        self.account_key = account_key
 
     async def generate(self, jbs_json: dict) -> str:
         doc = Document(TEMPLATE_PATH)
@@ -35,13 +40,23 @@ class DocumentGenerator:
         local_path = f"/tmp/{filename}"
         doc.save(local_path)
 
-        s3_key = f"{S3_PREFIX}{filename}"
-        self.s3.upload_file(local_path, S3_BUCKET, s3_key)
+        blob_name = f"{BLOB_PREFIX}{filename}"
+        container_client = self.blob_service.get_container_client(AZURE_CONTAINER)
+        with open(local_path, "rb") as data:
+            container_client.upload_blob(name=blob_name, data=data, overwrite=True)
 
-        return self.s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": S3_BUCKET, "Key": s3_key},
-            ExpiresIn=URL_EXPIRY,
+        expiry = datetime.now(timezone.utc) + timedelta(seconds=URL_EXPIRY)
+        sas_token = generate_blob_sas(
+            account_name=AZURE_ACCOUNT,
+            container_name=AZURE_CONTAINER,
+            blob_name=blob_name,
+            account_key=self.account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=expiry,
+        )
+        return (
+            f"https://{AZURE_ACCOUNT}.blob.core.windows.net"
+            f"/{AZURE_CONTAINER}/{blob_name}?{sas_token}"
         )
 
     def _populate_document(self, doc: Document, data: dict):

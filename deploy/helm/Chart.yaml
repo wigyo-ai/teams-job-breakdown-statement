@@ -1,6 +1,6 @@
 apiVersion: v2
 name: certis-jbs-platform
-description: Certis Security JBS Automation Platform — H2O AI Cloud
+description: Certis Security JBS Automation Platform — Azure Container Apps (reference chart)
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
@@ -9,5 +9,5 @@ maintainers:
 keywords:
   - security
   - jbs
-  - h2o
+  - azure
   - ai

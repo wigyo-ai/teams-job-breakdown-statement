@@ -1,0 +1,123 @@
+name: Build, Push, and Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'config/prompts/**'
+      - 'templates/**'
+      - 'Dockerfile.*'
+      - 'requirements.txt'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (defaults to commit SHA)'
+        required: false
+        default: ''
+
+env:
+  IMAGE_TAG: ${{ github.event.inputs.image_tag || github.sha }}
+
+jobs:
+  # ============================================================================
+  # Job 1: Build Docker images and push to Azure Container Registry
+  # ============================================================================
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name $(echo "${{ secrets.ACR_LOGIN_SERVER }}" | cut -d. -f1)
+
+      - name: Build and push webhook image
+        run: |
+          docker build -f Dockerfile.webhook \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/jbs-webhook:${{ env.IMAGE_TAG }} \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/jbs-webhook:latest .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/jbs-webhook:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/jbs-webhook:latest
+
+      - name: Build and push orchestrator image
+        run: |
+          docker build -f Dockerfile.orchestrator \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:${{ env.IMAGE_TAG }} \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:latest .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:latest
+
+      - name: Build and push document generator image
+        run: |
+          docker build -f Dockerfile.document \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/jbs-docgen:${{ env.IMAGE_TAG }} \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/jbs-docgen:latest .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/jbs-docgen:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/jbs-docgen:latest
+
+  # ============================================================================
+  # Job 2: Deploy updated images to Azure Container Apps
+  # ============================================================================
+  deploy:
+    name: Deploy to Azure Container Apps
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Update webhook Container App
+        run: |
+          az containerapp update \
+            --name certisjbs-webhook \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-webhook:${{ env.IMAGE_TAG }}
+
+      - name: Update orchestrator Container App
+        run: |
+          az containerapp update \
+            --name certisjbs-orchestrator \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:${{ env.IMAGE_TAG }}
+
+      - name: Update document generator Container App
+        run: |
+          az containerapp update \
+            --name certisjbs-docgen \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-docgen:${{ env.IMAGE_TAG }}
+
+      - name: Update SharePoint sync Job
+        run: |
+          az containerapp job update \
+            --name certisjbs-sp-sync \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:${{ env.IMAGE_TAG }}
+
+      - name: Verify webhook health
+        run: |
+          FQDN=$(az containerapp show \
+            --name certisjbs-webhook \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "Webhook deployed at: https://${FQDN}"
+          curl --fail --silent --retry 5 --retry-delay 10 \
+            "https://${FQDN}/health" | grep -q '"status": "ok"'
+          echo "Health check passed."

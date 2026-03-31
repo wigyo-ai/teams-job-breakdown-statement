@@ -1,18 +1,16 @@
 """
 Phase Controller
-Enforces the 5-phase JBS interview state machine.
+Enforces the 4-phase JBS interview state machine.
 Determines collection ID from site category on Phase 1.
 """
 
 from datetime import datetime
-import re
 
 PHASE_REQUIRED_FIELDS = {
     1: ["customer_name", "site_name", "site_category", "job_purpose"],
     2: ["duties"],
     3: ["hazards", "ppe_requirements", "escalation_procedure"],
-    4: ["mozart_site_id"],
-    5: [],
+    4: [],
 }
 
 SITE_CATEGORY_COLLECTION_MAP = {
@@ -44,15 +42,10 @@ class PhaseController:
                     self.session["collection_id"] = SITE_CATEGORY_COLLECTION_MAP[category]
                     break
 
-    def extract_mozart_site_id(self, text: str) -> str | None:
-        """Simple extraction — looks for patterns like SITE-XXX-000."""
-        match = re.search(r'\bSITE-[A-Z0-9]+-\d+\b', text)
-        return match.group(0) if match else None
-
     def advance_if_complete(self):
         required = PHASE_REQUIRED_FIELDS.get(self.current_phase, [])
         if all(f in self.fields for f in required):
-            if self.current_phase < 5:
+            if self.current_phase < 4:
                 self.current_phase += 1
                 self.session["phase"] = self.current_phase
 
@@ -74,5 +67,4 @@ class PhaseController:
             },
             "duties":            f.get("duties", []),
             "safety_compliance": f.get("safety_compliance", {}),
-            "mozart_references": session.get("mozart_references", {}),
         }

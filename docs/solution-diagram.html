@@ -232,11 +232,11 @@
 
     <!-- Step 8 -->
     <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
-         data-step="8" style="--active-color:#f59e0b" onclick="activateStep(8)">
-      <div class="w-7 h-7 rounded-full bg-orange-100 border border-orange-400 flex items-center justify-center text-orange-700 text-xs font-black flex-shrink-0 mt-0.5">8</div>
+         data-step="8" style="--active-color:#7c3aed" onclick="activateStep(8)">
+      <div class="w-7 h-7 rounded-full bg-violet-100 border border-violet-400 flex items-center justify-center text-violet-700 text-xs font-black flex-shrink-0 mt-0.5">8</div>
       <div>
-        <h4 class="text-sm font-bold text-gray-800 mb-1">Phase 4: Mozart Reference Lookup</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator calls Mozart REST API with the user-provided Site ID to fetch linked documents (SOPs, Emergency Plans). References embedded in the final JBS output.</p>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Phase 4: Review &amp; Approval</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator presents a structured JBS summary to the user and awaits approval. On APPROVE, the complete JBS JSON payload is assembled and sent to the Document Generator service.</p>
       </div>
     </div>
 
@@ -245,18 +245,8 @@
          data-step="9" style="--active-color:#7c3aed" onclick="activateStep(9)">
       <div class="w-7 h-7 rounded-full bg-violet-100 border border-violet-400 flex items-center justify-center text-violet-700 text-xs font-black flex-shrink-0 mt-0.5">9</div>
       <div>
-        <h4 class="text-sm font-bold text-gray-800 mb-1">Phase 5: Document Generation Triggered</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">On user APPROVE in Phase 5, the Orchestrator assembles the complete JBS JSON payload and calls the Document Generator service.</p>
-      </div>
-    </div>
-
-    <!-- Step 10 -->
-    <div class="step-card cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex gap-3"
-         data-step="10" style="--active-color:#7c3aed" onclick="activateStep(10)">
-      <div class="w-7 h-7 rounded-full bg-violet-100 border border-violet-400 flex items-center justify-center text-violet-700 text-xs font-black flex-shrink-0 mt-0.5">10</div>
-      <div>
-        <h4 class="text-sm font-bold text-gray-800 mb-1">.docx Rendered &amp; Uploaded to S3</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">python-docx renders JBS JSON into the corporate Word template. File uploaded to S3 object store. A 15-minute presigned download URL is sent back to the user.</p>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">.docx Rendered &amp; Uploaded to Azure Blob</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">python-docx renders JBS JSON into the corporate Word template. File uploaded to Azure Blob Storage. A 15-minute SAS token download URL is sent back to the user.</p>
       </div>
     </div>
 
@@ -308,15 +298,15 @@ const nodeData = [
 
   { id: 4, label: '🧠  Conversation\nOrchestrator\nFastAPI · Port 8001', group: 'middleware', level: 2,
     title: tip('Conversation Orchestrator — FastAPI :8001',
-      'Core of the platform. Enforces the 5-phase JBS interview state machine. Builds phase-specific prompts, calls h2oGPTe for RAG-grounded LLM responses, handles Mozart Phase 4 lookup, and triggers Document Generator on Phase 5 approval. Session phase state in SQLite; turn history owned by h2oGPTe natively. Sends replies via Bot Framework REST API using cached OAuth2 token. 2× replicas.') },
+      'Core of the platform. Enforces the 4-phase JBS interview state machine. Builds phase-specific prompts, calls h2oGPTe for RAG-grounded LLM responses, and triggers Document Generator on Phase 4 approval. Session phase state in SQLite; turn history owned by h2oGPTe natively. Sends replies via Bot Framework REST API using cached OAuth2 token. 2× replicas.') },
 
   { id: 5, label: '📝  Document\nGenerator\nPython · Port 8002', group: 'middleware', level: 3,
     title: tip('Document Generator — python-docx :8002',
-      'Receives approved JBS JSON payload from the Orchestrator. Renders it into the approved corporate Word (.docx) template using python-docx. Uploads file to S3-compatible object store and returns a 15-minute presigned download URL sent back to the user.') },
+      'Receives approved JBS JSON payload from the Orchestrator via HTTP. Renders it into the approved corporate Word (.docx) template using python-docx. Uploads file to Azure Blob Storage and returns a 15-minute SAS download URL sent back to the user.') },
 
   { id: 6, label: '🔄  SharePoint\nSync CronJob', group: 'middleware', level: 1,
     title: tip('SharePoint Sync CronJob',
-      'Kubernetes CronJob scheduled at 02:00 UTC daily. Fetches changed SOP documents from SharePoint via Microsoft Graph API. Passes them to H2O Document AI for OCR and chunking, then ingests processed chunks into the correct h2oGPTe site-category collection.') },
+      'Azure Container Apps Scheduled Job (cron: 02:00 UTC daily). Fetches changed SOP documents from SharePoint via Microsoft Graph API. Passes them to H2O Document AI for OCR and chunking, then ingests processed chunks into the correct h2oGPTe site-category collection.') },
 
   { id: 7, label: '📊  Admin Dashboard\nH2O Wave', group: 'middleware', level: 2,
     title: tip('Admin Dashboard — H2O Wave',
@@ -340,13 +330,9 @@ const nodeData = [
     title: tip('SharePoint Online',
       'Source of truth for all SOPs, historical JBS documents, and policy files. Accessed via Microsoft Graph API using Azure AD OAuth 2.0 client credentials (Files.Read.All, Sites.Read.All permissions). Documents auto-synced daily into h2oGPTe collections.') },
 
-  { id: 12, label: '🎵  Mozart API', group: 'external', level: 4,
-    title: tip('Mozart API',
-      'Reference document management system for Certis. Called during Phase 4 of the JBS interview to fetch linked documents (SOPs, Emergency Plans, Policies) by Site ID. REST API with Bearer token authentication. API key stored in H2O Secret Manager.') },
-
-  { id: 13, label: '🗄️  S3 Object\nStore (HAIC)', group: 'external', level: 4,
-    title: tip('S3 Object Store',
-      'S3-compatible storage for generated JBS Word documents. Can be HAIC native object storage, AWS S3, or Azure Blob Storage. Generated .docx files stored with a 15-minute presigned URL returned to the end user. Access restricted to the Document Generator service account.') },
+  { id: 13, label: '🗄️  Azure Blob\nStorage', group: 'external', level: 4,
+    title: tip('Azure Blob Storage',
+      'Azure Blob Storage for generated JBS Word documents. Generated .docx files stored with a 15-minute SAS token URL returned to the end user. Public access disabled; access key stored in Azure Key Vault.') },
 ];
 
 // ── Edge definitions ─────────────────────────────────────────────
@@ -357,15 +343,12 @@ const edgeData = [
   { id: 4,  from: 4,  to: 1,  label: 'Bot Framework\nreply',        color:{color:'#60a5fa',hover:'#93c5fd',highlight:'#bfdbfe'}, width:1.5, dashes:true,  title:'Orchestrator POSTs a reply Activity to the Teams Bot Framework REST API using a cached OAuth2 access token. Reply appears in the user\'s Teams chat.' },
 
   // AI flow — amber/gold
-  { id: 5,  from: 4,  to: 8,  label: 'RAG prompt\nPhases 1–5', color:{color:'#d97706',hover:'#f59e0b',highlight:'#fbbf24'}, width:2.2, dashes:false, title:'Orchestrator sends phase-specific system prompt + conversation_id to h2oGPTe for RAG-grounded LLM inference.' },
+  { id: 5,  from: 4,  to: 8,  label: 'RAG prompt\nPhases 1–4', color:{color:'#d97706',hover:'#f59e0b',highlight:'#fbbf24'}, width:2.2, dashes:false, title:'Orchestrator sends phase-specific system prompt + conversation_id to h2oGPTe for RAG-grounded LLM inference.' },
   { id: 6,  from: 8,  to: 4,  label: 'response',       color:{color:'#ca8a04',hover:'#d97706',highlight:'#f59e0b'}, width:1.5, dashes:true,  title:'h2oGPTe returns the generated response. Turn history stored natively by h2oGPTe — no Redis required.' },
 
   // Document flow — violet
-  { id: 7,  from: 4,  to: 5,  label: 'Phase 5 JSON',   color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'On Phase 5 APPROVE, Orchestrator sends the complete JBS JSON payload to the Document Generator.' },
-  { id: 8,  from: 5,  to: 13, label: '.docx upload',    color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'Document Generator uploads the rendered Word file to S3 and returns a presigned download URL.' },
-
-  // Mozart — orange dashed
-  { id: 9,  from: 4,  to: 12, label: 'Phase 4 lookup',  color:{color:'#ea580c',hover:'#f97316',highlight:'#fb923c'}, width:1.8, dashes:true,  title:'Phase 4: Orchestrator queries Mozart API with the Site ID to retrieve linked reference documents.' },
+  { id: 7,  from: 4,  to: 5,  label: 'Phase 4 JSON',   color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'On Phase 4 APPROVE, Orchestrator sends the complete JBS JSON payload to the Document Generator.' },
+  { id: 8,  from: 5,  to: 13, label: '.docx upload',    color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'Document Generator uploads the rendered Word file to Azure Blob Storage and returns a SAS token download URL.' },
 
   // SharePoint sync — green
   { id: 10, from: 11, to: 6,  label: 'Graph API\ndaily', color:{color:'#16a34a',hover:'#22c55e',highlight:'#4ade80'}, width:2,   dashes:false, title:'CronJob fetches changed SOP documents from SharePoint Online via Microsoft Graph API.' },

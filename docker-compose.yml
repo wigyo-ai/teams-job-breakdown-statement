@@ -1,0 +1,66 @@
+# docker-compose.yml — Local development environment
+# Runs the three middleware services together for local testing.
+# Usage: docker compose up --build
+#
+# Prerequisites:
+#   - Populate .env from config/env.template before running
+#   - Azure Blob Storage and h2oGPTe credentials must be real or mocked
+#   - STATE_BACKEND=memory is set automatically for local dev (no SQLite mount needed)
+#
+# Note: The H2O Wave admin dashboard is deployed via HAIC App Store and is not
+#       included in this compose file.
+
+services:
+
+  webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile.webhook
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - ORCHESTRATOR_URL=http://orchestrator:8001
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    ports:
+      - "8001:8001"
+    env_file: .env
+    environment:
+      - STATE_BACKEND=memory
+      - DOCUMENT_GENERATOR_URL=http://docgen:8002
+    depends_on:
+      docgen:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  docgen:
+    build:
+      context: .
+      dockerfile: Dockerfile.document
+    ports:
+      - "8002:8002"
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

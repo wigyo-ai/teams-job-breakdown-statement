@@ -7,7 +7,7 @@
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `H2OGPTE_ADDRESS` | Yes | — | Full URL of your h2oGPTe instance (e.g. `https://gpte.certis.h2o.ai`) |
-| `H2OGPTE_API_KEY` | Yes | — | API key for h2oGPTe (store in H2O Secret Manager) |
+| `H2OGPTE_API_KEY` | Yes | — | API key for h2oGPTe (store in Azure Key Vault) |
 
 ### Session State (no Redis pod required)
 
@@ -33,14 +33,6 @@ h2oGPTe natively stores full conversation turn history via `conversation_id`. Th
 > 3. Click **Manage** → **Certificates & secrets** → create a new client secret → copy it as `TEAMS_APP_PASSWORD`
 > 4. Set the **Messaging endpoint** to `https://<your-webhook-host>/webhook/teams`
 
-### Mozart Integration
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `MOZART_API_BASE_URL` | Yes | — | Base URL of Mozart REST API |
-| `MOZART_API_KEY` | Yes | — | Mozart API authentication key |
-| `MOZART_TIMEOUT_SECONDS` | No | `15` | Request timeout for Mozart API calls |
-
 ### SharePoint / Microsoft Graph API
 
 | Variable | Required | Default | Description |
@@ -57,16 +49,17 @@ h2oGPTe natively stores full conversation turn history via `conversation_id`. Th
 
 > **Note:** The SharePoint App Registration (`AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`) is separate from the Teams Bot App Registration (`TEAMS_APP_ID` / `TEAMS_APP_PASSWORD`). The SharePoint registration needs `Files.Read.All` and `Sites.Read.All` Graph API permissions. The Teams Bot registration needs no Graph API permissions — it uses the Bot Framework scope only.
 
-### Document Generation & Storage
+### Document Generation & Storage (Azure Blob Storage)
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `S3_BUCKET` | Yes | — | S3 bucket name for generated .docx files |
-| `S3_ENDPOINT_URL` | Yes | — | S3-compatible endpoint (HAIC object store) |
-| `S3_PREFIX` | No | `jbs-documents/` | Key prefix for stored documents |
-| `AWS_ACCESS_KEY_ID` | Yes | — | S3 access key ID |
-| `AWS_SECRET_ACCESS_KEY` | Yes | — | S3 secret access key |
-| `DOC_URL_EXPIRY_SECONDS` | No | `900` | Presigned URL expiry (default 15 minutes) |
+| `AZURE_STORAGE_ACCOUNT` | Yes | — | Azure Storage account name |
+| `AZURE_STORAGE_CONTAINER` | Yes | `certis-jbs-documents` | Blob container name |
+| `AZURE_STORAGE_KEY` | Yes | — | Storage account access key (store in Azure Key Vault) |
+| `BLOB_PREFIX` | No | `jbs-documents/` | Blob name prefix for stored documents |
+| `DOC_URL_EXPIRY_SECONDS` | No | `900` | SAS token URL expiry in seconds (default 15 minutes) |
+
+> **How to obtain:** After completing Step 7 in the Deployment Guide (Create Azure Blob Storage), the account name is the name you chose, the container name is `certis-jbs-documents`, and the key is found under **Storage Account → Access keys** in the Azure Portal.
 
 ### Internal Services
 
@@ -103,8 +96,7 @@ PHASE_REQUIRED_FIELDS = {
     1: ["customer_name", "site_name", "site_category", "job_purpose"],
     2: ["duties"],
     3: ["hazards", "ppe_requirements", "escalation_procedure"],
-    4: ["mozart_site_id"],
-    5: []
+    4: [],
 }
 
 MAX_HISTORY_TURNS = 20        # Max conversation turns sent to LLM context
@@ -114,38 +106,43 @@ SESSION_TTL_HOURS = 24
 
 ---
 
-## 4. Helm Values Quick Reference
+## 4. Azure Container Apps Deployment Quick Reference
 
-The Helm chart manages **3 services only**: webhook, orchestrator, document generator (+ CronJob).
-The dashboard is deployed via HAIC App Store — it is not in this chart.
+The primary deployment uses the Bicep template (`deploy/azure/main.bicep`) or `az containerapp` CLI commands — see `docs/DEPLOYMENT_GUIDE.md`.
 
-Key values to change in `deploy/helm/values.yaml` for a new environment:
+Key parameter values to set for a new environment:
 
-```yaml
-global:
-  registry: <your HAIC container registry>
-  imageTag: "1.0.0"
+```bash
+# Core identifiers
+PREFIX=certisjbs
+IMAGE_TAG=1.0.0
+ACR_LOGIN_SERVER=certisjbsacr.azurecr.io
 
-webhook:
-  ingress:
-    host: <public webhook hostname>   # Must be accessible by Azure Bot Service
-  env:
-    plain:
-      TEAMS_APP_ID: "<your bot app ID>"
-    secret:
-      TEAMS_APP_PASSWORD:
-        name: certis-jbs-secrets
-        key: teams-app-password
+# Teams Bot (Azure Bot App Registration)
+TEAMS_APP_ID=<your-bot-app-id>
+TEAMS_APP_PASSWORD=<your-bot-app-secret>
 
-orchestrator:
-  env:
-    plain:
-      STATE_BACKEND: "sqlite"         # or "external_redis" for multi-replica
-      # REDIS_URL only needed for external_redis backend (managed service, not Helm pod)
+# h2oGPTe
+H2OGPTE_ADDRESS=https://your-h2ogpte-instance.h2o.ai
+H2OGPTE_API_KEY=<your-h2ogpte-api-key>
 
-syncCronJob:
-  schedule: "0 2 * * *"   # Change to preferred sync time (UTC)
+# SharePoint (separate App Registration)
+AZURE_TENANT_ID=<your-tenant-id>
+AZURE_CLIENT_ID=<sharepoint-client-id>
+AZURE_CLIENT_SECRET=<sharepoint-client-secret>
+SP_SITE_URL=https://certissecurity.sharepoint.com/sites/operations
+
+# Azure Blob Storage
+AZURE_STORAGE_ACCOUNT=certisjbsstorage
+AZURE_STORAGE_CONTAINER=certis-jbs-documents
+AZURE_STORAGE_KEY=<storage-access-key>
+
+# State backend (sqlite for single-replica, external_redis for multi-replica)
+STATE_BACKEND=sqlite
+SQLITE_PATH=/data/jbs_sessions.db
 ```
+
+> **Note:** The `deploy/helm/` directory contains a reference chart mapping these same variables to Helm values format. It is provided for reference only — the primary deployment uses Bicep + Azure CLI, not Helm.
 
 ---
 
@@ -251,28 +248,11 @@ Duty tables and the safety section are dynamically inserted after the template h
       "Site-specific induction — 4 hours"
     ],
     "incident_escalation": "Immediate radio contact to Control Room (Channel 3). Control Room to notify Terminal Duty Manager within 5 minutes. Police contacted for Category A incidents.",
-    "reporting_requirements": "All incidents logged in Mozart within 2 hours. Daily occurrence logs submitted to site manager by 23:59.",
+    "reporting_requirements": "All incidents logged in the incident management system within 2 hours. Daily occurrence logs submitted to site manager by 23:59.",
     "communication_channels": [
       "Motorola radio — Channel 3 (Control Room)",
       "Mobile phone — Terminal Duty Manager: +65 6xxx xxxx",
       "PABX — Security Control Room ext. 1234"
-    ]
-  },
-  "mozart_references": {
-    "site_id": "SITE-T3-001",
-    "reference_documents": [
-      {
-        "doc_id": "MOZ-SOP-AV-001",
-        "doc_title": "Airside Access Control Standard Operating Procedure",
-        "doc_type": "SOP",
-        "mozart_url": "https://mozart.certis.internal/docs/MOZ-SOP-AV-001"
-      },
-      {
-        "doc_id": "MOZ-EP-T3-002",
-        "doc_title": "Terminal 3 Emergency Evacuation Plan",
-        "doc_type": "Emergency Plan",
-        "mozart_url": "https://mozart.certis.internal/docs/MOZ-EP-T3-002"
-      }
     ]
   }
 }
