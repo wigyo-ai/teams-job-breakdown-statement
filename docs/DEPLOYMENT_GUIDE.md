@@ -163,11 +163,21 @@ export LOCATION=australiaeast       # change to your preferred region
 export ACR_NAME=certisjbsacr        # globally unique, alphanumeric only
 export STORAGE_ACCOUNT=certisjbsstorage  # globally unique, 3–24 lowercase alphanumeric
 export KV_NAME=certis-jbs-kv        # globally unique
-export ACA_ENV=certis-jbs-env
+export ACA_ENV=certisjbs-env
 export IMAGE_TAG=1.0.0
 ```
 
 > **Note:** These variables are not persisted across terminal sessions. Re-export them at the start of any new session before running subsequent steps.
+>
+> After Steps 9 and 12a have been completed once, also re-export the three derived variables when resuming in a new terminal:
+>
+> ```bash
+> export ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+> export ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+> export ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)
+> ```
+>
+> All five `az containerapp create` / `az containerapp job create` commands in Steps 12–13 require these three variables in addition to the base set above. Running with any of them empty will produce an `expected one argument` or `does not exist` error.
 
 ---
 
@@ -238,17 +248,19 @@ Build all images locally. No Azure credentials required at this step.
 
 ```bash
 # Webhook service — FastAPI on port 8000
-docker build -f Dockerfile.webhook -t jbs-webhook:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f Dockerfile.webhook -t jbs-webhook:${IMAGE_TAG} .
 
 # Orchestrator — FastAPI on port 8001 (bundles config/prompts/)
-docker build -f Dockerfile.orchestrator -t jbs-orchestrator:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f Dockerfile.orchestrator -t jbs-orchestrator:${IMAGE_TAG} .
 
 # Document generator — FastAPI on port 8002 (bundles templates/)
-docker build -f Dockerfile.document -t jbs-docgen:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f Dockerfile.document -t jbs-docgen:${IMAGE_TAG} .
 
 # H2O Wave admin dashboard — deployed via HAIC App Store, NOT pushed to ACR
-docker build -f Dockerfile.dashboard -t jbs-dashboard:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f Dockerfile.dashboard -t jbs-dashboard:${IMAGE_TAG} .
 ```
+
+> **Apple Silicon note:** The `--platform linux/amd64` flag is required when building on M-series Macs. Azure Container Apps only accepts `linux/amd64` images — omitting the flag produces an arm64 image that will be rejected at deploy time.
 
 Confirm all images built:
 
@@ -493,7 +505,7 @@ az containerapp job create \
   --registry-username $ACR_USERNAME \
   --registry-password $ACR_PASSWORD \
   --cpu 0.5 --memory 1.0Gi \
-  --command "python" "-m" "src.rag.sharepoint_sync" \
+  --command "python" --args "-m" "src.rag.sharepoint_sync" \
   --env-vars \
     H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
     AZURE_TENANT_ID="<AZURE_TENANT_ID>" \
@@ -530,8 +542,7 @@ SITE_CATEGORY_COLLECTION_MAP = {
 Rebuild and redeploy the orchestrator (and the sync job, which reuses the same image):
 
 ```bash
-docker build -f Dockerfile.orchestrator \
-  -t ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f Dockerfile.orchestrator -t ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 
 az containerapp update \
@@ -553,8 +564,7 @@ The Document Generator loads the template from `templates/jbs_corporate_template
 # Copy your approved template into the project
 cp /path/to/your/template.docx templates/jbs_corporate_template.docx
 
-docker build -f Dockerfile.document \
-  -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
 az containerapp update \
