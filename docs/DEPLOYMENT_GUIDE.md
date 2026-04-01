@@ -559,9 +559,11 @@ To regenerate or restyle the template, run:
 python templates/create_template.py
 ```
 
-Then rebuild and redeploy the docgen image:
+Then rebuild and redeploy the docgen image. Run these commands from the **project root** (`certis-job-breakdown-statement02/`), not a subdirectory:
 
 ```bash
+cd /path/to/certis-job-breakdown-statement02
+az acr login --name $ACR_NAME
 docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
@@ -570,6 +572,8 @@ az containerapp update \
   --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 ```
+
+> **Note:** `docker build` must be run from the project root — `Dockerfile.document` and the `templates/` directory it copies are both at the root level. Running from a subdirectory will produce `no such file or directory`.
 
 ### 14c. Deploy the H2O Wave admin dashboard via HAIC App Store
 

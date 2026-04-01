@@ -902,15 +902,18 @@ az containerapp job update \
       <p>To regenerate or restyle the template, run:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>python templates/create_template.py</pre></div>
-      <p>Then rebuild and redeploy the docgen image:</p>
+      <p>Then rebuild and redeploy the docgen image. Run from the <strong>project root</strong> (<code>certis-job-breakdown-statement02/</code>), not a subdirectory:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre>docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
+      <pre>cd /path/to/certis-job-breakdown-statement02
+az acr login --name $ACR_NAME
+docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
 az containerapp update \
   --name certisjbs-docgen \
   --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}</pre></div>
+      <div class="note note-warn"><span class="note-ic">⚠️</span><p><code>docker build</code> must be run from the project root — <code>Dockerfile.document</code> and the <code>templates/</code> directory it copies are both at root level. Running from a subdirectory produces <code>no such file or directory</code>.</p></div>
     </div>
 
     <div class="sub">
