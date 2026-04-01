@@ -891,13 +891,20 @@ az containerapp job update \
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">14b</div><h3>Add the corporate Word template</h3></div>
-      <p>The Document Generator loads the template from <code>templates/jbs_corporate_template.docx</code> at startup. Place the approved corporate template at that path, then rebuild and redeploy:</p>
+      <div class="sub-hdr"><div class="sub-dot">14b</div><h3>Corporate Word template</h3></div>
+      <p>The corporate Word template is already included in the repository at <code>templates/jbs_corporate_template.docx</code>. It is automatically baked into the docgen image during <code>docker build</code> — no manual step required.</p>
+      <p>The template includes:</p>
+      <ul class="ul">
+        <li>Certis Security navy header band with document title</li>
+        <li>6-field metadata table (customer, site, category, purpose, date, authorised by)</li>
+        <li>Duties &amp; Tasks intro section — duty tables and safety content are appended dynamically at generation time</li>
+      </ul>
+      <p>To regenerate or restyle the template, run:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-      <pre># Copy your approved template into the project
-cp /path/to/your/template.docx templates/jbs_corporate_template.docx
-
-docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
+      <pre>python templates/create_template.py</pre></div>
+      <p>Then rebuild and redeploy the docgen image:</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+      <pre>docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
 az containerapp update \

@@ -544,14 +544,24 @@ az containerapp job update \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 ```
 
-### 14b. Add the corporate Word template
+### 14b. Corporate Word template
 
-The Document Generator loads the template from `templates/jbs_corporate_template.docx` at startup. Place the approved corporate template at that path, then rebuild and redeploy:
+The corporate Word template is already included in the repository at `templates/jbs_corporate_template.docx`. It is automatically baked into the docgen image during `docker build` — no manual step required.
+
+The template includes:
+- Certis Security navy header band with document title
+- 6-field metadata table (customer, site, category, purpose, date, authorised by)
+- Duties & Tasks intro section (duty tables and safety content are appended dynamically at generation time)
+
+To regenerate or restyle the template, run:
 
 ```bash
-# Copy your approved template into the project
-cp /path/to/your/template.docx templates/jbs_corporate_template.docx
+python templates/create_template.py
+```
 
+Then rebuild and redeploy the docgen image:
+
+```bash
 docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
