@@ -841,33 +841,18 @@ echo "Teams Bot messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</pre>
     <div class="step-rule"></div>
     <p class="step-intro">The sync job reuses the orchestrator image and runs <code>src/rag/sharepoint_sync.py</code> daily at 02:00 UTC, fetching changed documents from SharePoint and ingesting them into h2oGPTe collections.</p>
 
+    <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong>Note:</strong> The Azure CLI cannot pass <code>-m</code> as a value to <code>--command</code> — the argument parser intercepts single-dash values as flags. Use <code>az rest</code> with the JSON template instead.</p></div>
+
+    <p><strong>1.</strong> Copy the template and fill in the three secret placeholders:</p>
     <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
-    <pre>az containerapp job create \
-  --name certisjbs-sp-sync \
-  --resource-group $RG \
-  --environment $ACA_ENV \
-  --trigger-type Schedule \
-  --cron-expression "0 2 * * *" \
-  --replica-timeout 1800 \
-  --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} \
-  --registry-server $ACR_LOGIN_SERVER \
-  --registry-username $ACR_USERNAME \
-  --registry-password $ACR_PASSWORD \
-  --cpu 0.5 --memory 1.0Gi \
-  --command "/bin/sh" "-c" "python -m src.rag.sharepoint_sync" \
-  --env-vars \
-    H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
-    AZURE_TENANT_ID="&lt;AZURE_TENANT_ID&gt;" \
-    AZURE_CLIENT_ID="&lt;AZURE_CLIENT_ID&gt;" \
-    SP_SITE_URL="https://certissecurity.sharepoint.com/sites/operations" \
-    SP_LIBRARY_CORPORATE="&lt;library-id&gt;" \
-    SP_LIBRARY_AVIATION="&lt;library-id&gt;" \
-    SP_LIBRARY_INDUSTRIAL="&lt;library-id&gt;" \
-    SP_LIBRARY_MARITIME="&lt;library-id&gt;" \
-    SP_LIBRARY_RETAIL="&lt;library-id&gt;" \
-  --secrets \
-    h2ogpte-api-key="&lt;H2OGPTE_API_KEY&gt;" \
-    azure-client-secret="&lt;AZURE_CLIENT_SECRET&gt;"</pre></div>
+    <pre>cp deploy/azure/sp-sync-job.json ~/sp-sync-job.json
+# Edit ~/sp-sync-job.json — replace &lt;ACR_PASSWORD&gt;, &lt;H2OGPTE_API_KEY&gt;, &lt;AZURE_CLIENT_SECRET&gt;</pre></div>
+
+    <p><strong>2.</strong> Deploy via the REST API:</p>
+    <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+    <pre>az rest --method PUT --uri "https://management.azure.com/subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/certis-jbs-rg/providers/Microsoft.App/jobs/certisjbs-sp-sync?api-version=2023-05-01" --body @/Users/lmccoy/sp-sync-job.json --headers "Content-Type=application/json"</pre></div>
+
+    <div class="note note-warn"><span class="note-ic">⚠️</span><p><code>~/sp-sync-job.json</code> will contain secrets after you fill it in. Do not commit it — only the placeholder template in <code>deploy/azure/sp-sync-job.json</code> should be committed.</p></div>
   </section>
 
   <!-- Step 14 -->

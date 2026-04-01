@@ -1,0 +1,51 @@
+{
+  "location": "Australia East",
+  "properties": {
+    "environmentId": "/subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/certis-jbs-rg/providers/Microsoft.App/managedEnvironments/certisjbs-env",
+    "configuration": {
+      "triggerType": "Schedule",
+      "replicaTimeout": 1800,
+      "scheduleTriggerConfig": {
+        "cronExpression": "0 2 * * *",
+        "replicaCompletionCount": 1,
+        "parallelism": 1
+      },
+      "registries": [
+        {
+          "server": "certisjbsacr.azurecr.io",
+          "username": "certisjbsacr",
+          "passwordSecretRef": "acr-password"
+        }
+      ],
+      "secrets": [
+        {"name": "acr-password", "value": "<ACR_PASSWORD>"},
+        {"name": "h2ogpte-api-key", "value": "<H2OGPTE_API_KEY>"},
+        {"name": "azure-client-secret", "value": "<AZURE_CLIENT_SECRET>"}
+      ]
+    },
+    "template": {
+      "containers": [
+        {
+          "name": "certisjbs-sp-sync",
+          "image": "certisjbsacr.azurecr.io/jbs-orchestrator:1.0.0",
+          "command": ["python", "-m", "src.rag.sharepoint_sync"],
+          "resources": {
+            "cpu": 0.5,
+            "memory": "1Gi"
+          },
+          "env": [
+            {"name": "H2OGPTE_ADDRESS", "value": "https://your-h2ogpte-instance.h2o.ai"},
+            {"name": "AZURE_TENANT_ID", "value": "35013e61-d285-4f21-9b33-4c601cc1d8ce"},
+            {"name": "AZURE_CLIENT_ID", "value": "b7c2872b-73bf-41ad-8f82-1c9d915e2b29"},
+            {"name": "SP_SITE_URL", "value": "https://wigyoai.sharepoint.com/sites/h2O"},
+            {"name": "SP_LIBRARY_CORPORATE", "value": "21c97509-9081-4c80-b2b8-caeb8d6f58b5"},
+            {"name": "SP_LIBRARY_AVIATION", "value": "1b23062c-ba3a-4b7c-a8b2-118c626ef228"},
+            {"name": "SP_LIBRARY_INDUSTRIAL", "value": "9231ba2e-7a0e-4181-8ef3-9f552ff7ee5a"},
+            {"name": "SP_LIBRARY_MARITIME", "value": "2a08f08b-b6f8-456c-abc3-d9a93b286064"},
+            {"name": "SP_LIBRARY_RETAIL", "value": "b1b125ab-2394-44ee-86cd-56c7f8dc74fd"}
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -492,17 +492,22 @@ az containerapp create \
 
 The sync job reuses the orchestrator image and runs `src/rag/sharepoint_sync.py` daily at 02:00 UTC, fetching changed documents from SharePoint and ingesting them into h2oGPTe collections.
 
-> **Note:** The Azure CLI cannot pass `-m` as a value to `--command` — the argument parser intercepts it as a flag. Use the YAML approach below instead.
+> **Note:** The Azure CLI cannot pass `-m` as a value to `--command` — the argument parser intercepts single-dash values as flags. Use `az rest` with the JSON template instead.
 
-1. Edit `deploy/azure/sp-sync-job.yaml` — fill in the three secret placeholders (`<ACR_PASSWORD>`, `<H2OGPTE_API_KEY>`, `<AZURE_CLIENT_SECRET>`) and the environment variable placeholders.
-
-2. Deploy:
+1. Copy the template and fill in the three secret placeholders:
 
 ```bash
-az containerapp job create --resource-group $RG --yaml deploy/azure/sp-sync-job.yaml
+cp deploy/azure/sp-sync-job.json ~/sp-sync-job.json
+# Edit ~/sp-sync-job.json — replace <ACR_PASSWORD>, <H2OGPTE_API_KEY>, <AZURE_CLIENT_SECRET>
 ```
 
-> **Warning:** `sp-sync-job.yaml` will contain secrets after you fill it in. Do not commit it to git.
+2. Deploy via the REST API:
+
+```bash
+az rest --method PUT --uri "https://management.azure.com/subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/certis-jbs-rg/providers/Microsoft.App/jobs/certisjbs-sp-sync?api-version=2023-05-01" --body @/Users/lmccoy/sp-sync-job.json --headers "Content-Type=application/json"
+```
+
+> **Warning:** `~/sp-sync-job.json` will contain secrets after you fill it in. Do not commit it to git — only the placeholder template in `deploy/azure/sp-sync-job.json` should be committed.
 
 ---
 
