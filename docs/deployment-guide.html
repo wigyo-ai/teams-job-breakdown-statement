@@ -569,9 +569,59 @@ done</pre></div>
     </div>
 
     <div class="sub">
-      <div class="sub-hdr"><div class="sub-dot">6d</div><h3>Add the bot to your Teams tenant</h3></div>
-      <p><strong>For production:</strong> Create a Teams app manifest via <a href="https://dev.teams.microsoft.com" style="color:var(--blue-light);">Teams Developer Portal</a>, set the Bot ID to <code>TEAMS_APP_ID</code>, upload to your tenant app catalogue.</p>
-      <p><strong>For testing:</strong> Teams → <strong>Apps → Manage your apps → Upload a custom app</strong> → upload the <code>.zip</code> package.</p>
+      <div class="sub-hdr"><div class="sub-dot">6d</div><h3>Build the Teams app package</h3></div>
+      <p>A manifest template and placeholder icons are included at <code>teams/</code>. Before packaging:</p>
+      <p><strong>1. Generate icons</strong> (requires Pillow — <code>pip install Pillow</code>):</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+      <pre>python teams/create_icons.py
+# Creates teams/color.png (192×192) and teams/outline.png (32×32)</pre></div>
+      <div class="note note-tip"><span class="note-ic">💡</span><p>Replace the generated placeholder icons with production artwork before submitting to the Teams Admin Center.</p></div>
+      <p><strong>2. Edit <code>teams/manifest.json</code></strong> — replace two placeholders:</p>
+      <table class="dt"><thead><tr><th>Placeholder</th><th>Value</th></tr></thead><tbody>
+        <tr><td><code>&lt;TEAMS_APP_GUID&gt;</code></td><td>A new unique UUID — run <code>python -c "import uuid; print(uuid.uuid4())"</code></td></tr>
+        <tr><td><code>&lt;TEAMS_APP_ID&gt;</code></td><td>The Microsoft App ID copied in Step 6a</td></tr>
+      </tbody></table>
+      <p><strong>3. Package as a zip</strong> (must contain exactly these three files at the root):</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+      <pre>cd teams
+zip ../certis-jbs-teams-app.zip manifest.json color.png outline.png
+cd ..</pre></div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-hdr"><div class="sub-dot">6e</div><h3>Deploy to Microsoft Teams</h3></div>
+      <p><strong>Option A — Sideload for testing (no admin required)</strong></p>
+      <ol class="ol">
+        <li>Open Microsoft Teams → <strong>Apps</strong> (left sidebar)</li>
+        <li>Click <strong>Manage your apps → Upload an app</strong></li>
+        <li>Select <strong>Upload a custom app</strong></li>
+        <li>Choose <code>certis-jbs-teams-app.zip</code></li>
+        <li>Click <strong>Add</strong> — the JBS Assistant bot appears in your chat list</li>
+      </ol>
+      <p><strong>Option B — Tenant-wide deployment via Teams Admin Center (production)</strong></p>
+      <ol class="ol">
+        <li>Go to <a href="https://admin.teams.microsoft.com" style="color:var(--blue-light);">Teams Admin Center</a> → <strong>Teams apps → Manage apps</strong></li>
+        <li>Click <strong>Upload new app</strong> → select <code>certis-jbs-teams-app.zip</code></li>
+        <li>Once uploaded, find the app → click it → set <strong>Status</strong> to <strong>Allowed</strong></li>
+        <li>Optionally: <strong>Teams apps → Setup policies</strong> → add the app to a policy and assign to users/groups so it appears pre-pinned in Teams</li>
+      </ol>
+      <div class="note note-warn"><span class="note-ic">⚠️</span><p>Tenant-wide deployment requires <strong>Teams Administrator</strong> or <strong>Global Administrator</strong> role.</p></div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-hdr"><div class="sub-dot">6f</div><h3>Verify bot is reachable</h3></div>
+      <p>After completing Step 12b (webhook deployed) and setting the messaging endpoint in Step 6c, test end-to-end:</p>
+      <ol class="ol">
+        <li>Open Teams → find <strong>JBS Assistant</strong> in your apps → click <strong>Open</strong></li>
+        <li>Type any message — you should receive a response from the orchestrator</li>
+        <li>If no response, check:
+          <ul class="ul">
+            <li>Messaging endpoint is saved in Azure Bot → <strong>Configuration</strong></li>
+            <li>Webhook health: <code>curl https://${WEBHOOK_FQDN}/health</code> returns <code>{"status":"ok"}</code></li>
+            <li>Webhook logs: <code>az containerapp logs show --name certisjbs-webhook --resource-group $RG --tail 30</code></li>
+          </ul>
+        </li>
+      </ol>
     </div>
   </section>
 

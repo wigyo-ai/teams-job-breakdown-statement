@@ -1,0 +1,55 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "<TEAMS_APP_GUID>",
+  "packageName": "com.certis.jbs",
+  "developer": {
+    "name": "Certis Security",
+    "websiteUrl": "https://www.certis.com",
+    "privacyUrl": "https://www.certis.com/privacy",
+    "termsOfUseUrl": "https://www.certis.com/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "JBS Assistant",
+    "full": "Certis Job Breakdown Statement Assistant"
+  },
+  "description": {
+    "short": "AI-assisted Job Breakdown Statement creation",
+    "full": "An AI-powered assistant that guides Certis security personnel through creating comprehensive Job Breakdown Statements via a structured 4-phase interview process covering duties, tasks, safety requirements and compliance."
+  },
+  "accentColor": "#1A3A5C",
+  "bots": [
+    {
+      "botId": "<TEAMS_APP_ID>",
+      "scopes": ["personal"],
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": ["personal"],
+          "commands": [
+            {
+              "title": "New JBS",
+              "description": "Start a new Job Breakdown Statement"
+            },
+            {
+              "title": "Help",
+              "description": "Get help with the JBS process"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io"
+  ]
+}
