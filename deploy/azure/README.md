@@ -48,7 +48,7 @@ az deployment group create \
     h2ogpteAddress="https://your-h2ogpte-instance.h2o.ai" \
     azureClientId="<sharepoint-client-id>" \
     azureClientSecret="<sharepoint-client-secret>" \
-    spSiteUrl="https://certissecurity.sharepoint.com/sites/operations" \
+    spSiteUrl="https://wigyoai.sharepoint.com/sites/h2O" \
     spLibraryCorporate="<id>" \
     spLibraryAviation="<id>" \
     spLibraryIndustrial="<id>" \
@@ -76,7 +76,7 @@ Create a `deploy/azure/parameters.json` file (do NOT commit this file — it con
     "h2ogpteAddress":     { "value": "https://your-h2ogpte-instance.h2o.ai" },
     "azureClientId":      { "value": "<sharepoint-client-id>" },
     "azureClientSecret":  { "value": "<sharepoint-client-secret>" },
-    "spSiteUrl":          { "value": "https://certissecurity.sharepoint.com/sites/operations" },
+    "spSiteUrl":          { "value": "https://wigyoai.sharepoint.com/sites/h2O" },
     "spLibraryCorporate": { "value": "<id>" },
     "spLibraryAviation":  { "value": "<id>" },
     "spLibraryIndustrial":{ "value": "<id>" },

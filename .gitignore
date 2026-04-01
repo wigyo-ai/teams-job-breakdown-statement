@@ -4,6 +4,8 @@
 !.env.template
 deploy/azure/parameters.json
 deploy/azure/sp-sync-job.filled.yaml
+config/backup.env
+config/*.env
 *.pem
 *.key
 *.p12

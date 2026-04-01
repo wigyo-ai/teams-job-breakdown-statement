@@ -69,7 +69,7 @@ TEAMS_APP_PASSWORD=                       # Azure Bot App Registration client se
 AZURE_TENANT_ID=                          # Azure AD tenant ID
 AZURE_CLIENT_ID=                          # SharePoint App Registration client ID  (Step 4)
 AZURE_CLIENT_SECRET=                      # SharePoint App Registration client secret (Step 4)
-SP_SITE_URL=https://certissecurity.sharepoint.com/sites/operations
+SP_SITE_URL=https://wigyoai.sharepoint.com/sites/h2O
 SP_LIBRARY_CORPORATE=                     # SharePoint document library IDs (Step 3b)
 SP_LIBRARY_AVIATION=
 SP_LIBRARY_INDUSTRIAL=
@@ -443,7 +443,7 @@ az containerapp create \
     DOCUMENT_GENERATOR_URL="http://certisjbs-docgen" \
     AZURE_TENANT_ID="<AZURE_TENANT_ID>" \
     AZURE_CLIENT_ID="<AZURE_CLIENT_ID>" \
-    SP_SITE_URL="https://certissecurity.sharepoint.com/sites/operations" \
+    SP_SITE_URL="https://wigyoai.sharepoint.com/sites/h2O" \
     SP_LIBRARY_CORPORATE="<library-id>" \
     SP_LIBRARY_AVIATION="<library-id>" \
     SP_LIBRARY_INDUSTRIAL="<library-id>" \

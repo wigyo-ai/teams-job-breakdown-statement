@@ -14,11 +14,11 @@ PHASE_REQUIRED_FIELDS = {
 }
 
 SITE_CATEGORY_COLLECTION_MAP = {
-    "Corporate":   "col_REPLACE_CORPORATE",
-    "Aviation":    "col_REPLACE_AVIATION",
-    "Industrial":  "col_REPLACE_INDUSTRIAL",
-    "Maritime":    "col_REPLACE_MARITIME",
-    "Retail":      "col_REPLACE_RETAIL",
+    "Corporate":   "c0e682b7-e990-48de-9cdf-5f0f1bab73a1",
+    "Aviation":    "1f29b343-6f58-45eb-98ed-f724e3dbe038",
+    "Industrial":  "debcfa65-f032-4ada-99eb-b080b48ddec5",
+    "Maritime":    "21a23bb0-2cfa-4561-8a19-ef408c03c980",
+    "Retail":      "30ae7e9b-3812-4d96-ad34-357214210dcf",
 }
 
 APPROVAL_KEYWORDS = {"approved", "confirm", "yes", "proceed", "looks good", "approve"}

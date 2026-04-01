@@ -89,7 +89,7 @@ orchestrator:
       H2OGPTE_ADDRESS: "https://your-h2ogpte-instance.h2o.ai"
       AZURE_TENANT_ID: "<PLACEHOLDER>"
       AZURE_CLIENT_ID: "<PLACEHOLDER>"
-      SP_SITE_URL: "https://certissecurity.sharepoint.com/sites/operations"
+      SP_SITE_URL: "https://wigyoai.sharepoint.com/sites/h2O"
       SP_LIBRARY_CORPORATE: "<PLACEHOLDER>"
       SP_LIBRARY_AVIATION: "<PLACEHOLDER>"
       SP_LIBRARY_INDUSTRIAL: "<PLACEHOLDER>"

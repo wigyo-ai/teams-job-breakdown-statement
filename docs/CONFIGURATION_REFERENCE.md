@@ -130,7 +130,7 @@ H2OGPTE_API_KEY=<your-h2ogpte-api-key>
 AZURE_TENANT_ID=<your-tenant-id>
 AZURE_CLIENT_ID=<sharepoint-client-id>
 AZURE_CLIENT_SECRET=<sharepoint-client-secret>
-SP_SITE_URL=https://certissecurity.sharepoint.com/sites/operations
+SP_SITE_URL=https://wigyoai.sharepoint.com/sites/h2O
 
 # Azure Blob Storage
 AZURE_STORAGE_ACCOUNT=certisjbsstorage
