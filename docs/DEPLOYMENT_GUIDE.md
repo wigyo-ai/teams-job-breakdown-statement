@@ -206,55 +206,106 @@ Re-run the check until all five return `Registered` (typically 1–3 minutes eac
 
 ---
 
-## Step 6 — Configure Microsoft Teams Bot (Azure Bot Service)
+## Step 6 — Create and Deploy the Microsoft Teams Bot
 
-The Webhook service validates RS256 JWT Bearer tokens issued by Azure Bot Service (key published at `https://login.botframework.com/v1/.well-known/keys`). The Orchestrator sends replies via the Bot Framework REST API using OAuth2 client credentials.
+The Webhook service validates RS256 JWT Bearer tokens issued by Azure Bot Service. The Orchestrator sends replies via the Bot Framework REST API using OAuth2 client credentials. This step covers creating the bot identity, enabling the Teams channel, building the app package, and publishing it to your tenant.
 
-### 6a. Create an Azure Bot resource
+---
+
+### 6a. Create the App Registration in Microsoft Entra ID
+
+The bot needs an identity in Azure AD before the Azure Bot resource is created.
+
+1. Azure Portal → **Microsoft Entra ID** → **App registrations** → **New registration**
+2. Name: `certis-jbs-bot`
+3. Supported account types: **Accounts in this organizational directory only** (single-tenant)
+4. Redirect URI: leave blank
+5. Click **Register**
+6. On the overview page, copy:
+   - **Application (client) ID** → this is `TEAMS_APP_ID`
+   - **Directory (tenant) ID** → note this for reference
+7. Go to **Certificates & secrets** → **Client secrets** → **New client secret**
+   - Description: `certis-jbs-bot-secret`
+   - Expires: **24 months**
+   - Click **Add** → copy the **Value** immediately → this is `TEAMS_APP_PASSWORD`
+
+> **Important:** The client secret value is only shown once. Copy it before leaving the page.
+
+---
+
+### 6b. Create the Azure Bot resource
 
 1. Azure Portal → search **Azure Bot** → **Create**
-2. Bot handle: `certis-jbs-bot` · Pricing tier: **Standard**
-3. Microsoft App ID: **Create new Microsoft App ID**
-4. **Review + create → Create**
-5. Once deployed: navigate to the resource → **Configuration**
-6. Copy **Microsoft App ID** → this is `TEAMS_APP_ID`
-7. Click **Manage** → **Certificates & secrets → New client secret** → copy the value → this is `TEAMS_APP_PASSWORD`
+2. Fill in:
+   - Bot handle: `certis-jbs-bot`
+   - Subscription / Resource group: `certis-jbs-rg`
+   - Pricing tier: **Standard**
+   - Microsoft App ID: select **Use existing app registration**
+   - App ID: paste your `TEAMS_APP_ID` from Step 6a
+3. **Review + create → Create**
+4. Once deployed, navigate to the resource → **Configuration**
+5. Confirm the Microsoft App ID matches what you copied in 6a
 
-### 6b. Enable the Teams channel
+---
 
-Azure Bot → **Channels → Microsoft Teams → Apply** → accept Terms of Service.
+### 6c. Enable the Microsoft Teams channel
 
-### 6c. Set the messaging endpoint (after Step 12b)
+1. In the Azure Bot resource → **Channels**
+2. Click **Microsoft Teams**
+3. Accept the Terms of Service → **Apply**
+4. The Teams channel status should show **Running**
 
-Return to **Azure Bot → Configuration** and set the **Messaging endpoint** to:
+---
+
+### 6d. Set the messaging endpoint
+
+> Complete this step **after Step 12b** once the webhook container app is deployed and you have its FQDN.
+
+1. Azure Bot resource → **Configuration**
+2. Set **Messaging endpoint** to:
 
 ```
-https://<webhook-app-fqdn>/webhook/teams
+https://certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/webhook/teams
 ```
 
-You will get the FQDN in Step 12b.
+3. Click **Apply**
 
-### 6d. Build the Teams app package
-
-A manifest template and placeholder icons are included at `teams/`. Before packaging:
-
-1. **Generate icons** (requires Pillow — `pip install Pillow`):
+To retrieve the FQDN at any time:
 
 ```bash
+az containerapp show --name certisjbs-webhook --resource-group $RG --query properties.configuration.ingress.fqdn -o tsv
+```
+
+---
+
+### 6e. Build the Teams app package
+
+A manifest template and placeholder icons are provided in `teams/`.
+
+**1. Generate app icons:**
+
+```bash
+pip install Pillow
 python teams/create_icons.py
-# Creates teams/color.png (192×192) and teams/outline.png (32×32)
+# Creates: teams/color.png (192×192 px) and teams/outline.png (32×32 px)
 ```
 
 > Replace the generated placeholder icons with production artwork before submitting to the Teams Admin Center.
 
-2. **Edit `teams/manifest.json`** — replace two placeholders:
+**2. Get a unique app GUID:**
+
+```bash
+python -c "import uuid; print(uuid.uuid4())"
+```
+
+**3. Edit `teams/manifest.json`** — replace the two placeholders:
 
 | Placeholder | Value |
 |---|---|
-| `<TEAMS_APP_GUID>` | A new unique UUID — run `python -c "import uuid; print(uuid.uuid4())"` |
-| `<TEAMS_APP_ID>` | The Microsoft App ID copied in Step 6a |
+| `<TEAMS_APP_GUID>` | The UUID generated above |
+| `<TEAMS_APP_ID>` | The Microsoft App ID from Step 6a |
 
-3. **Package as a zip** (must contain exactly these three files at the root of the zip):
+**4. Package as a zip** (all three files must be at the root of the zip — no subdirectory):
 
 ```bash
 cd teams
@@ -262,39 +313,89 @@ zip ../certis-jbs-teams-app.zip manifest.json color.png outline.png
 cd ..
 ```
 
----
+Verify the zip contents:
 
-### 6e. Deploy to Microsoft Teams
+```bash
+unzip -l certis-jbs-teams-app.zip
+```
 
-#### Option A — Sideload for testing (no admin required)
-
-1. Open Microsoft Teams → **Apps** (left sidebar)
-2. Click **Manage your apps** → **Upload an app**
-3. Select **Upload a custom app**
-4. Choose `certis-jbs-teams-app.zip`
-5. Click **Add** — the JBS Assistant bot appears in your chat list
-
-#### Option B — Tenant-wide deployment via Teams Admin Center (production)
-
-1. Go to [Teams Admin Center](https://admin.teams.microsoft.com) → **Teams apps → Manage apps**
-2. Click **Upload new app** → select `certis-jbs-teams-app.zip`
-3. Once uploaded, find the app → click it → set **Status** to **Allowed**
-4. Optionally: **Teams apps → Setup policies** → add the app to a policy and assign to users/groups so it appears pre-pinned in Teams
-
-> **Note:** Tenant-wide deployment requires Teams Administrator or Global Administrator role.
+Expected output:
+```
+manifest.json
+color.png
+outline.png
+```
 
 ---
 
-### 6f. Verify bot is reachable
+### 6f. Publish the bot to Microsoft Teams
 
-After completing Step 12b (webhook deployed) and setting the messaging endpoint in Step 6c, test end-to-end:
+#### Option A — Sideload for testing (personal use, no admin required)
 
-1. Open Teams → find **JBS Assistant** in your apps → click **Open**
-2. Type any message — you should receive a response from the orchestrator
-3. If no response, check:
-   - Messaging endpoint is saved in Azure Bot → **Configuration**
-   - Webhook health: `curl https://${WEBHOOK_FQDN}/health` returns `{"status":"ok"}`
-   - Webhook logs: `az containerapp logs show --name certisjbs-webhook --resource-group $RG --tail 30`
+1. Open Microsoft Teams desktop or web app
+2. Click **Apps** in the left sidebar
+3. Click **Manage your apps** (bottom of the panel)
+4. Click **Upload an app** → **Upload a custom app**
+5. Select `certis-jbs-teams-app.zip`
+6. Click **Add** in the preview dialog
+7. The **JBS Assistant** bot opens in a personal chat — type any message to test
+
+#### Option B — Publish to your organisation's app catalogue (production)
+
+This makes the bot available to all users in the tenant via the organisation's app store.
+
+**Upload the app:**
+
+1. Go to [Teams Admin Center](https://admin.teams.microsoft.com) — requires Teams Administrator or Global Administrator role
+2. **Teams apps → Manage apps** → **Upload new app**
+3. Click **Upload** → select `certis-jbs-teams-app.zip`
+4. The app appears in the list with status **Blocked** by default
+
+**Approve the app:**
+
+5. Find **JBS Assistant** in the app list → click it
+6. On the app detail page, change **Status** to **Allowed**
+7. Click **Save**
+
+**Make it available to users:**
+
+8. **Teams apps → Setup policies** → click **Global (Org-wide default)** or create a new policy for specific groups
+9. Under **Installed apps** → **Add apps** → search for **JBS Assistant** → **Add**
+10. Click **Save** — Teams will auto-install the bot for users covered by the policy (may take up to 24 hours to propagate)
+
+Alternatively, users can find and install it themselves:
+- Teams → **Apps** → **Built for your org** → find **JBS Assistant** → **Add**
+
+---
+
+### 6g. Verify the bot is working end-to-end
+
+> Complete this after Step 12b (webhook deployed) and Step 6d (messaging endpoint set).
+
+1. Open Teams → find **JBS Assistant** → open the chat
+2. Send any message (e.g. `hello`)
+3. You should receive a response within a few seconds
+
+If there is no response:
+
+```bash
+# Check webhook is healthy
+curl https://certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/health
+
+# Check webhook logs for incoming requests
+az containerapp logs show --name certisjbs-webhook --resource-group $RG --tail 50
+
+# Check orchestrator logs
+az containerapp logs show --name certisjbs-orchestrator --resource-group $RG --tail 50
+```
+
+Common causes:
+| Symptom | Likely cause |
+|---|---|
+| No request arrives at webhook | Messaging endpoint not saved in Azure Bot → Configuration |
+| 401 Unauthorized in webhook logs | `TEAMS_APP_ID` env var mismatch with App Registration |
+| Request arrives but no reply in Teams | `TEAMS_APP_PASSWORD` incorrect or expired |
+| Bot appears offline in Teams | Teams channel not enabled (Step 6c) |
 
 ---
 
