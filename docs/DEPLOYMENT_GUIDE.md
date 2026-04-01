@@ -492,34 +492,17 @@ az containerapp create \
 
 The sync job reuses the orchestrator image and runs `src/rag/sharepoint_sync.py` daily at 02:00 UTC, fetching changed documents from SharePoint and ingesting them into h2oGPTe collections.
 
+> **Note:** The Azure CLI cannot pass `-m` as a value to `--command` — the argument parser intercepts it as a flag. Use the YAML approach below instead.
+
+1. Edit `deploy/azure/sp-sync-job.yaml` — fill in the three secret placeholders (`<ACR_PASSWORD>`, `<H2OGPTE_API_KEY>`, `<AZURE_CLIENT_SECRET>`) and the environment variable placeholders.
+
+2. Deploy:
+
 ```bash
-az containerapp job create \
-  --name certisjbs-sp-sync \
-  --resource-group $RG \
-  --environment $ACA_ENV \
-  --trigger-type Schedule \
-  --cron-expression "0 2 * * *" \
-  --replica-timeout 1800 \
-  --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} \
-  --registry-server $ACR_LOGIN_SERVER \
-  --registry-username $ACR_USERNAME \
-  --registry-password $ACR_PASSWORD \
-  --cpu 0.5 --memory 1.0Gi \
-  --command "python" --args "-m" "src.rag.sharepoint_sync" \
-  --env-vars \
-    H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
-    AZURE_TENANT_ID="<AZURE_TENANT_ID>" \
-    AZURE_CLIENT_ID="<AZURE_CLIENT_ID>" \
-    SP_SITE_URL="https://certissecurity.sharepoint.com/sites/operations" \
-    SP_LIBRARY_CORPORATE="<library-id>" \
-    SP_LIBRARY_AVIATION="<library-id>" \
-    SP_LIBRARY_INDUSTRIAL="<library-id>" \
-    SP_LIBRARY_MARITIME="<library-id>" \
-    SP_LIBRARY_RETAIL="<library-id>" \
-  --secrets \
-    h2ogpte-api-key="<H2OGPTE_API_KEY>" \
-    azure-client-secret="<AZURE_CLIENT_SECRET>"
+az containerapp job create --resource-group $RG --yaml deploy/azure/sp-sync-job.yaml
 ```
+
+> **Warning:** `sp-sync-job.yaml` will contain secrets after you fill it in. Do not commit it to git.
 
 ---
 

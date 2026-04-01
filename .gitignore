@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.template
+deploy/azure/parameters.json
+deploy/azure/sp-sync-job.filled.yaml
 *.pem
 *.key
 *.p12

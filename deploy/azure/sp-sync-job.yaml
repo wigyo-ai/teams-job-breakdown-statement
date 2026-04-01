@@ -1,0 +1,57 @@
+name: certisjbs-sp-sync
+type: Microsoft.App/jobs
+location: Australia East
+resourceGroup: certis-jbs-rg
+properties:
+  environmentId: /subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/certis-jbs-rg/providers/Microsoft.App/managedEnvironments/certisjbs-env
+  configuration:
+    triggerType: Schedule
+    replicaTimeout: 1800
+    scheduleTriggerConfig:
+      cronExpression: "0 2 * * *"
+      replicaCompletionCount: 1
+      parallelism: 1
+    registries:
+      - server: certisjbsacr.azurecr.io
+        username: certisjbsacr
+        passwordSecretRef: acr-password
+    secrets:
+      - name: acr-password
+        value: "<ACR_PASSWORD>"
+      - name: h2ogpte-api-key
+        value: "<H2OGPTE_API_KEY>"
+      - name: azure-client-secret
+        value: "<AZURE_CLIENT_SECRET>"
+  template:
+    containers:
+      - name: certisjbs-sp-sync
+        image: certisjbsacr.azurecr.io/jbs-orchestrator:1.0.0
+        command:
+          - python
+          - -m
+          - src.rag.sharepoint_sync
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: H2OGPTE_ADDRESS
+            value: "https://your-h2ogpte-instance.h2o.ai"
+          - name: AZURE_TENANT_ID
+            value: "<AZURE_TENANT_ID>"
+          - name: AZURE_CLIENT_ID
+            value: "<AZURE_CLIENT_ID>"
+          - name: SP_SITE_URL
+            value: "https://certissecurity.sharepoint.com/sites/operations"
+          - name: SP_LIBRARY_CORPORATE
+            value: "<library-id>"
+          - name: SP_LIBRARY_AVIATION
+            value: "<library-id>"
+          - name: SP_LIBRARY_INDUSTRIAL
+            value: "<library-id>"
+          - name: SP_LIBRARY_MARITIME
+            value: "<library-id>"
+          - name: SP_LIBRARY_RETAIL
+            value: "<library-id>"
+    scale:
+      minExecutions: 0
+      maxExecutions: 1

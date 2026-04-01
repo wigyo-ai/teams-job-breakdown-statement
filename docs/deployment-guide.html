@@ -854,7 +854,7 @@ echo "Teams Bot messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</pre>
   --registry-username $ACR_USERNAME \
   --registry-password $ACR_PASSWORD \
   --cpu 0.5 --memory 1.0Gi \
-  --command "python" --args "-m" "src.rag.sharepoint_sync" \
+  --command "/bin/sh" "-c" "python -m src.rag.sharepoint_sync" \
   --env-vars \
     H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
     AZURE_TENANT_ID="&lt;AZURE_TENANT_ID&gt;" \
