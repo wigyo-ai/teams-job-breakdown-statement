@@ -126,9 +126,10 @@ async def _get_bot_token() -> str:
     app_id       = os.environ["TEAMS_APP_ID"]
     app_password = os.environ["TEAMS_APP_PASSWORD"]
 
+    tenant_id = os.environ.get("AZURE_TENANT_ID", "botframework.com")
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
+            f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
             data={
                 "grant_type":    "client_credentials",
                 "client_id":     app_id,
