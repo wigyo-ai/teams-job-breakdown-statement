@@ -8,6 +8,7 @@ az containerapp update \
   --name certisjbs-orchestrator \
   --resource-group $RG \
   --set-env-vars \
+    "H2OGPTE_ADDRESS=https://h2ogpte.cloud-dev.h2o.dev" \
     "TEAMS_APP_ID=9e8400c3-7360-4475-8688-0538233df529" \
     "AZURE_TENANT_ID=35013e61-d285-4f21-9b33-4c601cc1d8ce" \
     "AZURE_CLIENT_ID=b7c2872b-73bf-41ad-8f82-1c9d915e2b29" \
