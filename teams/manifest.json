@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
   "version": "1.0.0",
-  "id": "<TEAMS_APP_GUID>",
+  "id": "5aa17256-1fce-4af7-b177-c0b63f63a690",
   "packageName": "com.certis.jbs",
   "developer": {
     "name": "Certis Security",
@@ -25,7 +25,7 @@
   "accentColor": "#1A3A5C",
   "bots": [
     {
-      "botId": "<TEAMS_APP_ID>",
+      "botId": "9e8400c3-7360-4475-8688-0538233df529",
       "scopes": ["personal"],
       "isNotificationOnly": false,
       "commandLists": [

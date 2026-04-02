@@ -9,9 +9,15 @@ import os
 import h2ogpte
 
 
+class _H2OGPTEClient(h2ogpte.H2OGPTE):
+    """Subclass that skips the version check, which fails on some server builds."""
+    def _check_version(self, strict_version_check):
+        pass
+
+
 class H2OGPTeClient:
     def __init__(self):
-        self.client = h2ogpte.H2OGPTE(
+        self.client = _H2OGPTEClient(
             address=os.environ["H2OGPTE_ADDRESS"],
             api_key=os.environ["H2OGPTE_API_KEY"],
         )
@@ -32,15 +38,15 @@ class H2OGPTeClient:
         h2oGPTe natively maintains the full turn history — no Redis needed.
         """
         if not conversation_id:
-            conv = self.client.create_conversation(
+            # create_chat_session(collection_id) -> str (session ID)
+            conversation_id = self.client.create_chat_session(
                 collection_id=collection_id,
-                system_prompt=system_prompt,
             )
-            conversation_id = conv.id
 
         reply = self.client.answer_question(
-            conversation_id=conversation_id,
-            messages=[h2ogpte.Message(role="user", content=message)],
+            question=message,
+            system_prompt=system_prompt,
+            timeout=60,
         )
         return reply.content, conversation_id
 

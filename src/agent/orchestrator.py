@@ -17,7 +17,14 @@ from ..rag.h2ogpte_client import H2OGPTeClient
 DOCUMENT_GENERATOR_URL = os.environ.get("DOCUMENT_GENERATOR_URL", "http://localhost:8002")
 
 state_mgr = StateManager()
-h2ogpte   = H2OGPTeClient()
+_h2ogpte: H2OGPTeClient | None = None
+
+
+def _get_h2ogpte() -> H2OGPTeClient:
+    global _h2ogpte
+    if _h2ogpte is None:
+        _h2ogpte = H2OGPTeClient()
+    return _h2ogpte
 
 # Simple in-process cache for the Bot Framework OAuth token
 _bot_token_cache: dict = {"token": None, "expires_at": 0}
@@ -40,7 +47,7 @@ async def process_message(msg: dict):
 
     # h2oGPTe manages full turn history via conversation_id
     # On first turn, create a new conversation and store the ID
-    response_text, conv_id = await h2ogpte.chat(
+    response_text, conv_id = await _get_h2ogpte().chat(
         collection_id=session.get("collection_id"),
         conversation_id=session.get("h2ogpte_conv_id"),
         message=msg["text"],

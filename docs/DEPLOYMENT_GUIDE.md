@@ -942,3 +942,94 @@ az containerapp job execution list --name certisjbs-sp-sync --resource-group $RG
 # Trigger a manual run to test
 az containerapp job start --name certisjbs-sp-sync --resource-group $RG
 ```
+
+### h2oGPTe version check crash (`Meta(**response)` TypeError)
+
+The h2oGPTe client performs a version check during `__init__` that calls `get_meta()`. On some server builds the response is an `httpx.Response` object rather than a dict, causing:
+
+```
+TypeError: h2ogpte.types.Meta() argument after ** must be a mapping, not Response
+```
+
+This is fixed in the code via the `_H2OGPTEClient` subclass in `src/rag/h2ogpte_client.py` which overrides `_check_version` to a no-op. No action required — the fix is already applied. If you upgrade the h2ogpte library, verify the version check still works; otherwise keep the subclass.
+
+### h2oGPTe API incompatibility
+
+The h2ogpte Python client API changed significantly between versions. The code targets **h2ogpte 1.4.x**. Key API methods used:
+
+| Method | Notes |
+|---|---|
+| `create_chat_session(collection_id)` | Returns session ID string directly (not an object) |
+| `answer_question(question=..., system_prompt=..., timeout=60)` | Returns object with `.content` attribute |
+
+If you see `AttributeError: 'H2OGPTE' object has no attribute 'create_conversation'` or similar, you have a version mismatch. Pin `requirements.txt` to `h2ogpte>=1.4.0,<1.5.0` and rebuild the image.
+
+### Docker platform mismatch on Apple Silicon (arm64 → linux/amd64)
+
+Building on a Mac M-series without specifying platform produces an arm64 image. Azure Container Apps requires linux/amd64. Error when pulling:
+
+```
+no child with platform linux/amd64 in index
+```
+
+Always build with an explicit platform flag:
+
+```bash
+docker buildx build --platform linux/amd64 -f Dockerfile.orchestrator \
+  -t certisjbsacr.azurecr.io/jbs-orchestrator:VERSION --push .
+```
+
+### ACR Tasks disabled (`TasksOperationsNotAllowed`)
+
+The `az acr build` command requires ACR Tasks, which are disabled on the current registry tier. Use local Docker build + push instead:
+
+```bash
+az acr login --name certisjbsacr
+docker buildx build --platform linux/amd64 -f Dockerfile.orchestrator \
+  -t certisjbsacr.azurecr.io/jbs-orchestrator:VERSION --push .
+```
+
+### Azure Bot resource is in a different resource group
+
+The Azure Bot resource (`certis-jbs-bot`) lives in **`rg-h2o-teams-bot`**, not in `certis-jbs-rg` where the Container Apps live. If `az bot update` commands fail, specify the correct resource group:
+
+```bash
+az bot update \
+  --name certis-jbs-bot \
+  --resource-group rg-h2o-teams-bot \
+  --endpoint "https://certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/webhook/teams"
+```
+
+The messaging endpoint **must include the `/webhook/teams` path**. A bare domain URL causes all incoming messages to return 404.
+
+### Setting env vars with the Azure CLI (multiline pitfalls)
+
+`az containerapp update --set-env-vars` requires all key=value pairs on a single logical command line. Pasting a multiline command in zsh/bash can cause each quoted value to be interpreted as a separate shell command.
+
+Use the `fix-env-vars.sh` script at the project root to reliably set all orchestrator and webhook env vars in one shot:
+
+```bash
+chmod +x fix-env-vars.sh
+./fix-env-vars.sh
+```
+
+Update the values in the script if credentials change.
+
+### Multi-replica log blindspot
+
+The orchestrator runs with `minReplicas: 2`. Log tailing shows only one replica by default. If you see requests arriving at the webhook but no orchestrator activity, check the second replica:
+
+```bash
+# List all replicas
+az containerapp replica list \
+  --name certisjbs-orchestrator \
+  --resource-group certis-jbs-rg \
+  --output table
+
+# Tail logs for a specific replica
+az containerapp logs show \
+  --name certisjbs-orchestrator \
+  --resource-group certis-jbs-rg \
+  --replica <REPLICA_NAME> \
+  --follow
+```
