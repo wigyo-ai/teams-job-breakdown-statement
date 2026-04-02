@@ -1,6 +1,10 @@
 """
 Conversation Orchestrator
-Manages the 4-phase JBS interview state machine.
+Manages the 2-phase JBS interview state machine.
+  Phase 1 (Setup):     Collect Customer Name, Site Name, Site Category, Job Purpose.
+                       Binds the RAG collection from site_category.
+  Phase 2 (Interview): Full JBS interview — Duties & Tasks, Safety & Compliance,
+                       Review & Approval — managed by the LLM in one continuous session.
 Delegates LLM inference + conversation history to h2oGPTe.
 Phase state + collected fields stored in StateManager (memory/sqlite/external_redis).
 Document generation is performed by the Document Generator service via HTTP.
@@ -24,9 +28,7 @@ RESET_COMMANDS = {"new jbs", "restart", "reset", "start over", "start again", "n
 # makes no sense as the first message in a new phase context and causes the LLM
 # to restart Phase 1.  A clear kickoff message removes all ambiguity.
 PHASE_KICKOFF = {
-    2: "Phase 1 is confirmed. Begin Phase 2 now: suggest the standard duties for this site based on the Site Category and Job Purpose shown in the context.",
-    3: "Phase 2 is confirmed. Begin Phase 3 now: ask about site hazards and safety requirements.",
-    4: "Phase 3 is confirmed. Begin Phase 4 now: present the full JBS summary for review and approval.",
+    2: "Phase 1 is confirmed. Begin the JBS interview with Section A: suggest the standard duties for this site based on the Site Category and Job Purpose shown in the context.",
 }
 
 state_mgr = StateManager()
@@ -66,7 +68,8 @@ async def process_message(msg: dict):
 
     # Advance phase BEFORE building the prompt so the LLM immediately uses the
     # next phase's instructions on the same turn the user triggers the transition.
-    if phase_ctrl.current_phase < 4:
+    # Phase 2 is terminal so advance_if_complete is a no-op once in Phase 2.
+    if phase_ctrl.current_phase == 1:
         phase_ctrl.advance_if_complete()
 
     just_advanced = phase_ctrl.current_phase != prior_phase
@@ -95,8 +98,8 @@ async def process_message(msg: dict):
     turns.append({"phase": phase_ctrl.current_phase, "user": msg["text"], "assistant": response_text})
     session["turns"] = turns[-30:]  # keep enough history across phases
 
-    # Phase 4: detect user approval and trigger document generation
-    if phase_ctrl.current_phase == 4 and phase_ctrl.is_approved(msg["text"]):
+    # Phase 2: detect user approval (APPROVE keyword) and trigger document generation
+    if phase_ctrl.current_phase == 2 and phase_ctrl.is_approved(msg["text"]):
         jbs_json = phase_ctrl.build_jbs_json(session)
         async with httpx.AsyncClient() as client:
             resp = await client.post(

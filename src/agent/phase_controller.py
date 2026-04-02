@@ -1,19 +1,21 @@
 """
 Phase Controller
-Enforces the 4-phase JBS interview state machine.
-Determines collection ID from site category on Phase 1.
+Enforces the 2-phase JBS state machine.
+  Phase 1 → Phase 2: triggered when site_category + phase1_confirmed are set.
+  Phase 2: terminal phase — LLM manages internal progression (A→B→C).
+           Document generation is triggered by approval keyword in orchestrator.
 """
 
 from datetime import datetime
 
 PHASE_REQUIRED_FIELDS = {
     # Phase 1 advances when site_category is known (binds the RAG collection) AND the
-    # user has confirmed the Phase 1 summary (phase1_confirmed flag set in ingest_user_input).
-    # The other fields live in conversation history and are referenced by later phases.
+    # user has confirmed the Phase 1 summary (phase1_confirmed flag).
     1: ["site_category", "phase1_confirmed"],
-    2: ["duties"],
-    3: ["hazards", "ppe_requirements", "escalation_procedure"],
-    4: [],
+    # Phase 2 is the full JBS interview (Sections A+B+C). The LLM manages internal
+    # progression. The only code-level trigger is document generation (handled in
+    # orchestrator when approval keyword detected). No programmatic advance needed.
+    2: [],
 }
 
 SITE_CATEGORY_COLLECTION_MAP = {
@@ -55,8 +57,10 @@ class PhaseController:
     def advance_if_complete(self):
         required = PHASE_REQUIRED_FIELDS.get(self.current_phase, [])
         if all(f in self.fields for f in required):
-            if self.current_phase < 4:
-                self.current_phase += 1
+            # Only advance from Phase 1 → Phase 2. Phase 2 is terminal
+            # (document generation is the end state, handled in orchestrator).
+            if self.current_phase == 1:
+                self.current_phase = 2
                 self.session["phase"] = self.current_phase
 
     def is_approved(self, user_text: str) -> bool:

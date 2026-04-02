@@ -24,38 +24,33 @@ class PromptBuilder:
         base = _load("system_base.txt")
         phase_prompt = _load(f"phase{self.phase}.txt")
 
-        # Inject site_category into phase prompt
         fields = self.session.get("collected_fields", {})
         phase_prompt = phase_prompt.replace(
             "{{site_category}}", fields.get("site_category", "")
         )
 
         # STATE header — explicit reminder of active phase and known fields.
-        # The LLM must not contradict these values.
-        state_lines = [
-            f"ACTIVE PHASE: {self.phase}",
-            f"Site Category: {fields.get('site_category', 'not yet set')}",
-        ]
-        state_header = "\n\n--- SESSION STATE ---\n" + "\n".join(state_lines) + "\n--- END STATE ---\n"
+        state_header = (
+            f"\n\n--- SESSION STATE ---\n"
+            f"ACTIVE PHASE: {self.phase}\n"
+            f"Site Category: {fields.get('site_category', 'not yet set')}\n"
+            f"--- END STATE ---\n"
+        )
 
-        all_turns = self.session.get("turns", [])
-
-        # For Phase 2+, include the last 2 turns from the PREVIOUS phase so the
-        # LLM can see exactly what was confirmed (e.g. the Phase 1 summary and
-        # the user's confirmation).  Without this, Phase 2 has no knowledge of
-        # Customer Name, Site Name, or Job Purpose, causing it to ask again.
+        # For Phase 2, include the last 2 turns from Phase 1 so the LLM knows
+        # the confirmed Customer Name, Site Name, Site Category, and Job Purpose
+        # without needing to ask for them again.
         prior_context = ""
-        if self.phase > 1:
-            prev_turns = [t for t in all_turns if t.get("phase") == self.phase - 1]
-            if prev_turns:
-                last_prev = prev_turns[-2:]  # summary + confirmation turns
-                prior_context = f"\n\nCONFIRMED IN PHASE {self.phase - 1} (do not ask for these again):\n"
-                for t in last_prev:
+        if self.phase == 2:
+            phase1_turns = [t for t in self.session.get("turns", []) if t.get("phase") == 1]
+            if phase1_turns:
+                last_turns = phase1_turns[-2:]
+                prior_context = "\n\nCONFIRMED IN PHASE 1 (do not ask for these again):\n"
+                for t in last_turns:
                     prior_context += f"User: {t['user']}\nAssistant: {t['assistant']}\n\n"
 
-        # Only inject conversation turns from the CURRENT phase.
-        # Cross-phase history causes the LLM to revert to earlier-phase behaviour.
-        phase_turns = [t for t in all_turns if t.get("phase") == self.phase]
+        # Only inject conversation turns from the current phase.
+        phase_turns = [t for t in self.session.get("turns", []) if t.get("phase") == self.phase]
         history = ""
         if phase_turns:
             history = "\n\nCONVERSATION SO FAR THIS PHASE:\n"
