@@ -10,9 +10,22 @@ import h2ogpte
 
 
 class _H2OGPTEClient(h2ogpte.H2OGPTE):
-    """Subclass that skips the version check, which fails on some server builds."""
+    """
+    Subclass that skips version checks, which fail on some server builds.
+    Both _check_version (called at init) and get_meta (called inside
+    answer_question) hit /rpc/meta — the server returns an empty body,
+    causing JSONDecodeError.  We bypass both.
+    """
     def _check_version(self, strict_version_check):
         pass
+
+    def get_meta(self):
+        try:
+            return super().get_meta()
+        except Exception:
+            class _Meta:
+                version = "1.4.0"
+            return _Meta()
 
 
 class H2OGPTeClient:
