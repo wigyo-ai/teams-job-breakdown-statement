@@ -7,7 +7,10 @@ Determines collection ID from site category on Phase 1.
 from datetime import datetime
 
 PHASE_REQUIRED_FIELDS = {
-    1: ["customer_name", "site_name", "site_category", "job_purpose"],
+    # Phase 1 advances when site_category is known (binds the RAG collection) AND the
+    # user has confirmed the Phase 1 summary (phase1_confirmed flag set in ingest_user_input).
+    # The other fields live in conversation history and are referenced by later phases.
+    1: ["site_category", "phase1_confirmed"],
     2: ["duties"],
     3: ["hazards", "ppe_requirements", "escalation_procedure"],
     4: [],
@@ -34,13 +37,20 @@ class PhaseController:
         """Extract structured fields from user input where possible."""
         lower = text.lower()
 
-        # Phase 1: detect site category to bind the correct h2oGPTe collection
-        if self.current_phase == 1 and "site_category" not in self.fields:
-            for category in SITE_CATEGORY_COLLECTION_MAP:
-                if category.lower() in lower:
-                    self.fields["site_category"] = category
-                    self.session["collection_id"] = SITE_CATEGORY_COLLECTION_MAP[category]
-                    break
+        if self.current_phase == 1:
+            # Detect site category to bind the correct h2oGPTe collection
+            if "site_category" not in self.fields:
+                for category in SITE_CATEGORY_COLLECTION_MAP:
+                    if category.lower() in lower:
+                        self.fields["site_category"] = category
+                        self.session["collection_id"] = SITE_CATEGORY_COLLECTION_MAP[category]
+                        break
+
+            # Phase 1 advances only after the user confirms the summary.
+            # site_category must already be known (collection bound) at this point.
+            if "site_category" in self.fields and "phase1_confirmed" not in self.fields:
+                if self.is_approved(text):
+                    self.fields["phase1_confirmed"] = True
 
     def advance_if_complete(self):
         required = PHASE_REQUIRED_FIELDS.get(self.current_phase, [])
