@@ -35,6 +35,12 @@ _GREETING_TRIGGERS = {
 state_mgr = StateManager()
 _h2ogpte: H2OGPTeClient | None = None
 
+# Deduplication: track in-flight message IDs to prevent double-processing
+# (Teams can re-deliver if the webhook is slow)
+import asyncio as _asyncio
+_in_flight: set[str] = set()
+_in_flight_lock = _asyncio.Lock()
+
 
 def _get_h2ogpte() -> H2OGPTeClient:
     global _h2ogpte
@@ -455,6 +461,24 @@ async def _phase2_respond(text: str, session: dict) -> str | None:
 
 async def process_message(msg: dict):
     user_id = msg["user_id"]
+    msg_id  = msg.get("reply_to", "")  # Teams activity ID — unique per message
+
+    # Deduplication: drop exact re-deliveries of the same Teams activity
+    if msg_id:
+        async with _in_flight_lock:
+            if msg_id in _in_flight:
+                return
+            _in_flight.add(msg_id)
+        try:
+            await _process_message_inner(msg, user_id)
+        finally:
+            async with _in_flight_lock:
+                _in_flight.discard(msg_id)
+    else:
+        await _process_message_inner(msg, user_id)
+
+
+async def _process_message_inner(msg: dict, user_id: str):
     session = state_mgr.load(user_id)
 
     # Reset: wipe session and send Phase 1 opening question directly
@@ -473,46 +497,55 @@ async def process_message(msg: dict):
 
     current_phase = session.get("phase", 1)
 
-    # ── PHASE 1 ────────────────────────────────────────────────────────────
-    if current_phase == 1:
-        response = _phase1_respond(msg["text"], session)
-        if response is not None:
-            state_mgr.save(user_id, session)
-            await _send_reply(msg, response)
-            return
-        # Phase 1 confirmed — session["phase"] = 2; kick off Phase 2 immediately
-        p2_input = ""
-    else:
-        p2_input = msg["text"]
+    try:
+        # ── PHASE 1 ────────────────────────────────────────────────────────────
+        if current_phase == 1:
+            response = _phase1_respond(msg["text"], session)
+            if response is not None:
+                state_mgr.save(user_id, session)
+                await _send_reply(msg, response)
+                return
+            # Phase 1 confirmed — session["phase"] = 2; kick off Phase 2 immediately
+            p2_input = ""
+        else:
+            p2_input = msg["text"]
 
-    # ── PHASE 2 ────────────────────────────────────────────────────────────
-    response = await _phase2_respond(p2_input, session)
+        # ── PHASE 2 ────────────────────────────────────────────────────────────
+        response = await _phase2_respond(p2_input, session)
 
-    if response is None:
-        # User approved — generate document
-        try:
-            jbs_json = PhaseController(session).build_jbs_json(session)
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{DOCUMENT_GENERATOR_URL}/generate",
-                    json={"jbs_json": jbs_json},
-                    timeout=60,
+        if response is None:
+            # User approved — generate document
+            try:
+                jbs_json = PhaseController(session).build_jbs_json(session)
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(
+                        f"{DOCUMENT_GENERATOR_URL}/generate",
+                        json={"jbs_json": jbs_json},
+                        timeout=60,
+                    )
+                    resp.raise_for_status()
+                    doc_url = resp.json()["download_url"]
+                response = (
+                    "Your JBS document has been generated!\n\n"
+                    f"Download link (valid 15 minutes):\n{doc_url}"
                 )
-                resp.raise_for_status()
-                doc_url = resp.json()["download_url"]
-            response = (
-                "Your JBS document has been generated!\n\n"
-                f"Download link (valid 15 minutes):\n{doc_url}"
-            )
-            session["status"] = "complete"
-        except Exception:
-            response = (
-                "Document generation failed. Please type **APPROVE** to retry, "
-                "or send 'New JBS' to start over."
-            )
+                session["status"] = "complete"
+            except Exception:
+                response = (
+                    "Document generation failed. Please type **APPROVE** to retry, "
+                    "or send 'New JBS' to start over."
+                )
 
-    state_mgr.save(user_id, session)
-    await _send_reply(msg, response)
+        state_mgr.save(user_id, session)
+        await _send_reply(msg, response)
+
+    except Exception as exc:
+        # Surface errors to the user rather than silently dropping them
+        await _send_reply(
+            msg,
+            f"Something went wrong processing your message. Please try again, "
+            f"or send 'New JBS' to restart.\n\n_(Error: {type(exc).__name__}: {exc})_",
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

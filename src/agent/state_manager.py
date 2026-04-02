@@ -11,9 +11,9 @@ REDIS_URL pointing to a managed Redis (e.g. AWS ElastiCache / Azure Cache).
 
 import os
 import json
+import copy
 import threading
 import sqlite3
-import tempfile
 from datetime import datetime, timedelta
 
 STATE_BACKEND = os.environ.get("STATE_BACKEND", "memory")  # memory | sqlite | external_redis
@@ -37,11 +37,11 @@ class MemoryStateBackend:
                 del self._store[key]
                 del self._expiry[key]
                 return None
-            return dict(self._store[key])
+            return copy.deepcopy(self._store[key])
 
     def set(self, key: str, value: dict):
         with self._lock:
-            self._store[key] = dict(value)
+            self._store[key] = copy.deepcopy(value)
             self._expiry[key] = datetime.utcnow() + timedelta(hours=SESSION_TTL_HOURS)
 
     def delete(self, key: str):
