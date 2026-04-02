@@ -58,7 +58,6 @@ class H2OGPTeClient:
 
         reply = self.client.answer_question(
             question=message,
-            chat_session_id=conversation_id,
             system_prompt=system_prompt,
             timeout=60,
         )
