@@ -19,6 +19,16 @@ DOCUMENT_GENERATOR_URL = os.environ.get("DOCUMENT_GENERATOR_URL", "http://localh
 # Any of these phrases reset the session to a clean slate
 RESET_COMMANDS = {"new jbs", "restart", "reset", "start over", "start again", "new session"}
 
+# When the phase advances, send this synthetic message to the LLM instead of
+# the user's confirmation text.  The confirmation text ("they are correct, proceed")
+# makes no sense as the first message in a new phase context and causes the LLM
+# to restart Phase 1.  A clear kickoff message removes all ambiguity.
+PHASE_KICKOFF = {
+    2: "Phase 1 is confirmed. Begin Phase 2 now: suggest the standard duties for this site based on the Site Category and Job Purpose shown in the context.",
+    3: "Phase 2 is confirmed. Begin Phase 3 now: ask about site hazards and safety requirements.",
+    4: "Phase 3 is confirmed. Begin Phase 4 now: present the full JBS summary for review and approval.",
+}
+
 state_mgr = StateManager()
 _h2ogpte: H2OGPTeClient | None = None
 
@@ -51,25 +61,28 @@ async def process_message(msg: dict):
         return
 
     phase_ctrl = PhaseController(session)
+    prior_phase = phase_ctrl.current_phase
     phase_ctrl.ingest_user_input(msg["text"])
 
     # Advance phase BEFORE building the prompt so the LLM immediately uses the
     # next phase's instructions on the same turn the user triggers the transition.
-    # This prevents the "extra message needed to move forward" problem.
-    # Exception: Phase 4 approval triggers document generation (handled below), so
-    # we skip the pre-advance when already in Phase 4.
     if phase_ctrl.current_phase < 4:
         phase_ctrl.advance_if_complete()
+
+    just_advanced = phase_ctrl.current_phase != prior_phase
 
     # Build the phase-specific system prompt (uses updated phase after advance)
     builder = PromptBuilder(session, phase_ctrl.current_phase)
 
-    # h2oGPTe manages full turn history via conversation_id
-    # On first turn, create a new conversation and store the ID
+    # On a phase transition, replace the user's confirmation text with a clear
+    # kickoff message so the LLM doesn't try to interpret "they are correct,
+    # proceed" inside a brand-new phase context with no prior history.
+    llm_input = PHASE_KICKOFF.get(phase_ctrl.current_phase, msg["text"]) if just_advanced else msg["text"]
+
     response_text, conv_id = await _get_h2ogpte().chat(
         collection_id=session.get("collection_id"),
         conversation_id=session.get("h2ogpte_conv_id"),
-        message=msg["text"],
+        message=llm_input,
         system_prompt=builder.system_prompt
     )
     session["h2ogpte_conv_id"] = conv_id
