@@ -42,7 +42,15 @@ async def process_message(msg: dict):
     phase_ctrl = PhaseController(session)
     phase_ctrl.ingest_user_input(msg["text"])
 
-    # Build the phase-specific system prompt
+    # Advance phase BEFORE building the prompt so the LLM immediately uses the
+    # next phase's instructions on the same turn the user triggers the transition.
+    # This prevents the "extra message needed to move forward" problem.
+    # Exception: Phase 4 approval triggers document generation (handled below), so
+    # we skip the pre-advance when already in Phase 4.
+    if phase_ctrl.current_phase < 4:
+        phase_ctrl.advance_if_complete()
+
+    # Build the phase-specific system prompt (uses updated phase after advance)
     builder = PromptBuilder(session, phase_ctrl.current_phase)
 
     # h2oGPTe manages full turn history via conversation_id
@@ -77,9 +85,8 @@ async def process_message(msg: dict):
         )
         session["status"] = "complete"
 
-    # Advance phase if all required fields for current phase are collected
-    phase_ctrl.advance_if_complete()
-
+    # Save the (possibly advanced) phase back to session
+    session["phase"] = phase_ctrl.current_phase
     state_mgr.save(user_id, session)
     await _send_reply(msg, response_text)
 

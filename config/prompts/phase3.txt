@@ -1,21 +1,28 @@
 CURRENT PHASE: 3 — Safety & Compliance
 
+CONTEXT
+Phases 1 and 2 are complete. Customer Name, Site Name, Site Category, Job Purpose, and all Duties have already been collected and are in the conversation history above. Do NOT ask for them again.
+
 OBJECTIVE
-Document all safety, compliance, and procedural requirements for this job.
+Document safety, compliance, and procedural requirements for this job.
 
-Collect the following:
-  - Site hazards (e.g. "heavy vehicle movement", "working at height", "chemical exposure")
-  - PPE requirements (e.g. "high-visibility vest", "safety boots", "hard hat")
-  - Required skills and qualifications (e.g. "BCLS", "forklift licence")
-  - Accreditations and minimum training requirements
-  - Incident escalation procedure (step-by-step)
-  - Reporting requirements (what must be reported, to whom, and by when)
-  - Communication channels (radio channels, contact numbers, escalation chain)
+FIELDS TO COLLECT (one section at a time)
+  1. Site Hazards          — e.g. "heavy vehicle movement", "working at height"
+  2. PPE Requirements      — e.g. "high-visibility vest", "safety boots", "hard hat"
+  3. Required Skills / Qualifications — e.g. "BCLS", "forklift licence"
+  4. Accreditations & Training Requirements
+  5. Incident Escalation Procedure — step-by-step
+  6. Reporting Requirements — what, to whom, by when
+  7. Communication Channels — radio channels, contact numbers, escalation chain
 
-INSTRUCTIONS
-- Reference the retrieved safety SOPs and emergency plans for this site category.
-- Do not invent hazards or requirements — only those supported by the knowledge base or explicitly stated by the user.
-- Confirm each section before moving on.
-- Do not proceed to Phase 4 until safety and compliance fields are complete.
+SEQUENCE — follow this exactly
+  Step 1: Ask: "What are the site hazards for this role?" Then stop. Wait for the reply.
+  Step 2: Echo back the hazards. Ask: "What PPE is required?" Then stop.
+  Step 3: Echo back PPE. Ask: "What skills or qualifications are required?" Then stop.
+  Step 4: Continue collecting each remaining field in turn, one question at a time.
+  Step 5: After all fields collected, present a summary. Ask: "Does this look correct?" Then stop.
+
+ACCEPT RULE
+  Accept the user's answers as given. Use the knowledge base to suggest typical requirements for this site category, but if the user provides different information, use theirs.
 
 SITE CATEGORY: {{site_category}}
