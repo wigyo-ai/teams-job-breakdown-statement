@@ -26,6 +26,7 @@ SITE_CATEGORY_COLLECTION_MAP = {
     "Retail":      "30ae7e9b-3812-4d96-ad34-357214210dcf",
 }
 
+# Exported so orchestrator can use them without duplicating definitions
 APPROVAL_KEYWORDS = {"approved", "confirm", "yes", "proceed", "looks good", "approve"}
 
 
@@ -36,32 +37,12 @@ class PhaseController:
         self.fields = session.setdefault("collected_fields", {})
 
     def ingest_user_input(self, text: str):
-        """Extract structured fields from user input where possible."""
-        lower = text.lower()
-
-        if self.current_phase == 1:
-            # Detect site category to bind the correct h2oGPTe collection
-            if "site_category" not in self.fields:
-                for category in SITE_CATEGORY_COLLECTION_MAP:
-                    if category.lower() in lower:
-                        self.fields["site_category"] = category
-                        self.session["collection_id"] = SITE_CATEGORY_COLLECTION_MAP[category]
-                        break
-
-            # Phase 1 advances only after the user confirms the summary.
-            # site_category must already be known (collection bound) at this point.
-            if "site_category" in self.fields and "phase1_confirmed" not in self.fields:
-                if self.is_approved(text):
-                    self.fields["phase1_confirmed"] = True
+        """No-op: Phase 1 data collection is now handled entirely in orchestrator._phase1_respond."""
+        pass
 
     def advance_if_complete(self):
-        required = PHASE_REQUIRED_FIELDS.get(self.current_phase, [])
-        if all(f in self.fields for f in required):
-            # Only advance from Phase 1 → Phase 2. Phase 2 is terminal
-            # (document generation is the end state, handled in orchestrator).
-            if self.current_phase == 1:
-                self.current_phase = 2
-                self.session["phase"] = self.current_phase
+        """No-op: Phase advancement is handled in orchestrator._phase1_respond."""
+        pass
 
     def is_approved(self, user_text: str) -> bool:
         return any(k in user_text.lower() for k in APPROVAL_KEYWORDS)

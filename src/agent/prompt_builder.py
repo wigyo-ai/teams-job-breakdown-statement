@@ -1,6 +1,8 @@
 """
 Prompt Builder
-Loads phase-specific system prompts from config/prompts/ and injects session context.
+Loads phase-specific system prompts and injects session state.
+Phase 1 is handled entirely in code (orchestrator.py) so this builder
+is only ever called for Phase 2.
 """
 
 import os
@@ -25,36 +27,25 @@ class PromptBuilder:
         phase_prompt = _load(f"phase{self.phase}.txt")
 
         fields = self.session.get("collected_fields", {})
-        phase_prompt = phase_prompt.replace(
-            "{{site_category}}", fields.get("site_category", "")
+        phase_prompt = phase_prompt.replace("{{site_category}}", fields.get("site_category", ""))
+
+        # Confirmed Phase 1 data — read directly from collected_fields (stored by
+        # code, not parsed from LLM output, so guaranteed to be accurate).
+        confirmed = (
+            "\n\n--- CONFIRMED PHASE 1 DATA (do not ask for these again) ---\n"
+            f"Customer Name: {fields.get('customer_name', 'not set')}\n"
+            f"Site Name:     {fields.get('site_name', 'not set')}\n"
+            f"Site Category: {fields.get('site_category', 'not set')}\n"
+            f"Job Purpose:   {fields.get('job_purpose', 'not set')}\n"
+            "--- END PHASE 1 DATA ---\n"
         )
 
-        # STATE header — explicit reminder of active phase and known fields.
-        state_header = (
-            f"\n\n--- SESSION STATE ---\n"
-            f"ACTIVE PHASE: {self.phase}\n"
-            f"Site Category: {fields.get('site_category', 'not yet set')}\n"
-            f"--- END STATE ---\n"
-        )
-
-        # For Phase 2, include the last 2 turns from Phase 1 so the LLM knows
-        # the confirmed Customer Name, Site Name, Site Category, and Job Purpose
-        # without needing to ask for them again.
-        prior_context = ""
-        if self.phase == 2:
-            phase1_turns = [t for t in self.session.get("turns", []) if t.get("phase") == 1]
-            if phase1_turns:
-                last_turns = phase1_turns[-2:]
-                prior_context = "\n\nCONFIRMED IN PHASE 1 (do not ask for these again):\n"
-                for t in last_turns:
-                    prior_context += f"User: {t['user']}\nAssistant: {t['assistant']}\n\n"
-
-        # Only inject conversation turns from the current phase.
-        phase_turns = [t for t in self.session.get("turns", []) if t.get("phase") == self.phase]
+        # Only inject Phase 2 conversation turns (no cross-phase noise)
+        turns = [t for t in self.session.get("turns", []) if t.get("phase") == 2]
         history = ""
-        if phase_turns:
-            history = "\n\nCONVERSATION SO FAR THIS PHASE:\n"
-            for t in phase_turns:
+        if turns:
+            history = "\n\nCONVERSATION SO FAR:\n"
+            for t in turns:
                 history += f"User: {t['user']}\nAssistant: {t['assistant']}\n\n"
 
-        return f"{base}\n\n{phase_prompt}{state_header}{prior_context}{history}"
+        return f"{base}\n\n{phase_prompt}{confirmed}{history}"
