@@ -8,11 +8,8 @@ Document generation is performed by the Document Generator service via HTTP.
 
 import os
 import time
-import logging
 import httpx
 from .state_manager import StateManager
-
-logger = logging.getLogger(__name__)
 from .phase_controller import PhaseController
 from .prompt_builder import PromptBuilder
 from ..rag.h2ogpte_client import H2OGPTeClient
@@ -107,9 +104,8 @@ async def _send_teams(service_url: str, conversation_id: str, reply_to_id: str, 
         f"{service_url.rstrip('/')}/v3/conversations"
         f"/{conversation_id}/activities/{reply_to_id}"
     )
-    print(f"[REPLY] POST {url}", flush=True)
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
+        await client.post(
             url,
             headers={"Authorization": f"Bearer {token}"},
             json={
@@ -118,7 +114,6 @@ async def _send_teams(service_url: str, conversation_id: str, reply_to_id: str, 
                 "from": {"id": os.environ["TEAMS_APP_ID"], "name": "JBS Assistant"},
             },
         )
-    print(f"[REPLY] status={resp.status_code} body={resp.text[:300]}", flush=True)
 
 
 async def _get_bot_token() -> str:
