@@ -112,7 +112,11 @@ async def _send_teams(service_url: str, conversation_id: str, reply_to_id: str, 
         resp = await client.post(
             url,
             headers={"Authorization": f"Bearer {token}"},
-            json={"type": "message", "text": text},
+            json={
+                "type": "message",
+                "text": text,
+                "from": {"id": os.environ["TEAMS_APP_ID"], "name": "JBS Assistant"},
+            },
         )
     print(f"[REPLY] status={resp.status_code} body={resp.text[:300]}", flush=True)
 
