@@ -107,14 +107,14 @@ async def _send_teams(service_url: str, conversation_id: str, reply_to_id: str, 
         f"{service_url.rstrip('/')}/v3/conversations"
         f"/{conversation_id}/activities/{reply_to_id}"
     )
-    logger.info("Sending reply to: %s", url)
+    print(f"[REPLY] POST {url}", flush=True)
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             url,
             headers={"Authorization": f"Bearer {token}"},
             json={"type": "message", "text": text},
         )
-    logger.info("Bot Framework reply status: %s body: %s", resp.status_code, resp.text[:200])
+    print(f"[REPLY] status={resp.status_code} body={resp.text[:300]}", flush=True)
 
 
 async def _get_bot_token() -> str:
