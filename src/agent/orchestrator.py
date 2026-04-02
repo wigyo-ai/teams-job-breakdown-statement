@@ -16,6 +16,9 @@ from ..rag.h2ogpte_client import H2OGPTeClient
 
 DOCUMENT_GENERATOR_URL = os.environ.get("DOCUMENT_GENERATOR_URL", "http://localhost:8002")
 
+# Any of these phrases reset the session to a clean slate
+RESET_COMMANDS = {"new jbs", "restart", "reset", "start over", "start again", "new session"}
+
 state_mgr = StateManager()
 _h2ogpte: H2OGPTeClient | None = None
 
@@ -34,9 +37,17 @@ async def process_message(msg: dict):
     user_id = msg["user_id"]
     session = state_mgr.load(user_id)
 
+    # Reset command: wipe the session entirely and start Phase 1 fresh.
+    # Must be checked before anything else so a stale Phase 2/3/4 session
+    # cannot interfere when the user asks to restart.
+    if msg["text"].strip().lower() in RESET_COMMANDS:
+        state_mgr.save(user_id, {})
+        await _send_reply(msg, "Starting a new JBS session.\n\nWhat is the Customer Name? (the organisation that hired Certis)")
+        return
+
     # Guard: ignore messages for completed sessions
     if session.get("status") == "complete":
-        await _send_reply(msg, "This JBS session is complete. Start a new session by sending 'New JBS'.")
+        await _send_reply(msg, "This JBS session is complete. Send 'New JBS' to start a new session.")
         return
 
     phase_ctrl = PhaseController(session)
