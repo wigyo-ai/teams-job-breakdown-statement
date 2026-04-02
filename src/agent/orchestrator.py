@@ -65,8 +65,11 @@ async def process_message(msg: dict):
 
     # Store turn so the next system prompt includes full conversation history
     turns = session.setdefault("turns", [])
-    turns.append({"user": msg["text"], "assistant": response_text})
-    session["turns"] = turns[-20:]  # cap at 20 turns
+    # Tag each turn with the phase it belongs to so prompt_builder can
+    # inject only the turns relevant to the current phase, preventing the LLM
+    # from being confused by old exchanges from earlier phases.
+    turns.append({"phase": phase_ctrl.current_phase, "user": msg["text"], "assistant": response_text})
+    session["turns"] = turns[-30:]  # keep enough history across phases
 
     # Phase 4: detect user approval and trigger document generation
     if phase_ctrl.current_phase == 4 and phase_ctrl.is_approved(msg["text"]):
