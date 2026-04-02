@@ -78,5 +78,5 @@ async def _forward(msg: NormalisedMessage):
         await client.post(
             f"{ORCHESTRATOR_URL}/process",
             json=msg.dict(),
-            timeout=30,
+            timeout=150,
         )
