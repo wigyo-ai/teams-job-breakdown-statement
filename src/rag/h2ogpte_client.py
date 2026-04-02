@@ -33,18 +33,19 @@ class H2OGPTeClient:
         Send a message to h2oGPTe.
         Returns (reply_text, conversation_id).
 
-        If conversation_id is None, h2oGPTe creates a new conversation
-        and we store the returned ID in the session for subsequent turns.
-        h2oGPTe natively maintains the full turn history — no Redis needed.
+        A chat session (conversation_id) is only created once collection_id
+        is known (Phase 1 after site_category is extracted).  Before that,
+        answer_question is called without a session so the server does not
+        receive a null collection_id and return an empty response body.
         """
-        if not conversation_id:
-            # create_chat_session(collection_id) -> str (session ID)
+        if collection_id and not conversation_id:
             conversation_id = self.client.create_chat_session(
                 collection_id=collection_id,
             )
 
         reply = self.client.answer_question(
             question=message,
+            chat_session_id=conversation_id,
             system_prompt=system_prompt,
             timeout=60,
         )
