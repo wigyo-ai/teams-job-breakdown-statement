@@ -29,4 +29,13 @@ class PromptBuilder:
         phase_prompt = phase_prompt.replace(
             "{{site_category}}", fields.get("site_category", "")
         )
-        return f"{base}\n\n{phase_prompt}"
+
+        # Include conversation history so the LLM has full context each turn
+        turns = self.session.get("turns", [])
+        history = ""
+        if turns:
+            history = "\n\nCONVERSATION HISTORY (most recent first shown last):\n"
+            for t in turns:
+                history += f"User: {t['user']}\nAssistant: {t['assistant']}\n\n"
+
+        return f"{base}\n\n{phase_prompt}{history}"
