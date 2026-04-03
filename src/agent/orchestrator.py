@@ -503,8 +503,10 @@ async def _process_message_inner(msg: dict, user_id: str):
         # Rule: if the session already has data, only accept resets ≤30 seconds old.
         # If the session is empty there is nothing to protect — accept any age.
         age = _msg_age_seconds(msg.get("timestamp"))
-        has_data = bool(session.get("collected_fields", {}) or session.get("phase", 1) > 1)
-        if has_data and age > 30:
+        has_data = bool(session.get("collected_fields") or session.get("phase", 1) > 1)
+        # Normal Teams delivery takes <1 second. Re-deliveries arrive 30+ seconds later.
+        # Reject resets on an active session if the message is older than 10 seconds.
+        if has_data and age > 10:
             return
         state_mgr.save(user_id, {})
         await _send_reply(
