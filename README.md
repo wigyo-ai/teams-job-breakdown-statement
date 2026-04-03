@@ -26,8 +26,8 @@ Built on the **H2O.ai Enterprise Platform**.
 | Conversational AI + RAG | H2O Enterprise h2oGPTe |
 | Knowledge Base Ingestion | H2O Document AI + SharePoint (Microsoft Graph API) |
 | Messaging Interface | Microsoft Teams (Azure Bot Service) |
-| Orchestration & State | Python FastAPI + SQLite session store (no Redis pod) |
-| Conversation History | H2O Enterprise h2oGPTe (native, via conversation_id) |
+| Orchestration & State | Python FastAPI + in-memory session store (single worker) |
+| Conversation History | h2oGPTe called fresh per section (conversation_id=None each call) |
 | Admin Dashboard | H2O Wave — deployed via HAIC App Store (not Helm) |
 | Document Generation | python-docx (Azure Container Apps) |
 | Object Storage | Azure Blob Storage |
@@ -46,15 +46,22 @@ User (Microsoft Teams)
   — JWT Bearer token validated (Azure Bot Service)
         │
         ▼
-  Conversation Orchestrator (phase state in SQLite)
-        │  Phases 1–4
+  Conversation Orchestrator (in-memory session state, --workers 1)
+        │
+        ├─ Phase 1 (Setup — code only, no LLM)
+        │    Collects 4 fields: Customer Name → Site Name → Site Category → Job Purpose
+        │
+        └─ Phase 2 (Interview — hybrid LLM+RAG)
+             Code drives state machine; h2oGPTe called once per section for suggestions
+             suggest_duties → confirm_duties → suggest/confirm_tasks → suggest/confirm_safety
+             → review → APPROVE
+        │
         ▼
-  h2oGPTe API ◄──── SharePoint RAG Collections
-        │  (h2oGPTe stores full turn history natively via conversation_id)
+  h2oGPTe API ◄──── SharePoint RAG Collections (fresh RAG query per section)
         │                  (via Microsoft Graph API)
         │
         ▼
-  Phase 4 (Review & Approval): JSON Output ──► python-docx ──► .docx document
+  On APPROVE: JSON Output ──► python-docx ──► .docx document ──► Azure Blob Storage
         │
         ▼
   Reply to User (Microsoft Teams — Bot Framework REST API)

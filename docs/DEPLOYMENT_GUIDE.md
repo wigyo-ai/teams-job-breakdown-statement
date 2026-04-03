@@ -12,7 +12,7 @@ The platform consists of three middleware services deployed on **Azure Container
 | SharePoint Sync | `jbs-orchestrator` (reused) | — | ACA Scheduled Job | `src.rag.sharepoint_sync` |
 | Admin Dashboard | `jbs-dashboard` | 10101 | HAIC App Store | `dashboard/app.py` |
 
-**Message flow:** Teams → Azure Bot Service → Webhook (validates JWT) → Orchestrator (4-phase state machine, calls h2oGPTe) → Document Generator (renders .docx, uploads to Azure Blob Storage) → reply via Bot Framework REST API.
+**Message flow:** Teams → Azure Bot Service → Webhook (validates JWT) → Orchestrator (2-phase state machine: code-driven setup + hybrid LLM+RAG interview) → Document Generator (renders .docx, uploads to Azure Blob Storage) → reply via Bot Framework REST API.
 
 ---
 
@@ -606,17 +606,22 @@ az containerapp create \
     SP_LIBRARY_INDUSTRIAL="<library-id>" \
     SP_LIBRARY_MARITIME="<library-id>" \
     SP_LIBRARY_RETAIL="<library-id>" \
-    STATE_BACKEND="sqlite" \
+    STATE_BACKEND="memory" \
     SQLITE_PATH="/data/jbs_sessions.db" \
     SESSION_TTL_HOURS="24" \
     TENANT_ID="certis" \
+    AZURE_TENANT_ID="<AZURE_TENANT_ID>" \
   --secrets \
     h2ogpte-api-key="<H2OGPTE_API_KEY>" \
     teams-app-password="<TEAMS_APP_PASSWORD>" \
     azure-client-secret="<AZURE_CLIENT_SECRET>"
 ```
 
-> For multi-replica deployments: set `STATE_BACKEND=external_redis` and add `--secrets redis-url="<REDIS_URL>"` pointing to an Azure Cache for Redis managed instance.
+> **Single-worker requirement:** The orchestrator image is configured with `--workers 1` in its Dockerfile. Do not override this. The in-memory session backend (`STATE_BACKEND=memory`) is process-local — running multiple workers causes split-brain where concurrent requests for the same user land on different workers with divergent session state.
+>
+> **SQLite note:** `SQLITE_PATH` is set but not active. SQLite on Azure Files (SMB mount) fails with POSIX advisory lock errors. Use `STATE_BACKEND=memory` (current production setting) or `STATE_BACKEND=external_redis` with an Azure Cache for Redis instance for session persistence across restarts.
+>
+> **Current production image:** `certisjbsacr.azurecr.io/certisjbs-orchestrator:1.0.30`
 
 ### 12d. Deploy the Document Generator service (internal ingress only)
 
@@ -639,9 +644,14 @@ az containerapp create \
     AZURE_STORAGE_CONTAINER="certis-jbs-documents" \
     BLOB_PREFIX="jbs-documents/" \
     DOC_URL_EXPIRY_SECONDS="900" \
+    AZURE_STORAGE_KEY="secretref:storage-key" \
   --secrets \
     storage-key="$STORAGE_KEY"
 ```
+
+> **`AZURE_STORAGE_KEY` is required.** The Document Generator reads this env var directly to construct the Azure Blob Storage connection string. If it is missing, all document generation requests will fail with a `KeyError`. The value is stored as a secret (`storage-key`) and mapped to the env var via `secretref:storage-key`.
+>
+> **Current production image:** `certisjbsacr.azurecr.io/jbs-docgen:1.0.1`
 
 ---
 
@@ -813,9 +823,9 @@ for col in c.client.list_recent_collections(0, 20):
 ### 15e. End-to-end Teams test
 
 1. Open Microsoft Teams → find the JBS bot by name
-2. Send: `Hello`
-3. Bot should greet and ask for Customer Name and Site Name (Phase 1)
-4. Complete all 4 phases (Context → Duties → Safety → Review)
+2. Send: `Hello` or `New JBS`
+3. Bot should greet and step through Phase 1 (4 fields in sequence): Customer Name → Site Name → Site Category → Job Purpose
+4. Phase 2 begins automatically: bot suggests duties (confirm or edit) → tasks per duty (confirm or edit) → safety requirements (confirm or edit) → presents review summary
 5. Type one of the approval keywords: `approve`, `confirm`, `yes`, `proceed`, `looks good`
 6. Confirm the reply contains a download link pointing to `*.blob.core.windows.net`
 
@@ -843,10 +853,13 @@ Add these secrets to your GitHub repository (**Settings → Secrets and variable
 | Secret | Value |
 |---|---|
 | `AZURE_CLIENT_ID` | Service principal client ID |
-| `AZURE_TENANT_ID` | Azure AD tenant ID |
 | `AZURE_CLIENT_SECRET` | Service principal client secret |
+| `AZURE_TENANT_ID` | Azure AD tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
 | `ACR_LOGIN_SERVER` | e.g. `certisjbsacr.azurecr.io` |
 | `AZURE_RESOURCE_GROUP` | e.g. `certis-jbs-rg` |
+
+> All four of `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` are required. The `azure/login@v2` action expects them bundled as a `creds` JSON object — passing `client-secret` as a standalone parameter is not valid syntax and will cause the login step to fail.
 
 The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrator`, `certisjbs-docgen`, and `certisjbs-sp-sync` — these must match the names used in Steps 12–13.
 
@@ -1033,3 +1046,49 @@ az containerapp logs show \
   --replica <REPLICA_NAME> \
   --follow
 ```
+
+---
+
+### Known issues fixed in current release
+
+The following issues were identified in production and resolved. This section documents the root causes for reference.
+
+#### 1. Multiple uvicorn workers cause session split-brain
+
+**Symptom:** Conversation resets mid-interview; bot asks for Customer Name again after it was already provided; different messages in the same session produce inconsistent responses.
+
+**Root cause:** The in-memory session backend stores sessions in a process-local dict. When `--workers > 1` is set, each worker process has its own copy of the dict. Requests for the same user can be load-balanced to different workers, each seeing a different session snapshot.
+
+**Fix:** The Dockerfile sets `--workers 1`. Do not override this. If horizontal scaling is needed, switch to `STATE_BACKEND=external_redis` with an Azure Cache for Redis instance.
+
+#### 2. `AZURE_STORAGE_KEY` missing from docgen container
+
+**Symptom:** Document generation returns HTTP 500; docgen logs show `KeyError: 'AZURE_STORAGE_KEY'`.
+
+**Root cause:** The env var was defined in the `.env` template and Key Vault but was not included in the `az containerapp create` command for the docgen service.
+
+**Fix:** Add `AZURE_STORAGE_KEY="secretref:storage-key"` to `--env-vars` in the docgen deploy command (see Step 12d).
+
+#### 3. Word template placeholders not replaced (metadata table blank)
+
+**Symptom:** Generated `.docx` file has empty cells in the metadata table (customer, site, category, etc.) even though those fields were collected correctly.
+
+**Root cause:** `python-docx` paragraph iteration does not walk into table cells by default. The original `_populate_document()` only iterated `doc.paragraphs`, which excludes table cells. Additionally, assigning to `paragraph.text` destroys run-level formatting.
+
+**Fix:** `generator.py` now uses `_all_paragraphs()` (which iterates table cells via `doc.tables`) and `_replace_in_paragraph()` (which replaces text in individual runs, preserving formatting).
+
+#### 4. Stale Teams re-delivered messages resetting sessions
+
+**Symptom:** An active interview session resets to the beginning without user action, typically shortly after a slow response or a container scaling event.
+
+**Root cause:** Microsoft Teams re-delivers unacknowledged messages. If a reset command (e.g. `new jbs`, `start over`) was sent by the user in a previous session, Teams may re-deliver it with its original timestamp. The orchestrator was processing it as a fresh message, wiping the current session.
+
+**Fix:** The orchestrator now compares the message timestamp to the current time. Reset commands with a timestamp older than 10 seconds are dropped on sessions that are already active.
+
+#### 5. SQLite on Azure Files fails (SMB POSIX lock incompatibility)
+
+**Symptom:** Orchestrator crashes on startup or fails to write sessions with `OperationalError: database is locked` or `unable to open database file`.
+
+**Root cause:** SQLite relies on POSIX advisory file locks for write serialisation. Azure Files SMB mounts do not implement POSIX advisory locks, so SQLite cannot safely operate on a file stored there.
+
+**Fix:** Use `STATE_BACKEND=memory` (current production setting). If session persistence across restarts is required, provision an Azure Cache for Redis instance and set `STATE_BACKEND=external_redis`.

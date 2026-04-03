@@ -19,8 +19,8 @@ certis-jbs-platform/
 │   │   └── schema.py
 │   ├── agent/                      # Conversation orchestrator (FastAPI, port 8001)
 │   │   ├── server.py               # FastAPI entrypoint (/health, /process)
-│   │   ├── orchestrator.py         # 4-phase state machine + Teams reply sender
-│   │   ├── phase_controller.py     # Phase transitions, field extraction, approval detection
+│   │   ├── orchestrator.py         # 2-phase hybrid state machine + Teams reply sender
+│   │   ├── phase_controller.py     # Simplified stub (ingest_user_input/advance_if_complete are no-ops)
 │   │   ├── prompt_builder.py       # Assembles system prompt from phase prompt files
 │   │   └── state_manager.py        # Session persistence (memory / sqlite / external_redis)
 │   ├── rag/
@@ -33,11 +33,9 @@ certis-jbs-platform/
 │       └── generator.py            # python-docx renderer + Azure Blob Storage upload
 ├── config/
 │   └── prompts/
-│       ├── system_base.txt         # Core JBS assistant persona + anti-hallucination rules
-│       ├── phase1.txt              # Phase 1: Context & Initiation prompt
-│       ├── phase2.txt              # Phase 2: Duty Discovery prompt
-│       ├── phase3.txt              # Phase 3: Safety & Compliance prompt
-│       └── phase4.txt              # Phase 4: Review & Approval prompt
+│       ├── system_base.txt         # STRICT OUTPUT RULES (no simulated responses, one question at a time)
+│       ├── phase1.txt              # Documents the 4-field collection sequence (now code-driven)
+│       └── phase2.txt              # Reference for Section A (Duties), B (Safety), C (Review)
 ├── templates/
 │   └── jbs_corporate_template.docx # Word template with {BOOKMARK} placeholders
 ├── deploy/
@@ -170,100 +168,48 @@ class NormalisedMessage(BaseModel):
 
 **File:** `src/agent/orchestrator.py`
 
-```python
-import os, time, httpx
-from .state_manager import StateManager
-from .phase_controller import PhaseController
-from .prompt_builder import PromptBuilder
-from ..rag.h2ogpte_client import H2OGPTeClient
+The orchestrator implements a **2-phase hybrid architecture**. The code drives the entire state machine; h2oGPTe is called for suggestions only, not to determine conversation flow.
 
-DOCUMENT_GENERATOR_URL = os.environ.get("DOCUMENT_GENERATOR_URL", "http://localhost:8002")
+### Phase 1 — Setup (code-driven, no LLM)
 
-state_mgr = StateManager()
-h2ogpte   = H2OGPTeClient()
+A hardcoded 4-step counter collects fields in sequence:
 
-# In-process OAuth2 token cache for the Bot Framework API
-_bot_token_cache: dict = {"token": None, "expires_at": 0}
+1. Customer Name
+2. Site Name
+3. Site Category (one of: Corporate, Aviation, Industrial, Maritime, Retail)
+4. Job Purpose
 
-async def process_message(msg: dict):
-    user_id = msg["user_id"]
-    session = state_mgr.load(user_id)
+No h2oGPTe calls are made during Phase 1. The site category is used to select the appropriate h2oGPTe RAG collection for Phase 2.
 
-    phase_ctrl = PhaseController(session)
-    phase_ctrl.ingest_user_input(msg["text"])
+### Phase 2 — Interview (hybrid LLM+RAG)
 
-    builder = PromptBuilder(session, phase_ctrl.current_phase)
-    response_text, conv_id = await h2ogpte.chat(
-        collection_id=session.get("collection_id"),
-        conversation_id=session.get("h2ogpte_conv_id"),
-        message=msg["text"],
-        system_prompt=builder.system_prompt
-    )
-    session["h2ogpte_conv_id"] = conv_id
+The code drives a `p2_step` state machine through these steps in order:
 
-    if phase_ctrl.current_phase == 4 and phase_ctrl.is_approved(msg["text"]):
-        jbs_json = phase_ctrl.build_jbs_json(session)
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{DOCUMENT_GENERATOR_URL}/generate",
-                json={"jbs_json": jbs_json},
-                timeout=60,
-            )
-            resp.raise_for_status()
-            doc_url = resp.json()["download_url"]
-        response_text = (
-            "Your JBS document has been generated and is ready for download.\n\n"
-            f"Download link (valid 15 minutes):\n{doc_url}"
-        )
-        session["status"] = "complete"
+```
+suggest_duties → confirm_duties
+→ suggest_tasks_0 → confirm_tasks_0 → ... → suggest_tasks_N → confirm_tasks_N
+→ suggest_safety → confirm_safety
+→ review → APPROVE → generate document
+```
 
-    phase_ctrl.advance_if_complete()
-    state_mgr.save(user_id, session)
-    await _send_reply(msg, response_text)
+At each `suggest_*` step, h2oGPTe is called **once** with `conversation_id=None` (a fresh RAG query; no accumulated conversation state across sections). The user confirms or modifies the suggestion; confirmed data is stored directly in `collected_fields`. On APPROVE, the orchestrator POSTs the collected JSON to the Document Generator service.
 
-async def _send_reply(msg: dict, text: str):
-    if msg["channel"] == "teams":
-        await _send_teams(
-            service_url=msg["service_url"],
-            conversation_id=msg["conversation_id"],
-            reply_to_id=msg["reply_to"],
-            text=text,
-        )
+### Key behaviours
 
-async def _send_teams(service_url: str, conversation_id: str, reply_to_id: str, text: str):
-    """
-    Reply via the Bot Framework REST API.
-    URL: {serviceUrl}/v3/conversations/{conversationId}/activities/{activityId}
-    """
-    token = await _get_bot_token()
-    url = f"{service_url.rstrip('/')}/v3/conversations/{conversation_id}/activities/{reply_to_id}"
-    async with httpx.AsyncClient() as client:
-        await client.post(
-            url,
-            headers={"Authorization": f"Bearer {token}"},
-            json={"type": "message", "text": text},
-        )
+- **Message deduplication:** Each incoming activity ID is tracked; duplicate deliveries from Teams are dropped.
+- **Stale message filtering:** Reset commands (`new jbs`, `start over`, etc.) older than 10 seconds are dropped on active sessions to prevent Teams re-delivery from wiping in-progress interviews.
+- **Bot Framework replies:** The orchestrator sends replies via the Bot Framework REST API using a cached OAuth2 client-credentials token (Bot Framework scope).
 
-async def _get_bot_token() -> str:
-    """Client credentials OAuth2 flow — Bot Framework scope. Token cached with TTL."""
-    now = time.time()
-    if _bot_token_cache["token"] and now < _bot_token_cache["expires_at"]:
-        return _bot_token_cache["token"]
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
-            data={
-                "grant_type":    "client_credentials",
-                "client_id":     os.environ["TEAMS_APP_ID"],
-                "client_secret": os.environ["TEAMS_APP_PASSWORD"],
-                "scope":         "https://api.botframework.com/.default",
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    _bot_token_cache["token"]      = data["access_token"]
-    _bot_token_cache["expires_at"] = now + data.get("expires_in", 3600) - 60
-    return _bot_token_cache["token"]
+### Bot token flow
+
+```
+POST https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token
+  grant_type=client_credentials
+  client_id=$TEAMS_APP_ID
+  client_secret=$TEAMS_APP_PASSWORD
+  scope=https://api.botframework.com/.default
+
+Reply URL: {serviceUrl}/v3/conversations/{conversationId}/activities/{activityId}
 ```
 
 ---
@@ -272,34 +218,19 @@ async def _get_bot_token() -> str:
 
 **File:** `src/agent/state_manager.py`
 
-```python
-import json, os, sqlite3
-from datetime import datetime, timedelta
+The `StateManager` selects a backend via the `STATE_BACKEND` environment variable:
 
-SESSION_TTL_HOURS = int(os.environ.get("SESSION_TTL_HOURS", 24))
+| `STATE_BACKEND` value | Backend | Notes |
+|---|---|---|
+| `memory` | `MemoryStateBackend` | **Current production setting.** Process-local dict. Requires `--workers 1`. Sessions lost on container restart. |
+| `sqlite` | `SQLiteStateBackend` | Restart-safe for a single replica. **Not used in production** — SQLite on Azure Files (SMB mount) fails due to POSIX advisory lock incompatibility. |
+| `external_redis` | `ExternalRedisStateBackend` | Multi-replica safe. Requires an Azure Cache for Redis instance (additional infrastructure). |
 
-class StateManager:
-    """
-    Three backends selectable via STATE_BACKEND env var:
-      memory         — single replica only (dev/test)
-      sqlite         — restart-safe, default for Azure Container Apps single-replica
-      external_redis — multi-replica (use a managed Redis service, not a Helm pod)
-    """
-    def __init__(self):
-        backend = os.environ.get("STATE_BACKEND", "memory")
-        if backend == "sqlite":
-            self._backend = SQLiteStateBackend()
-        elif backend == "external_redis":
-            self._backend = ExternalRedisStateBackend()
-        else:
-            self._backend = MemoryStateBackend()
+> **Single-worker requirement:** The memory backend stores sessions in a process-local dict. Running multiple uvicorn workers (`--workers > 1`) causes split-brain — concurrent requests for the same user may land on different workers with different session snapshots. The Dockerfile sets `--workers 1` and this must not be changed while `STATE_BACKEND=memory` is active.
 
-    def load(self, user_id: str) -> dict:
-        return self._backend.load(user_id)
+> **deepcopy fix:** `MemoryStateBackend.load()` returns a `copy.deepcopy` of the stored session dict. This prevents shared-reference bugs where in-flight async handlers mutate the same object concurrently before `save()` is called.
 
-    def save(self, user_id: str, session: dict):
-        self._backend.save(user_id, session)
-```
+> **Known limitation:** Container restarts (e.g. during rolling deployments) wipe all active in-memory sessions. Users need to type "New JBS" to restart. A persistent backend (Azure Cache for Redis or Azure Blob) would solve this but requires new infrastructure.
 
 ---
 
@@ -307,65 +238,14 @@ class StateManager:
 
 **File:** `src/agent/phase_controller.py`
 
-```python
-PHASE_REQUIRED_FIELDS = {
-    1: ["customer_name", "site_name", "site_category", "job_purpose"],
-    2: ["duties"],
-    3: ["hazards", "ppe_requirements", "escalation_procedure"],
-    4: [],
-}
+In the current architecture, `phase_controller.py` is a simplified stub. The orchestrator (`orchestrator.py`) handles all phase and step transitions directly using session state. The `PhaseController` class is retained for backwards compatibility but its two key methods are effectively no-ops:
 
-SITE_CATEGORY_COLLECTION_MAP = {
-    "Corporate":   "collection_corporate",
-    "Aviation":    "collection_aviation",
-    "Industrial":  "collection_industrial",
-    "Maritime":    "collection_maritime",
-    "Retail":      "collection_retail",
-}
+- `ingest_user_input(text)` — no longer extracts fields from free text; the orchestrator handles field collection via its own step logic.
+- `advance_if_complete()` — no longer drives phase transitions; the orchestrator manages the `p2_step` state machine directly.
 
-class PhaseController:
-    def __init__(self, session: dict):
-        self.session      = session
-        self.current_phase = session.get("phase", 1)
-        self.fields        = session.setdefault("collected_fields", {})
+The `SITE_CATEGORY_COLLECTION_MAP` (mapping site category strings to h2oGPTe collection IDs) is still defined here and referenced by the orchestrator when selecting the RAG collection for Phase 2.
 
-    def ingest_user_input(self, text: str):
-        if self.current_phase == 1:
-            for cat in SITE_CATEGORY_COLLECTION_MAP:
-                if cat.lower() in text.lower():
-                    self.fields["site_category"] = cat
-                    self.session["collection_id"] = SITE_CATEGORY_COLLECTION_MAP[cat]
-
-    def advance_if_complete(self):
-        required = PHASE_REQUIRED_FIELDS.get(self.current_phase, [])
-        if all(f in self.fields for f in required):
-            self.current_phase += 1
-            self.session["phase"] = self.current_phase
-
-    def is_approved(self, user_text: str) -> bool:
-        approval_keywords = ["approved", "confirm", "yes", "proceed", "looks good"]
-        if self.current_phase == 4:
-            return any(k in user_text.lower() for k in approval_keywords)
-        return False
-
-    def build_jbs_json(self, session: dict) -> dict:
-        from datetime import datetime
-        f = session.get("collected_fields", {})
-        return {
-            "jbs_version": "1.0",
-            "generated_at": datetime.utcnow().isoformat() + "Z",
-            "metadata": {
-                "customer_name":  f.get("customer_name", ""),
-                "site_name":      f.get("site_name", ""),
-                "site_category":  f.get("site_category", ""),
-                "job_purpose":    f.get("job_purpose", ""),
-                "created_by":     session.get("user_id", ""),
-                "authorized_by":  f.get("authorized_by", "")
-            },
-            "duties":            f.get("duties", []),
-            "safety_compliance": f.get("safety_compliance", {})
-        }
-```
+The `build_jbs_json(session)` method is still used by the orchestrator to assemble the final payload sent to the Document Generator on approval. It reads from `session["collected_fields"]` which the orchestrator populates directly at each `confirm_*` step.
 
 ---
 
@@ -525,83 +405,28 @@ The dashboard connects to the Orchestrator service via `ORCHESTRATOR_URL` (inter
 
 ## 10. Prompt Templates
 
-**File:** `config/prompts/system_base.txt`
-```
-You are the Security Operations Discovery Agent for Certis Security.
+There are three active prompt files. The old `phase3.txt` and `phase4.txt` have been removed — the 4-phase LLM-driven structure no longer exists.
 
-CRITICAL RULES:
-1. ONLY use information from the retrieved document context. Do not invent tasks, procedures, or compliance requirements.
-2. Ask no more than TWO questions per response.
-3. If user input is ambiguous, ask a clarifying question before proceeding.
-4. You are operating via a Microsoft Teams messaging interface — keep responses concise and structured.
-5. Always acknowledge the user's previous answer briefly before asking the next question.
-6. Never skip a phase. Follow the interview flow in strict sequence.
-```
+**File:** `config/prompts/system_base.txt`
+
+Contains STRICT OUTPUT RULES applied globally:
+- No simulated user responses
+- Ask only one question at a time
+- No invented facts — ground all content in the retrieved RAG context
+- Keep responses concise for the Teams messaging interface
 
 **File:** `config/prompts/phase1.txt`
-```
-You are currently in Phase 1: Context & Initiation.
 
-Collect the following fields:
-- Customer Name
-- Site Name
-- Site Category (one of: Corporate, Aviation, Industrial, Maritime, Retail)
-- Job Purpose
-
-Start by greeting the user and asking for the Customer Name and Site Name together (maximum 2 questions per message).
-
-When Site Category is provided, confirm it and let the user know you are retrieving relevant SOPs for that category.
-```
+Documents the 4-field collection sequence (Customer Name, Site Name, Site Category, Job Purpose). This file is largely a reference — Phase 1 is now entirely code-driven with no LLM calls. The orchestrator presents each field prompt directly from code.
 
 **File:** `config/prompts/phase2.txt`
-```
-You are currently in Phase 2: Duty Discovery & Task Sequencing.
 
-Based on the retrieved SOPs for {{site_category}} sites, suggest standard duties and tasks.
-For each confirmed task, collect:
-- Sequence number
-- Trigger (what initiates this task)
-- Frequency (how often)
-- Responsible Role (which security role performs this)
-- Expected Outcome
+Reference prompt describing the three sections the orchestrator works through in Phase 2:
+- **Section A — Duties:** h2oGPTe suggests standard duties for the site category; user confirms or edits.
+- **Section B — Safety:** h2oGPTe suggests safety requirements (hazards, PPE, escalation); user confirms or edits.
+- **Section C — Review:** Orchestrator presents a structured summary of all confirmed data for final approval.
 
-Present suggested tasks from the knowledge base and ask the user to confirm, edit, or add to them.
-```
-
-**File:** `config/prompts/phase3.txt`
-```
-You are currently in Phase 3: Safety & Compliance.
-
-Collect:
-- Site Hazards (list all known hazards)
-- PPE Requirements
-- Required Skills and Qualifications
-- Accreditations required
-- Minimum Training requirements
-- Incident Escalation procedure
-- Reporting Requirements
-- Communication Channels
-
-Cross-reference with the retrieved SOPs to ensure no mandatory safety field is missed.
-If a required field cannot be determined from user input and is not in the knowledge base, explicitly ask for it.
-```
-
-**File:** `config/prompts/phase4.txt`
-```
-You are currently in Phase 4: Review & Authorization.
-
-Present a clear, structured summary of ALL collected information covering:
-1. Site details (customer, site, category, purpose)
-2. All duties and tasks (with sequence, trigger, frequency, role, outcome)
-3. Safety & compliance requirements
-
-Ask the user to review and either:
-- Type APPROVE or CONFIRM to authorize document generation
-- Specify any corrections needed
-
-Do not generate the document until explicit approval is received.
-When approved, respond with the approval confirmation. The system will then generate the Word document automatically.
-```
+The actual conversation flow is code-driven (`p2_step` state machine in `orchestrator.py`). These prompt files serve as content guidance for the h2oGPTe suggestion calls — they are not used to drive turn-by-turn conversation logic.
 
 
 ---
@@ -612,8 +437,8 @@ When approved, respond with the approval confirmation. The system will then gene
 |---|---|---|
 | `H2OGPTE_ADDRESS` | Orchestrator | h2oGPTe server URL |
 | `H2OGPTE_API_KEY` | Orchestrator | h2oGPTe API key (from Azure Key Vault) |
-| `STATE_BACKEND` | Orchestrator | `memory` \| `sqlite` \| `external_redis` |
-| `SQLITE_PATH` | Orchestrator | SQLite file path (when `STATE_BACKEND=sqlite`) |
+| `STATE_BACKEND` | Orchestrator | `memory` \| `sqlite` \| `external_redis` — **production: `memory`** |
+| `SQLITE_PATH` | Orchestrator | SQLite file path (set but unused in production; memory backend is active) |
 | `SESSION_TTL_HOURS` | Orchestrator | Session time-to-live in hours (default: 24) |
 | `TEAMS_APP_ID` | Webhook + Orchestrator | Azure Bot App Registration client ID |
 | `TEAMS_APP_PASSWORD` | Orchestrator | Azure Bot App Registration client secret |
@@ -628,7 +453,9 @@ When approved, respond with the approval confirmation. The system will then gene
 | `SP_LIBRARY_RETAIL` | Sync pipeline | SharePoint library ID for Retail SOPs |
 | `AZURE_STORAGE_ACCOUNT` | Document Gen | Azure Storage account name |
 | `AZURE_STORAGE_CONTAINER` | Document Gen | Blob container name (default: `certis-jbs-documents`) |
-| `AZURE_STORAGE_KEY` | Document Gen | Storage account access key (store in Azure Key Vault) |
+| `AZURE_STORAGE_KEY` | Document Gen | **Required.** Storage account access key — must be set or document generation fails. Store in Azure Key Vault. |
 | `BLOB_PREFIX` | Document Gen | Blob name prefix for stored documents (default: `jbs-documents/`) |
+| `DOC_URL_EXPIRY_SECONDS` | Document Gen | SAS URL validity in seconds (default: `900` = 15 min) |
 | `ORCHESTRATOR_URL` | Webhook, Dashboard | Internal URL of orchestrator service |
-| `TENANT_ID` | Orchestrator | Certis tenant identifier |
+| `TENANT_ID` | Orchestrator | Certis tenant identifier (value: `certis`) |
+| `AZURE_TENANT_ID` | Orchestrator | Azure AD tenant ID (`35013e61-d285-4f21-9b33-4c601cc1d8ce`) |
