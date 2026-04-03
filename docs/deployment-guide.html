@@ -261,7 +261,7 @@
   <div class="page-hdr">
     <div class="eyebrow">Certis Security · JBS Automation Platform</div>
     <h1>Deployment Guide</h1>
-    <p>Deploy the Job Breakdown Statement platform on Azure Container Apps. Three middleware services receive Microsoft Teams messages, run a 4-phase AI interview via H2O Enterprise h2oGPTe, and deliver a signed Word document via Azure Blob Storage.</p>
+    <p>Deploy the Job Breakdown Statement platform on Azure Container Apps. Three middleware services receive Microsoft Teams messages, run a 2-phase AI interview via H2O Enterprise h2oGPTe, and deliver a signed Word document via Azure Blob Storage.</p>
     <div class="hdr-meta">
       <div class="meta-i">☁️ <strong>Platform:</strong> Azure Container Apps</div>
       <div class="meta-i">💬 <strong>Messaging:</strong> Microsoft Teams / Azure Bot Service</div>
@@ -321,9 +321,9 @@
       </tbody>
     </table>
 
-    <p><strong>Message flow:</strong> Teams → Azure Bot Service → Webhook (<code>/webhook/teams</code>, validates RS256 JWT) → Orchestrator (<code>/process</code>, 4-phase state machine, calls h2oGPTe) → on Phase 4 approval → Document Generator (<code>/generate</code>, renders .docx, uploads to Blob Storage) → Bot Framework REST API → reply in Teams.</p>
+    <p><strong>Message flow:</strong> Teams → Azure Bot Service → Webhook (<code>/webhook/teams</code>, validates RS256 JWT) → Orchestrator (<code>/process</code>, 2-phase state machine, calls h2oGPTe) → on APPROVE → Document Generator (<code>/generate</code>, renders .docx, uploads to Blob Storage) → Bot Framework REST API → reply in Teams.</p>
 
-    <p><strong>4-phase interview:</strong> Phase 1 collects customer/site/category/purpose → Phase 2 collects duties → Phase 3 collects hazards/PPE/escalation → Phase 4 presents a summary for approval. Approval keywords: <code>approve</code>, <code>confirm</code>, <code>yes</code>, <code>proceed</code>, <code>looks good</code>.</p>
+    <p><strong>2-phase interview:</strong> Phase 1 is code-only (5-step counter) — collects <code>customer_name</code>, <code>site_name</code>, <code>site_category</code>, <code>job_purpose</code>, <code>authorized_by</code>. Phase 2 is hybrid LLM+RAG — iterates duties+tasks sections then safety, presents a review summary, and on APPROVE triggers document generation. Approval keywords: <code>approve</code>, <code>confirm</code>, <code>yes</code>, <code>proceed</code>, <code>looks good</code>.</p>
 
     <p><strong>Internal service URLs (within the ACA Environment):</strong> <code>http://certisjbs-orchestrator</code> and <code>http://certisjbs-docgen</code> — no port required within the same environment.</p>
   </section>
@@ -376,9 +376,9 @@ H2OGPTE_ADDRESS=https://your-h2ogpte-instance.h2o.ai
 H2OGPTE_API_KEY=                          # From HAIC Secret Manager
 
 # ── Session state ────────────────────────────────────────────────────────────
-# Options: memory (dev only) | sqlite (default) | external_redis (multi-replica)
-STATE_BACKEND=sqlite
-SQLITE_PATH=/tmp/jbs_sessions.db
+# Options: memory (default) | external_redis (future multi-replica)
+# NOTE: sqlite removed — Azure Files (SMB) does not support POSIX locks → "database is locked"
+STATE_BACKEND=memory
 SESSION_TTL_HOURS=24
 # REDIS_URL=rediss://:password@your-redis.cache.windows.net:6380/0  # only if external_redis
 
@@ -911,15 +911,14 @@ echo "Teams Bot messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</pre>
     SP_LIBRARY_INDUSTRIAL="&lt;library-id&gt;" \
     SP_LIBRARY_MARITIME="&lt;library-id&gt;" \
     SP_LIBRARY_RETAIL="&lt;library-id&gt;" \
-    STATE_BACKEND="sqlite" \
-    SQLITE_PATH="/data/jbs_sessions.db" \
+    STATE_BACKEND="memory" \
     SESSION_TTL_HOURS="24" \
     TENANT_ID="certis" \
   --secrets \
     h2ogpte-api-key="&lt;H2OGPTE_API_KEY&gt;" \
     teams-app-password="&lt;TEAMS_APP_PASSWORD&gt;" \
     azure-client-secret="&lt;AZURE_CLIENT_SECRET&gt;"</pre></div>
-      <div class="note note-info"><span class="note-ic">ℹ️</span><p>For multi-replica deployments: set <code>STATE_BACKEND=external_redis</code> and add <code>--secrets redis-url="&lt;REDIS_URL&gt;"</code> pointing to an Azure Cache for Redis managed instance.</p></div>
+      <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong>Single worker required:</strong> The orchestrator must run with <code>--workers 1</code> (set in its Dockerfile / entrypoint). Multiple uvicorn workers cause split-brain sessions because in-memory session state is process-local. <code>STATE_BACKEND=memory</code> is the correct setting; SQLite on Azure Files is not supported (SMB lacks POSIX locks — causes "database is locked" errors).</p></div>
     </div>
 
     <div class="sub">
@@ -941,10 +940,12 @@ echo "Teams Bot messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"</pre>
   --env-vars \
     AZURE_STORAGE_ACCOUNT="$STORAGE_ACCOUNT" \
     AZURE_STORAGE_CONTAINER="certis-jbs-documents" \
+    AZURE_STORAGE_KEY="$STORAGE_KEY" \
     BLOB_PREFIX="jbs-documents/" \
     DOC_URL_EXPIRY_SECONDS="900" \
   --secrets \
     storage-key="$STORAGE_KEY"</pre></div>
+      <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong><code>AZURE_STORAGE_KEY</code> is a required env var</strong> on <code>certisjbs-docgen</code>. The Document Generator reads it directly from the environment to authenticate with Azure Blob Storage and generate SAS URLs. Omitting it causes document upload failures even if the secret is present.</p></div>
     </div>
   </section>
 
@@ -1117,8 +1118,8 @@ for col in c.client.list_recent_collections(0, 20):
       <ol class="ol">
         <li>Open Microsoft Teams → find the JBS bot by name</li>
         <li>Send: <code>Hello</code></li>
-        <li>Bot should greet and ask for Customer Name and Site Name (Phase 1)</li>
-        <li>Complete all 4 phases (Context → Duties → Safety → Review)</li>
+        <li>Bot should greet and ask for Customer Name (Phase 1 — code-only, 5-step counter)</li>
+        <li>Complete Phase 1 (customer → site → category → purpose → authorized_by), then Phase 2 (duties+tasks → safety → review)</li>
         <li>Type one of the approval keywords: <code>approve</code>, <code>confirm</code>, <code>yes</code>, <code>proceed</code>, <code>looks good</code></li>
         <li>Confirm the reply contains a download link pointing to <code>*.blob.core.windows.net</code></li>
       </ol>
@@ -1154,10 +1155,12 @@ az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow<
         <tr><td><span class="ev">AZURE_CLIENT_ID</span></td><td>Service principal client ID</td></tr>
         <tr><td><span class="ev">AZURE_TENANT_ID</span></td><td>Azure AD tenant ID</td></tr>
         <tr><td><span class="ev">AZURE_CLIENT_SECRET</span></td><td>Service principal client secret</td></tr>
+        <tr><td><span class="ev">AZURE_SUBSCRIPTION_ID</span></td><td>Azure subscription ID (required by <code>azure/login@v2</code>)</td></tr>
         <tr><td><span class="ev">ACR_LOGIN_SERVER</span></td><td>e.g. <code>certisjbsacr.azurecr.io</code></td></tr>
         <tr><td><span class="ev">AZURE_RESOURCE_GROUP</span></td><td>e.g. <code>certis-jbs-rg</code></td></tr>
       </tbody>
     </table>
+    <div class="note note-warn"><span class="note-ic">⚠️</span><p><strong><code>azure/login@v2</code> requires the <code>creds</code> JSON format</strong> — passing <code>client-id</code>, <code>tenant-id</code>, and <code>client-secret</code> as individual parameters is broken in v2 and causes authentication failures. The workflow must use <code>creds: '{"clientId":"...","clientSecret":"...","subscriptionId":"...","tenantId":"..."}'</code>. All four values — including <code>AZURE_SUBSCRIPTION_ID</code> — must be present as repository secrets.</p></div>
     <div class="note note-warn"><span class="note-ic">⚠️</span><p>The workflow uses Container App names <code>certisjbs-webhook</code>, <code>certisjbs-orchestrator</code>, <code>certisjbs-docgen</code>, and <code>certisjbs-sp-sync</code> — these must match the names used in Steps 12–13.</p></div>
   </section>
 
@@ -1196,6 +1199,56 @@ az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow<
       <div class="step-ttl"><div class="step-label">Reference</div><div class="step-title">Troubleshooting</div></div>
     </div>
     <div class="step-rule"></div>
+
+    <div class="tr-item">
+      <h4>Split-brain sessions — users get different responses on each message</h4>
+      <p><strong>Cause:</strong> The orchestrator is running with multiple uvicorn workers (<code>--workers 2</code> or more). In-memory session state (<code>STATE_BACKEND=memory</code>) is process-local — each worker has its own isolated copy of the session store. Requests routed to different workers see different (or empty) session state.</p>
+      <p><strong>Fix:</strong> Ensure the orchestrator Dockerfile / entrypoint uses exactly <code>--workers 1</code>:</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">dockerfile</span><button class="cb-copy">Copy</button></div>
+      <pre>CMD ["uvicorn", "src.agent.server:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]</pre></div>
+      <p>Rebuild and redeploy the orchestrator after making this change.</p>
+    </div>
+
+    <div class="tr-item">
+      <h4>"database is locked" error in orchestrator logs</h4>
+      <p><strong>Cause:</strong> <code>STATE_BACKEND=sqlite</code> was set and the SQLite file was placed on an Azure Files mount (SMB protocol). SMB does not support POSIX advisory locks; SQLite's WAL mode relies on them, causing lock contention errors immediately.</p>
+      <p><strong>Fix:</strong> Set <code>STATE_BACKEND=memory</code> in the orchestrator env-vars. Remove any <code>SQLITE_PATH</code> variable and any Azure Files volume mounts from the container app definition:</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
+      <pre>az containerapp update \
+  --name certisjbs-orchestrator \
+  --resource-group $RG \
+  --set-env-vars STATE_BACKEND=memory \
+  --remove-env-vars SQLITE_PATH</pre></div>
+    </div>
+
+    <div class="tr-item">
+      <h4>Stale Teams re-deliveries resetting live sessions</h4>
+      <p><strong>Cause:</strong> Microsoft Teams occasionally re-delivers old Bot Framework Activity events (retry on perceived timeout). If the orchestrator processes these stale messages it re-runs earlier state-machine steps, resetting an in-progress session.</p>
+      <p><strong>Fix:</strong> The orchestrator applies a timestamp age filter — any incoming message whose <code>timestamp</code> is more than 10 seconds old on an already-active session is silently dropped. Verify this filter is present in <code>src/agent/server.py</code>. If sessions are still being reset, check whether the 10-second threshold needs to be increased for high-latency environments.</p>
+    </div>
+
+    <div class="tr-item">
+      <h4>Word template placeholders not replaced in generated .docx</h4>
+      <p><strong>Cause:</strong> The original <code>_replace_placeholders()</code> helper only iterated top-level paragraphs in the document body. Placeholders inside table cells (used for the 6-field metadata table in the Certis template) were never reached and remained as literal <code>{{field}}</code> strings in the output.</p>
+      <p><strong>Fix:</strong> The <code>_all_paragraphs()</code> helper now traverses both body paragraphs and all paragraphs inside table cells. <code>_replace_in_paragraph()</code> operates on individual runs to preserve character formatting. Confirm the fix is present in <code>src/document/generator.py</code> before deploying.</p>
+    </div>
+
+    <div class="tr-item">
+      <h4>GitHub Actions CI/CD fails at azure/login step</h4>
+      <p><strong>Cause:</strong> <code>azure/login@v2</code> dropped support for passing credentials as individual parameters (<code>client-id</code>, <code>tenant-id</code>, <code>client-secret</code> as separate inputs). Using that form produces an authentication error silently or with a misleading message.</p>
+      <p><strong>Fix:</strong> Pass all credentials as a single JSON object via the <code>creds</code> input. Add <code>AZURE_SUBSCRIPTION_ID</code> as a GitHub Actions repository secret, then update the workflow step:</p>
+      <div class="cb"><div class="cb-head"><span class="cb-lang">yaml</span><button class="cb-copy">Copy</button></div>
+      <pre>- uses: azure/login@v2
+  with:
+    creds: |
+      {
+        "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+        "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+        "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+        "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+      }</pre></div>
+      <p>Required GitHub secrets: <code>AZURE_CLIENT_ID</code>, <code>AZURE_CLIENT_SECRET</code>, <code>AZURE_SUBSCRIPTION_ID</code>, <code>AZURE_TENANT_ID</code>, <code>ACR_LOGIN_SERVER</code>, <code>AZURE_RESOURCE_GROUP</code>.</p>
+    </div>
 
     <div class="tr-item">
       <h4>Teams bot not responding to messages</h4>
@@ -1247,8 +1300,8 @@ az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow<
       <p style="margin-top:8px;">2. Verify the blob container exists:</p>
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>az storage container exists --name certis-jbs-documents --account-name $STORAGE_ACCOUNT</pre></div>
-      <p>3. Confirm <code>AZURE_STORAGE_KEY</code> is correct — not expired or rotated</p>
-      <p>4. Confirm <code>templates/jbs_corporate_template.docx</code> is baked into the image (see Step 13b)</p>
+      <p>3. Confirm <code>AZURE_STORAGE_KEY</code> is set as an env var on <code>certisjbs-docgen</code> — not only as a secret — and its value is correct (not expired or rotated)</p>
+      <p>4. Confirm <code>templates/jbs_corporate_template.docx</code> is baked into the image (see Step 14b)</p>
     </div>
 
     <div class="tr-item">
@@ -1259,8 +1312,9 @@ az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow<
       <div class="cb"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy">Copy</button></div>
       <pre>python -c "from src.rag.h2ogpte_client import H2OGPTeClient; c=H2OGPTeClient(); [print(x.id, x.name) for x in c.client.list_recent_collections(0,20)]"</pre></div>
       <p style="margin-top:8px;">2. Confirm collection IDs in <code>src/agent/phase_controller.py</code> match the actual IDs in h2oGPTe</p>
-      <p>3. Check Document AI processing status in h2oGPTe UI</p>
-      <p>4. Confirm SharePoint app registration admin consent is granted</p>
+      <p>3. Note: h2oGPTe is called with <code>conversation_id=None</code> in Phase 2 — each section gets a fresh RAG query, not a multi-turn conversation. This is by design.</p>
+      <p>4. Check Document AI processing status in h2oGPTe UI</p>
+      <p>5. Confirm SharePoint app registration admin consent is granted</p>
     </div>
 
     <div class="tr-item">

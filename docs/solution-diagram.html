@@ -87,7 +87,7 @@
     <span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>
   </div>
   <p class="text-gray-500 text-sm mt-1 tracking-wide">
-    Solution Architecture &nbsp;·&nbsp; H2O.ai Enterprise Platform &nbsp;·&nbsp; Hover nodes for details &nbsp;·&nbsp; Click a step below to trace the workflow
+    Solution Architecture &nbsp;·&nbsp; 2-Phase Workflow &nbsp;·&nbsp; H2O.ai Enterprise Platform &nbsp;·&nbsp; Hover nodes for details &nbsp;·&nbsp; Click a step below to trace the workflow
   </p>
 </div>
 
@@ -196,7 +196,7 @@
       <div class="w-7 h-7 rounded-full bg-indigo-100 border border-indigo-400 flex items-center justify-center text-indigo-700 text-xs font-black flex-shrink-0 mt-0.5">4</div>
       <div>
         <h4 class="text-sm font-bold text-gray-800 mb-1">Session Loaded &amp; Phase Determined</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator loads lightweight session from SQLite (phase + collected fields). Turn history lives natively in h2oGPTe — no Redis pod needed.</p>
+        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator loads session from in-process memory (MemoryStateBackend, deepcopy isolation). Phase 1 is a code-only 5-step counter collecting customer, site, category, purpose, and authorized_by — no LLM calls. Phase 2 is hybrid LLM+RAG.</p>
       </div>
     </div>
 
@@ -205,8 +205,8 @@
          data-step="5" style="--active-color:#d97706" onclick="activateStep(5)">
       <div class="w-7 h-7 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-700 text-xs font-black flex-shrink-0 mt-0.5">5</div>
       <div>
-        <h4 class="text-sm font-bold text-gray-800 mb-1">Prompt Built &amp; h2oGPTe Called</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Phase-specific system prompt assembled with anti-hallucination rules. Sent to h2oGPTe with the conversation_id for vector search across the site-category RAG collection.</p>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Prompt Built &amp; h2oGPTe Called (Phase 2 only)</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">Phase 2 section prompt assembled with anti-hallucination rules. Sent to h2oGPTe with <code>conversation_id=None</code> — each section (duties, tasks, safety) gets a fresh RAG query, not a multi-turn conversation. Vector search runs across the site-category collection.</p>
       </div>
     </div>
 
@@ -226,7 +226,7 @@
       <div class="w-7 h-7 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-700 text-xs font-black flex-shrink-0 mt-0.5">7</div>
       <div>
         <h4 class="text-sm font-bold text-gray-800 mb-1">Response Returned to User</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator saves updated phase state. LLM reply is sent directly to Teams via the Bot Framework REST API, using an OAuth2 access token obtained from Azure AD (client credentials, cached in-process).</p>
+        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator saves updated phase state to in-process MemoryStateBackend (deepcopy ensures session isolation). LLM reply is sent directly to Teams via the Bot Framework REST API, using an OAuth2 access token obtained from Azure AD (client credentials, cached in-process).</p>
       </div>
     </div>
 
@@ -235,8 +235,8 @@
          data-step="8" style="--active-color:#7c3aed" onclick="activateStep(8)">
       <div class="w-7 h-7 rounded-full bg-violet-100 border border-violet-400 flex items-center justify-center text-violet-700 text-xs font-black flex-shrink-0 mt-0.5">8</div>
       <div>
-        <h4 class="text-sm font-bold text-gray-800 mb-1">Phase 4: Review &amp; Approval</h4>
-        <p class="text-xs text-gray-500 leading-relaxed">Orchestrator presents a structured JBS summary to the user and awaits approval. On APPROVE, the complete JBS JSON payload is assembled and sent to the Document Generator service.</p>
+        <h4 class="text-sm font-bold text-gray-800 mb-1">Phase 2: Review &amp; Approval</h4>
+        <p class="text-xs text-gray-500 leading-relaxed">After duties+tasks and safety sections are confirmed, Orchestrator presents a structured JBS summary and awaits approval. On APPROVE, the complete JBS JSON payload is assembled and sent to the Document Generator service.</p>
       </div>
     </div>
 
@@ -298,7 +298,7 @@ const nodeData = [
 
   { id: 4, label: '🧠  Conversation\nOrchestrator\nFastAPI · Port 8001', group: 'middleware', level: 2,
     title: tip('Conversation Orchestrator — FastAPI :8001',
-      'Core of the platform. Enforces the 4-phase JBS interview state machine. Builds phase-specific prompts, calls h2oGPTe for RAG-grounded LLM responses, and triggers Document Generator on Phase 4 approval. Session phase state in SQLite; turn history owned by h2oGPTe natively. Sends replies via Bot Framework REST API using cached OAuth2 token. 2× replicas.') },
+      'Core of the platform. Enforces the 2-phase JBS interview state machine. Phase 1: code-only 5-step counter (no LLM) collecting customer, site, category, purpose, authorized_by. Phase 2: hybrid LLM+RAG — calls h2oGPTe with conversation_id=None per section, stores confirmed data in-process, triggers Document Generator on APPROVE. Session state in MemoryStateBackend (deepcopy isolation). Single uvicorn worker required. Sends replies via Bot Framework REST API using cached OAuth2 token.') },
 
   { id: 5, label: '📝  Document\nGenerator\nPython · Port 8002', group: 'middleware', level: 3,
     title: tip('Document Generator — python-docx :8002',
@@ -315,7 +315,7 @@ const nodeData = [
   // === AI & DATA TIER ===
   { id: 8, label: '🤖  H2O Enterprise\nh2oGPTe\n(HAIC Native)', group: 'ai', level: 3,
     title: tip('H2O Enterprise h2oGPTe',
-      'Core AI engine. Manages full conversational state via <code>conversation_id</code> — eliminating the need for a Redis pod. Performs hnswlib vector search across 5 site-category RAG collections (Corporate, Aviation, Industrial, Maritime, Retail) to ground every LLM response. Hosts Llama 3 / Mistral or custom fine-tuned security model. Licensed HAIC service — pre-provisioned, not deployed via Helm.') },
+      'Core AI engine for Phase 2. Called with <code>conversation_id=None</code> — each section (duties, tasks, safety) receives a fresh, stateless RAG query. Performs hnswlib vector search across 5 site-category RAG collections (Corporate, Aviation, Industrial, Maritime, Retail) to ground every LLM response. Hosts Llama 3 / Mistral or custom fine-tuned security model. Licensed HAIC service — pre-provisioned, not deployed via Helm.') },
 
   { id: 9, label: '📄  H2O Document AI\n(HAIC Native)', group: 'ai', level: 2,
     title: tip('H2O Document AI',
@@ -343,11 +343,11 @@ const edgeData = [
   { id: 4,  from: 4,  to: 1,  label: 'Bot Framework\nreply',        color:{color:'#60a5fa',hover:'#93c5fd',highlight:'#bfdbfe'}, width:1.5, dashes:true,  title:'Orchestrator POSTs a reply Activity to the Teams Bot Framework REST API using a cached OAuth2 access token. Reply appears in the user\'s Teams chat.' },
 
   // AI flow — amber/gold
-  { id: 5,  from: 4,  to: 8,  label: 'RAG prompt\nPhases 1–4', color:{color:'#d97706',hover:'#f59e0b',highlight:'#fbbf24'}, width:2.2, dashes:false, title:'Orchestrator sends phase-specific system prompt + conversation_id to h2oGPTe for RAG-grounded LLM inference.' },
-  { id: 6,  from: 8,  to: 4,  label: 'response',       color:{color:'#ca8a04',hover:'#d97706',highlight:'#f59e0b'}, width:1.5, dashes:true,  title:'h2oGPTe returns the generated response. Turn history stored natively by h2oGPTe — no Redis required.' },
+  { id: 5,  from: 4,  to: 8,  label: 'RAG prompt\nPhase 2 only', color:{color:'#d97706',hover:'#f59e0b',highlight:'#fbbf24'}, width:2.2, dashes:false, title:'Orchestrator sends section prompt to h2oGPTe with conversation_id=None for a fresh RAG-grounded LLM query per section (duties, tasks, safety). Phase 1 never calls h2oGPTe.' },
+  { id: 6,  from: 8,  to: 4,  label: 'response',       color:{color:'#ca8a04',hover:'#d97706',highlight:'#f59e0b'}, width:1.5, dashes:true,  title:'h2oGPTe returns the generated response. Each call is stateless from h2oGPTe\'s perspective (conversation_id=None). Orchestrator stores confirmed section data in-process.' },
 
   // Document flow — violet
-  { id: 7,  from: 4,  to: 5,  label: 'Phase 4 JSON',   color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'On Phase 4 APPROVE, Orchestrator sends the complete JBS JSON payload to the Document Generator.' },
+  { id: 7,  from: 4,  to: 5,  label: 'APPROVE\nJSON payload', color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'On Phase 2 APPROVE, Orchestrator sends the complete JBS JSON payload to the Document Generator.' },
   { id: 8,  from: 5,  to: 13, label: '.docx upload',    color:{color:'#7c3aed',hover:'#8b5cf6',highlight:'#a78bfa'}, width:2,   dashes:false, title:'Document Generator uploads the rendered Word file to Azure Blob Storage and returns a SAS token download URL.' },
 
   // SharePoint sync — green
