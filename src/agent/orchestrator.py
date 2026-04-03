@@ -459,6 +459,18 @@ async def _phase2_respond(text: str, session: dict) -> str | None:
 # Main message handler
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _msg_age_seconds(timestamp: str | None) -> float:
+    """Return how many seconds ago the Teams message was sent. Returns 0 if unknown."""
+    if not timestamp:
+        return 0
+    try:
+        from datetime import datetime, timezone
+        sent = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - sent).total_seconds()
+    except Exception:
+        return 0
+
+
 async def process_message(msg: dict):
     user_id = msg["user_id"]
     msg_id  = msg.get("reply_to", "")  # Teams activity ID — unique per message
@@ -481,13 +493,26 @@ async def process_message(msg: dict):
 async def _process_message_inner(msg: dict, user_id: str):
     session = state_mgr.load(user_id)
 
-    # Reset: wipe session and send Phase 1 opening question directly
+    # Reset: wipe session — but silently drop stale reset commands.
+    # When a container restarts, Teams re-delivers queued messages (e.g. an old
+    # "New JBS" sent 5 minutes ago) which can arrive AFTER the user has already
+    # started a new session, wiping fresh session data.
     if msg["text"].strip().lower() in RESET_COMMANDS:
+        # Drop reset commands older than 90 seconds — these are stale queued
+        # messages from before a container restart, not a fresh user intent.
+        if _msg_age_seconds(msg.get("timestamp")) > 90:
+            return
         state_mgr.save(user_id, {})
         await _send_reply(
             msg,
             "Starting a new JBS session.\n\nWhat is the **Customer Name**? (the organisation that hired Certis)",
         )
+        return
+
+    # Drop any message older than 5 minutes that would interfere with an
+    # active session. Stale queued messages (greetings, partial answers) arriving
+    # after a container restart corrupt Phase 1 step tracking.
+    if _msg_age_seconds(msg.get("timestamp")) > 300 and session.get("collected_fields"):
         return
 
     # Complete session guard
