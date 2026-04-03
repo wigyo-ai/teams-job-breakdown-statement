@@ -59,9 +59,34 @@ class DocumentGenerator:
             f"/{AZURE_CONTAINER}/{blob_name}?{sas_token}"
         )
 
+    @staticmethod
+    def _all_paragraphs(doc: Document):
+        """Yield every paragraph in the document, including those inside table cells."""
+        yield from doc.paragraphs
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    yield from cell.paragraphs
+
+    @staticmethod
+    def _replace_in_paragraph(para, replacements: dict):
+        """
+        Replace placeholder text inside a paragraph while preserving run formatting.
+
+        Word sometimes splits a placeholder across multiple runs (e.g. "{CUSTOMER" +
+        "_NAME}"), so we operate on the full paragraph text to detect the placeholder,
+        but write the replacement into individual runs to keep bold/colour/size intact.
+        """
+        if not any(k in para.text for k in replacements):
+            return
+        for run in para.runs:
+            for placeholder, value in replacements.items():
+                if placeholder in run.text:
+                    run.text = run.text.replace(placeholder, value)
+
     def _populate_document(self, doc: Document, data: dict):
         meta = data["metadata"]
-        bookmarks = {
+        replacements = {
             "{CUSTOMER_NAME}": meta.get("customer_name", ""),
             "{SITE_NAME}":     meta.get("site_name", ""),
             "{SITE_CATEGORY}": meta.get("site_category", ""),
@@ -69,10 +94,8 @@ class DocumentGenerator:
             "{GENERATED_AT}":  data.get("generated_at", ""),
             "{AUTHORIZED_BY}": meta.get("authorized_by", ""),
         }
-        for para in doc.paragraphs:
-            for placeholder, value in bookmarks.items():
-                if placeholder in para.text:
-                    para.text = para.text.replace(placeholder, value)
+        for para in self._all_paragraphs(doc):
+            self._replace_in_paragraph(para, replacements)
 
         # Duties tables
         for duty in data.get("duties", []):
