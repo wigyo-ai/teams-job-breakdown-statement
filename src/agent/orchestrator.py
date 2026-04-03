@@ -498,9 +498,13 @@ async def _process_message_inner(msg: dict, user_id: str):
     # "New JBS" sent 5 minutes ago) which can arrive AFTER the user has already
     # started a new session, wiping fresh session data.
     if msg["text"].strip().lower() in RESET_COMMANDS:
-        # Drop reset commands older than 90 seconds — these are stale queued
-        # messages from before a container restart, not a fresh user intent.
-        if _msg_age_seconds(msg.get("timestamp")) > 90:
+        # Stale reset guard: Teams re-delivers unacknowledged messages, so an old
+        # "New JBS" can arrive mid-flow and wipe an active session.
+        # Rule: if the session already has data, only accept resets ≤30 seconds old.
+        # If the session is empty there is nothing to protect — accept any age.
+        age = _msg_age_seconds(msg.get("timestamp"))
+        has_data = bool(session.get("collected_fields", {}) or session.get("phase", 1) > 1)
+        if has_data and age > 30:
             return
         state_mgr.save(user_id, {})
         await _send_reply(
