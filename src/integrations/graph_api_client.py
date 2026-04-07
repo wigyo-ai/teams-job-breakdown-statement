@@ -23,18 +23,33 @@ class GraphAPIClient:
         return self._credential.get_token("https://graph.microsoft.com/.default").token
 
     async def list_changed_documents(self, library_id: str) -> list[dict]:
-        """List documents in a SharePoint library modified in the last 24 hours."""
+        """
+        List all documents in a SharePoint drive library.
+
+        Uses the search endpoint to recursively find all files across folders.
+        The Graph API drive search returns only file items (not folders) and
+        works with the b!... drive ID format required by the Graph API.
+        """
+        from datetime import datetime, timedelta, timezone
+        since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
         headers = {"Authorization": f"Bearer {self._token()}"}
         async with httpx.AsyncClient() as client:
             r = await client.get(
-                f"{self.GRAPH_BASE}/drives/{library_id}/root/children"
-                "?$select=id,name,lastModifiedDateTime"
-                "&$filter=lastModifiedDateTime ge 1900-01-01",  # full sync; narrow in prod
+                f"{self.GRAPH_BASE}/drives/{library_id}/root/search(q='')"
+                "?$select=id,name,lastModifiedDateTime",
                 headers=headers,
                 timeout=30,
             )
             r.raise_for_status()
-            return r.json().get("value", [])
+            all_items = r.json().get("value", [])
+            # Return only files (not folders) modified in last 24 h
+            return [
+                item for item in all_items
+                if not item.get("folder")
+                and item.get("lastModifiedDateTime", "") >= since
+            ]
 
     async def download_document(self, item_id: str) -> bytes:
         """Download a SharePoint drive item by ID."""

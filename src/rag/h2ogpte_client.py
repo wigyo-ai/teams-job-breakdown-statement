@@ -46,22 +46,32 @@ class H2OGPTeClient:
         Send a message to h2oGPTe.
         Returns (reply_text, conversation_id).
 
-        A chat session (conversation_id) is only created once collection_id
-        is known (Phase 1 after site_category is extracted).  Before that,
-        answer_question is called without a session so the server does not
-        receive a null collection_id and return an empty response body.
+        When a collection_id is provided the query is routed through a chat
+        session so h2oGPTe performs RAG against the collection (uses
+        connect()+session.query(), the SDK-recommended path).  Without a
+        collection_id, answer_question is used for a plain LLM call.
         """
         if collection_id and not conversation_id:
             conversation_id = self.client.create_chat_session(
                 collection_id=collection_id,
             )
 
+        if conversation_id:
+            with self.client.connect(conversation_id) as session:
+                reply = session.query(
+                    message,
+                    system_prompt=system_prompt,
+                    timeout=120,
+                )
+            return reply.content, conversation_id
+
+        # No collection bound yet — plain LLM call (Phase 1 only)
         reply = self.client.answer_question(
             question=message,
             system_prompt=system_prompt,
             timeout=120,
         )
-        return reply.content, conversation_id
+        return reply.content, None
 
     def get_or_create_collection(self, name: str, description: str) -> str:
         collections = self.client.list_recent_collections(0, 100)
