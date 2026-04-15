@@ -34,7 +34,7 @@ htmlcov/
 .vscode/
 *.swp
 
-# Claude Code local settings
+# Local tool settings
 .claude/settings.local.json
 
 # SQLite state files
