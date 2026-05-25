@@ -1,6 +1,6 @@
 """
 Generates placeholder Teams app icons:
-  color.png   — 192x192 px  (Certis navy background, white text)
+  color.png   — 192x192 px  (navy background, white text)
   outline.png — 32x32 px    (white on transparent background)
 
 Run from the teams/ directory:

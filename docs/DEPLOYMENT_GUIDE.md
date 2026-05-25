@@ -1,4 +1,4 @@
-# Deployment Guide — Certis JBS Automation Platform
+# Deployment Guide — JBS Automation Platform
 
 ## Overview
 
@@ -41,8 +41,8 @@ az login
 ## Step 1 — Clone Repository and Prepare Environment File
 
 ```bash
-git clone https://github.com/wigyo-ai/certis-job-breakdown-statement.git
-cd certis-job-breakdown-statement
+git clone https://github.com/wigyo-ai/job-breakdown-statement.git
+cd job-breakdown-statement
 
 cp config/env.template .env
 ```
@@ -77,8 +77,8 @@ SP_LIBRARY_MARITIME=
 SP_LIBRARY_RETAIL=
 
 # ── Azure Blob Storage ───────────────────────────────────────────────────────
-AZURE_STORAGE_ACCOUNT=certisjbsstorage    # Set after Step 9
-AZURE_STORAGE_CONTAINER=certis-jbs-documents
+AZURE_STORAGE_ACCOUNT=jbsstorage    # Set after Step 9
+AZURE_STORAGE_CONTAINER=jbs-documents
 AZURE_STORAGE_KEY=                        # Set after Step 9
 BLOB_PREFIX=jbs-documents/
 DOC_URL_EXPIRY_SECONDS=900                # SAS URL validity (seconds) — default 15 min
@@ -86,7 +86,7 @@ DOC_URL_EXPIRY_SECONDS=900                # SAS URL validity (seconds) — defau
 # ── Internal service URLs ────────────────────────────────────────────────────
 ORCHESTRATOR_URL=http://localhost:8001    # Overridden by docker-compose / ACA env
 DOCUMENT_GENERATOR_URL=http://localhost:8002
-TENANT_ID=certis
+TENANT_ID=jbs
 ```
 
 ---
@@ -143,7 +143,7 @@ This app registration grants the platform read-only access to SharePoint documen
 > Skip if an app registration for SharePoint access already exists.
 
 1. Azure Portal → **Azure Active Directory → App registrations → New registration**
-2. Name: `CertisJBSSharePoint` · Account types: **Single tenant** → **Register**
+2. Name: `JBSSharePoint` · Account types: **Single tenant** → **Register**
 3. Copy the **Application (client) ID** → this is `AZURE_CLIENT_ID`
 4. Under **API permissions → Add a permission → Microsoft Graph → Application permissions**, add:
    - `Files.Read.All`
@@ -158,12 +158,12 @@ This app registration grants the platform read-only access to SharePoint documen
 Set these once — all subsequent steps reference them:
 
 ```bash
-export RG=certis-jbs-rg
+export RG=jbs-rg
 export LOCATION=australiaeast       # change to your preferred region
-export ACR_NAME=certisjbsacr        # globally unique, alphanumeric only
-export STORAGE_ACCOUNT=certisjbsstorage  # globally unique, 3–24 lowercase alphanumeric
-export KV_NAME=certis-jbs-kv        # globally unique
-export ACA_ENV=certisjbs-env
+export ACR_NAME=jbsacr        # globally unique, alphanumeric only
+export STORAGE_ACCOUNT=jbsstorage  # globally unique, 3–24 lowercase alphanumeric
+export KV_NAME=jbs-kv        # globally unique
+export ACA_ENV=jbs-env
 export IMAGE_TAG=1.0.0
 ```
 
@@ -217,7 +217,7 @@ The Webhook service validates RS256 JWT Bearer tokens issued by Azure Bot Servic
 The bot needs an identity in Azure AD before the Azure Bot resource is created.
 
 1. Azure Portal → **Microsoft Entra ID** → **App registrations** → **New registration**
-2. Name: `certis-jbs-bot`
+2. Name: `jbs-bot`
 3. Supported account types: **Accounts in this organizational directory only** (single-tenant)
 4. Redirect URI: leave blank
 5. Click **Register**
@@ -225,7 +225,7 @@ The bot needs an identity in Azure AD before the Azure Bot resource is created.
    - **Application (client) ID** → this is `TEAMS_APP_ID`
    - **Directory (tenant) ID** → note this for reference
 7. Go to **Certificates & secrets** → **Client secrets** → **New client secret**
-   - Description: `certis-jbs-bot-secret`
+   - Description: `jbs-bot-secret`
    - Expires: **24 months**
    - Click **Add** → copy the **Value** immediately → this is `TEAMS_APP_PASSWORD`
 
@@ -237,8 +237,8 @@ The bot needs an identity in Azure AD before the Azure Bot resource is created.
 
 1. Azure Portal → search **Azure Bot** → **Create**
 2. Fill in:
-   - Bot handle: `certis-jbs-bot`
-   - Subscription / Resource group: `certis-jbs-rg`
+   - Bot handle: `jbs-bot`
+   - Subscription / Resource group: `jbs-rg`
    - Pricing tier: **Standard**
    - Microsoft App ID: select **Use existing app registration**
    - App ID: paste your `TEAMS_APP_ID` from Step 6a
@@ -265,7 +265,7 @@ The bot needs an identity in Azure AD before the Azure Bot resource is created.
 2. Set **Messaging endpoint** to:
 
 ```
-https://certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/webhook/teams
+https://jbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/webhook/teams
 ```
 
 3. Click **Apply**
@@ -273,7 +273,7 @@ https://certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps
 To retrieve the FQDN at any time:
 
 ```bash
-az containerapp show --name certisjbs-webhook --resource-group $RG --query properties.configuration.ingress.fqdn -o tsv
+az containerapp show --name jbs-webhook --resource-group $RG --query properties.configuration.ingress.fqdn -o tsv
 ```
 
 ---
@@ -309,14 +309,14 @@ python -c "import uuid; print(uuid.uuid4())"
 
 ```bash
 cd teams
-zip ../certis-jbs-teams-app.zip manifest.json color.png outline.png
+zip ../jbs-teams-app.zip manifest.json color.png outline.png
 cd ..
 ```
 
 Verify the zip contents:
 
 ```bash
-unzip -l certis-jbs-teams-app.zip
+unzip -l jbs-teams-app.zip
 ```
 
 Expected output:
@@ -336,7 +336,7 @@ outline.png
 2. Click **Apps** in the left sidebar
 3. Click **Manage your apps** (bottom of the panel)
 4. Click **Upload an app** → **Upload a custom app**
-5. Select `certis-jbs-teams-app.zip`
+5. Select `jbs-teams-app.zip`
 6. Click **Add** in the preview dialog
 7. The **JBS Assistant** bot opens in a personal chat — type any message to test
 
@@ -348,7 +348,7 @@ This makes the bot available to all users in the tenant via the organisation's a
 
 1. Go to [Teams Admin Center](https://admin.teams.microsoft.com) — requires Teams Administrator or Global Administrator role
 2. **Teams apps → Manage apps** → **Upload new app**
-3. Click **Upload** → select `certis-jbs-teams-app.zip`
+3. Click **Upload** → select `jbs-teams-app.zip`
 4. The app appears in the list with status **Blocked** by default
 
 **Approve the app:**
@@ -380,13 +380,13 @@ If there is no response:
 
 ```bash
 # Check webhook is healthy
-curl https://certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/health
+curl https://jbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/health
 
 # Check webhook logs for incoming requests
-az containerapp logs show --name certisjbs-webhook --resource-group $RG --tail 50
+az containerapp logs show --name jbs-webhook --resource-group $RG --tail 50
 
 # Check orchestrator logs
-az containerapp logs show --name certisjbs-orchestrator --resource-group $RG --tail 50
+az containerapp logs show --name jbs-orchestrator --resource-group $RG --tail 50
 ```
 
 Common causes:
@@ -472,7 +472,7 @@ The Document Generator uploads `.docx` files to Blob Storage and returns a 15-mi
 az storage account create --name $STORAGE_ACCOUNT --resource-group $RG --location $LOCATION --sku Standard_LRS --kind StorageV2 --allow-blob-public-access false
 ```
 
-> **DNS propagation:** Wait ~30–60 seconds after the account is created before running the next commands. The blob endpoint (`certisjbsstorage.blob.core.windows.net`) may not resolve immediately.
+> **DNS propagation:** Wait ~30–60 seconds after the account is created before running the next commands. The blob endpoint (`jbsstorage.blob.core.windows.net`) may not resolve immediately.
 
 Retrieve the storage key, then create the container using it:
 
@@ -482,13 +482,13 @@ export STORAGE_KEY=$(az storage account keys list --account-name $STORAGE_ACCOUN
 # Verify the key was retrieved
 echo $STORAGE_KEY
 
-az storage container create --name certis-jbs-documents --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY
+az storage container create --name jbs-documents --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY
 ```
 
 Update your `.env`:
 
 ```bash
-AZURE_STORAGE_ACCOUNT=certisjbsstorage
+AZURE_STORAGE_ACCOUNT=jbsstorage
 AZURE_STORAGE_KEY=<paste STORAGE_KEY value>
 ```
 
@@ -546,7 +546,7 @@ export ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords
 
 ```bash
 az containerapp create \
-  --name certisjbs-webhook \
+  --name jbs-webhook \
   --resource-group $RG \
   --environment $ACA_ENV \
   --image ${ACR_LOGIN_SERVER}/jbs-webhook:${IMAGE_TAG} \
@@ -560,7 +560,7 @@ az containerapp create \
   --cpu 0.5 --memory 1.0Gi \
   --env-vars \
     TEAMS_APP_ID="<TEAMS_APP_ID>" \
-    ORCHESTRATOR_URL="http://certisjbs-orchestrator" \
+    ORCHESTRATOR_URL="http://jbs-orchestrator" \
   --secrets \
     teams-app-password="<TEAMS_APP_PASSWORD>"
 ```
@@ -569,7 +569,7 @@ Get the FQDN and set the Teams Bot messaging endpoint:
 
 ```bash
 export WEBHOOK_FQDN=$(az containerapp show \
-  --name certisjbs-webhook \
+  --name jbs-webhook \
   --resource-group $RG \
   --query "properties.configuration.ingress.fqdn" -o tsv)
 
@@ -582,7 +582,7 @@ echo "Teams Bot messaging endpoint: https://${WEBHOOK_FQDN}/webhook/teams"
 
 ```bash
 az containerapp create \
-  --name certisjbs-orchestrator \
+  --name jbs-orchestrator \
   --resource-group $RG \
   --environment $ACA_ENV \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG} \
@@ -597,7 +597,7 @@ az containerapp create \
   --env-vars \
     H2OGPTE_ADDRESS="https://your-h2ogpte-instance.h2o.ai" \
     TEAMS_APP_ID="<TEAMS_APP_ID>" \
-    DOCUMENT_GENERATOR_URL="http://certisjbs-docgen" \
+    DOCUMENT_GENERATOR_URL="http://jbs-docgen" \
     AZURE_TENANT_ID="<AZURE_TENANT_ID>" \
     AZURE_CLIENT_ID="<AZURE_CLIENT_ID>" \
     SP_SITE_URL="https://wigyoai.sharepoint.com/sites/h2O" \
@@ -609,7 +609,7 @@ az containerapp create \
     STATE_BACKEND="memory" \
     SQLITE_PATH="/data/jbs_sessions.db" \
     SESSION_TTL_HOURS="24" \
-    TENANT_ID="certis" \
+    TENANT_ID="jbs" \
     AZURE_TENANT_ID="<AZURE_TENANT_ID>" \
   --secrets \
     h2ogpte-api-key="<H2OGPTE_API_KEY>" \
@@ -621,13 +621,13 @@ az containerapp create \
 >
 > **SQLite note:** `SQLITE_PATH` is set but not active. SQLite on Azure Files (SMB mount) fails with POSIX advisory lock errors. Use `STATE_BACKEND=memory` (current production setting) or `STATE_BACKEND=external_redis` with an Azure Cache for Redis instance for session persistence across restarts.
 >
-> **Current production image:** `certisjbsacr.azurecr.io/certisjbs-orchestrator:1.0.30`
+> **Current production image:** `jbsacr.azurecr.io/jbsjbs-orchestrator:1.0.30`
 
 ### 12d. Deploy the Document Generator service (internal ingress only)
 
 ```bash
 az containerapp create \
-  --name certisjbs-docgen \
+  --name jbs-docgen \
   --resource-group $RG \
   --environment $ACA_ENV \
   --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} \
@@ -641,7 +641,7 @@ az containerapp create \
   --cpu 0.5 --memory 1.0Gi \
   --env-vars \
     AZURE_STORAGE_ACCOUNT="$STORAGE_ACCOUNT" \
-    AZURE_STORAGE_CONTAINER="certis-jbs-documents" \
+    AZURE_STORAGE_CONTAINER="jbs-documents" \
     BLOB_PREFIX="jbs-documents/" \
     DOC_URL_EXPIRY_SECONDS="900" \
     AZURE_STORAGE_KEY="secretref:storage-key" \
@@ -651,7 +651,7 @@ az containerapp create \
 
 > **`AZURE_STORAGE_KEY` is required.** The Document Generator reads this env var directly to construct the Azure Blob Storage connection string. If it is missing, all document generation requests will fail with a `KeyError`. The value is stored as a secret (`storage-key`) and mapped to the env var via `secretref:storage-key`.
 >
-> **Current production image:** `certisjbsacr.azurecr.io/jbs-docgen:1.0.1`
+> **Current production image:** `jbsacr.azurecr.io/jbs-docgen:1.0.1`
 
 ---
 
@@ -671,7 +671,7 @@ cp deploy/azure/sp-sync-job.json ~/sp-sync-job.json
 2. Deploy via the REST API:
 
 ```bash
-az rest --method PUT --uri "https://management.azure.com/subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/certis-jbs-rg/providers/Microsoft.App/jobs/certisjbs-sp-sync?api-version=2023-05-01" --body @/Users/lmccoy/sp-sync-job.json --headers "Content-Type=application/json"
+az rest --method PUT --uri "https://management.azure.com/subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/jbs-rg/providers/Microsoft.App/jobs/jbs-sp-sync?api-version=2023-05-01" --body @/Users/lmccoy/sp-sync-job.json --headers "Content-Type=application/json"
 ```
 
 > **Warning:** `~/sp-sync-job.json` will contain secrets after you fill it in. Do not commit it to git — only the placeholder template in `deploy/azure/sp-sync-job.json` should be committed.
@@ -701,12 +701,12 @@ docker build --platform linux/amd64 -f Dockerfile.orchestrator -t ${ACR_LOGIN_SE
 docker push ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 
 az containerapp update \
-  --name certisjbs-orchestrator \
+  --name jbs-orchestrator \
   --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 
 az containerapp job update \
-  --name certisjbs-sp-sync \
+  --name jbs-sp-sync \
   --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-orchestrator:${IMAGE_TAG}
 ```
@@ -716,7 +716,7 @@ az containerapp job update \
 The corporate Word template is already included in the repository at `templates/jbs_corporate_template.docx`. It is automatically baked into the docgen image during `docker build` — no manual step required.
 
 The template includes:
-- Certis Security navy header band with document title
+- navy header band with document title
 - 6-field metadata table (customer, site, category, purpose, date, authorised by)
 - Duties & Tasks intro section (duty tables and safety content are appended dynamically at generation time)
 
@@ -726,16 +726,16 @@ To regenerate or restyle the template, run:
 python templates/create_template.py
 ```
 
-Then rebuild and redeploy the docgen image. Run these commands from the **project root** (`certis-job-breakdown-statement02/`), not a subdirectory:
+Then rebuild and redeploy the docgen image. Run these commands from the **project root** (`job-breakdown-statement02/`), not a subdirectory:
 
 ```bash
-cd /path/to/certis-job-breakdown-statement02
+cd /path/to/job-breakdown-statement02
 az acr login --name $ACR_NAME
 docker build --platform linux/amd64 -f Dockerfile.document -t ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG} .
 docker push ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 
 az containerapp update \
-  --name certisjbs-docgen \
+  --name jbs-docgen \
   --resource-group $RG \
   --image ${ACR_LOGIN_SERVER}/jbs-docgen:${IMAGE_TAG}
 ```
@@ -749,25 +749,25 @@ The dashboard is NOT deployed as an Azure Container App — it runs natively ins
 ```bash
 cd dashboard
 h2o bundle
-# Creates: certis-jbs-dashboard-1.0.0.wave
+# Creates: jbs-dashboard-1.0.0.wave
 ```
 
 1. Log in to HAIC console → **App Store → Import App**
-2. Upload `certis-jbs-dashboard-1.0.0.wave`
+2. Upload `jbs-dashboard-1.0.0.wave`
 3. Set visibility: **Private**
-4. Set environment variables: `ORCHESTRATOR_URL=https://<certisjbs-orchestrator-internal-url>`
+4. Set environment variables: `ORCHESTRATOR_URL=https://<jbs-orchestrator-internal-url>`
 5. Click **Deploy**
 
 ### 14d. Trigger the initial SharePoint knowledge base sync
 
 ```bash
 az containerapp job start \
-  --name certisjbs-sp-sync \
+  --name jbs-sp-sync \
   --resource-group $RG
 
 # Monitor execution
 az containerapp job execution list \
-  --name certisjbs-sp-sync \
+  --name jbs-sp-sync \
   --resource-group $RG \
   --output table
 ```
@@ -787,9 +787,9 @@ Expected:
 ```
 Name                    ProvisioningState
 ----------------------  -----------------
-certisjbs-webhook       Succeeded
-certisjbs-orchestrator  Succeeded
-certisjbs-docgen        Succeeded
+jbs-webhook       Succeeded
+jbs-orchestrator  Succeeded
+jbs-docgen        Succeeded
 ```
 
 ### 15b. Webhook health check
@@ -803,9 +803,9 @@ curl https://${WEBHOOK_FQDN}/health
 
 ```bash
 az containerapp exec \
-  --name certisjbs-webhook \
+  --name jbs-webhook \
   --resource-group $RG \
-  --command "curl http://certisjbs-orchestrator/health"
+  --command "curl http://jbs-orchestrator/health"
 # → {"status": "ok"}
 ```
 
@@ -833,13 +833,13 @@ for col in c.client.list_recent_collections(0, 20):
 
 ```bash
 # Webhook
-az containerapp logs show --name certisjbs-webhook --resource-group $RG --follow
+az containerapp logs show --name jbs-webhook --resource-group $RG --follow
 
 # Orchestrator
-az containerapp logs show --name certisjbs-orchestrator --resource-group $RG --follow
+az containerapp logs show --name jbs-orchestrator --resource-group $RG --follow
 
 # Document generator
-az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow
+az containerapp logs show --name jbs-docgen --resource-group $RG --follow
 ```
 
 ---
@@ -856,12 +856,12 @@ Add these secrets to your GitHub repository (**Settings → Secrets and variable
 | `AZURE_CLIENT_SECRET` | Service principal client secret |
 | `AZURE_TENANT_ID` | Azure AD tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
-| `ACR_LOGIN_SERVER` | e.g. `certisjbsacr.azurecr.io` |
-| `AZURE_RESOURCE_GROUP` | e.g. `certis-jbs-rg` |
+| `ACR_LOGIN_SERVER` | e.g. `jbsacr.azurecr.io` |
+| `AZURE_RESOURCE_GROUP` | e.g. `jbs-rg` |
 
 > All four of `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` are required. The `azure/login@v2` action expects them bundled as a `creds` JSON object — passing `client-secret` as a standalone parameter is not valid syntax and will cause the login step to fail.
 
-The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrator`, `certisjbs-docgen`, and `certisjbs-sp-sync` — these must match the names used in Steps 12–13.
+The workflow uses Container App names `jbs-webhook`, `jbs-orchestrator`, `jbs-docgen`, and `jbs-sp-sync` — these must match the names used in Steps 12–13.
 
 ---
 
@@ -894,12 +894,12 @@ The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrat
 3. Verify `TEAMS_APP_ID` matches the Microsoft App ID in the Azure Bot resource
 4. Check webhook logs:
    ```bash
-   az containerapp logs show --name certisjbs-webhook --resource-group $RG --follow
+   az containerapp logs show --name jbs-webhook --resource-group $RG --follow
    ```
 5. Confirm orchestrator is reachable:
    ```bash
-   az containerapp exec --name certisjbs-webhook --resource-group $RG \
-     --command "curl http://certisjbs-orchestrator/health"
+   az containerapp exec --name jbs-webhook --resource-group $RG \
+     --command "curl http://jbs-orchestrator/health"
    ```
 
 ### Webhook returns HTTP 401
@@ -907,7 +907,7 @@ The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrat
 1. Confirm `TEAMS_APP_ID` is correct — it is the Azure Bot's **Microsoft App ID**, not the resource name
 2. Verify the JWKS endpoint is reachable from the webhook container:
    ```bash
-   az containerapp exec --name certisjbs-webhook --resource-group $RG \
+   az containerapp exec --name jbs-webhook --resource-group $RG \
      --command "curl https://login.botframework.com/v1/.well-known/keys"
    ```
 3. Confirm `PyJWT==2.8.0` and `cryptography==42.0.5` are in `requirements.txt` and installed in the image
@@ -918,7 +918,7 @@ The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrat
 2. Check the secret has not expired: Azure Portal → App Registration → **Certificates & secrets**
 3. Verify the Bot Framework token endpoint is reachable:
    ```bash
-   az containerapp exec --name certisjbs-orchestrator --resource-group $RG \
+   az containerapp exec --name jbs-orchestrator --resource-group $RG \
      --command "curl https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token"
    ```
 
@@ -926,11 +926,11 @@ The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrat
 
 1. Check docgen logs:
    ```bash
-   az containerapp logs show --name certisjbs-docgen --resource-group $RG --follow
+   az containerapp logs show --name jbs-docgen --resource-group $RG --follow
    ```
 2. Verify the blob container exists:
    ```bash
-   az storage container exists --name certis-jbs-documents --account-name $STORAGE_ACCOUNT
+   az storage container exists --name jbs-documents --account-name $STORAGE_ACCOUNT
    ```
 3. Confirm `AZURE_STORAGE_KEY` is correct — not expired or rotated
 4. Confirm `templates/jbs_corporate_template.docx` is baked into the image (see Step 13b)
@@ -949,11 +949,11 @@ The workflow uses Container App names `certisjbs-webhook`, `certisjbs-orchestrat
 
 ```bash
 # Check job definition and last execution status
-az containerapp job show --name certisjbs-sp-sync --resource-group $RG
-az containerapp job execution list --name certisjbs-sp-sync --resource-group $RG --output table
+az containerapp job show --name jbs-sp-sync --resource-group $RG
+az containerapp job execution list --name jbs-sp-sync --resource-group $RG --output table
 
 # Trigger a manual run to test
-az containerapp job start --name certisjbs-sp-sync --resource-group $RG
+az containerapp job start --name jbs-sp-sync --resource-group $RG
 ```
 
 ### h2oGPTe version check crash (`Meta(**response)` TypeError)
@@ -989,7 +989,7 @@ Always build with an explicit platform flag:
 
 ```bash
 docker buildx build --platform linux/amd64 -f Dockerfile.orchestrator \
-  -t certisjbsacr.azurecr.io/jbs-orchestrator:VERSION --push .
+  -t jbsacr.azurecr.io/jbs-orchestrator:VERSION --push .
 ```
 
 ### ACR Tasks disabled (`TasksOperationsNotAllowed`)
@@ -997,20 +997,20 @@ docker buildx build --platform linux/amd64 -f Dockerfile.orchestrator \
 The `az acr build` command requires ACR Tasks, which are disabled on the current registry tier. Use local Docker build + push instead:
 
 ```bash
-az acr login --name certisjbsacr
+az acr login --name jbsacr
 docker buildx build --platform linux/amd64 -f Dockerfile.orchestrator \
-  -t certisjbsacr.azurecr.io/jbs-orchestrator:VERSION --push .
+  -t jbsacr.azurecr.io/jbs-orchestrator:VERSION --push .
 ```
 
 ### Azure Bot resource is in a different resource group
 
-The Azure Bot resource (`certis-jbs-bot`) lives in **`rg-h2o-teams-bot`**, not in `certis-jbs-rg` where the Container Apps live. If `az bot update` commands fail, specify the correct resource group:
+The Azure Bot resource (`jbs-bot`) lives in **`rg-h2o-teams-bot`**, not in `jbs-rg` where the Container Apps live. If `az bot update` commands fail, specify the correct resource group:
 
 ```bash
 az bot update \
-  --name certis-jbs-bot \
+  --name jbs-bot \
   --resource-group rg-h2o-teams-bot \
-  --endpoint "https://certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/webhook/teams"
+  --endpoint "https://jbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io/webhook/teams"
 ```
 
 The messaging endpoint **must include the `/webhook/teams` path**. A bare domain URL causes all incoming messages to return 404.
@@ -1035,14 +1035,14 @@ The orchestrator runs with `minReplicas: 2`. Log tailing shows only one replica 
 ```bash
 # List all replicas
 az containerapp replica list \
-  --name certisjbs-orchestrator \
-  --resource-group certis-jbs-rg \
+  --name jbs-orchestrator \
+  --resource-group jbs-rg \
   --output table
 
 # Tail logs for a specific replica
 az containerapp logs show \
-  --name certisjbs-orchestrator \
-  --resource-group certis-jbs-rg \
+  --name jbs-orchestrator \
+  --resource-group jbs-rg \
   --replica <REPLICA_NAME> \
   --follow
 ```

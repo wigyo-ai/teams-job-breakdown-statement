@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-RG=certis-jbs-rg
+RG=jbs-rg
 
 echo "==> Fixing orchestrator env vars..."
 az containerapp update \
-  --name certisjbs-orchestrator \
+  --name jbs-orchestrator \
   --resource-group $RG \
   --set-env-vars \
     "H2OGPTE_ADDRESS=https://h2ogpte.cloud-dev.h2o.dev" \
@@ -23,7 +23,7 @@ az containerapp update \
 
 echo "==> Fixing webhook env vars..."
 az containerapp update \
-  --name certisjbs-webhook \
+  --name jbs-webhook \
   --resource-group $RG \
   --set-env-vars "TEAMS_APP_ID=9e8400c3-7360-4475-8688-0538233df529" \
   --query "properties.latestRevisionName" -o tsv

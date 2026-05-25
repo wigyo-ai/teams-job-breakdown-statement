@@ -6,7 +6,7 @@
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `H2OGPTE_ADDRESS` | Yes | — | Full URL of your h2oGPTe instance (e.g. `https://gpte.certis.h2o.ai`) |
+| `H2OGPTE_ADDRESS` | Yes | — | Full URL of your h2oGPTe instance (e.g. `https://gpte.your-org.h2o.ai`) |
 | `H2OGPTE_API_KEY` | Yes | — | API key for h2oGPTe (store in Azure Key Vault) |
 
 ### Session State (no Redis pod required)
@@ -54,12 +54,12 @@ h2oGPTe natively stores full conversation turn history via `conversation_id`. Th
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AZURE_STORAGE_ACCOUNT` | Yes | — | Azure Storage account name |
-| `AZURE_STORAGE_CONTAINER` | Yes | `certis-jbs-documents` | Blob container name |
+| `AZURE_STORAGE_CONTAINER` | Yes | `jbs-documents` | Blob container name |
 | `AZURE_STORAGE_KEY` | Yes | — | Storage account access key (store in Azure Key Vault) |
 | `BLOB_PREFIX` | No | `jbs-documents/` | Blob name prefix for stored documents |
 | `DOC_URL_EXPIRY_SECONDS` | No | `900` | SAS token URL expiry in seconds (default 15 minutes) |
 
-> **How to obtain:** After completing Step 7 in the Deployment Guide (Create Azure Blob Storage), the account name is the name you chose, the container name is `certis-jbs-documents`, and the key is found under **Storage Account → Access keys** in the Azure Portal.
+> **How to obtain:** After completing Step 7 in the Deployment Guide (Create Azure Blob Storage), the account name is the name you chose, the container name is `jbs-documents`, and the key is found under **Storage Account → Access keys** in the Azure Portal.
 
 ### Internal Services
 
@@ -67,7 +67,7 @@ h2oGPTe natively stores full conversation turn history via `conversation_id`. Th
 |---|---|---|---|
 | `ORCHESTRATOR_URL` | Yes | — | Internal URL of the orchestrator service |
 | `DOCUMENT_GENERATOR_URL` | Yes | — | Internal URL of the document generator service |
-| `TENANT_ID` | No | `certis` | Tenant namespace prefix |
+| `TENANT_ID` | No | `jbs` | Tenant namespace prefix |
 
 ---
 
@@ -114,9 +114,9 @@ Key parameter values to set for a new environment:
 
 ```bash
 # Core identifiers
-PREFIX=certisjbs
+PREFIX=jbs
 IMAGE_TAG=1.0.0
-ACR_LOGIN_SERVER=certisjbsacr.azurecr.io
+ACR_LOGIN_SERVER=jbsacr.azurecr.io
 
 # Teams Bot (Azure Bot App Registration)
 TEAMS_APP_ID=<your-bot-app-id>
@@ -133,8 +133,8 @@ AZURE_CLIENT_SECRET=<sharepoint-client-secret>
 SP_SITE_URL=https://wigyoai.sharepoint.com/sites/h2O
 
 # Azure Blob Storage
-AZURE_STORAGE_ACCOUNT=certisjbsstorage
-AZURE_STORAGE_CONTAINER=certis-jbs-documents
+AZURE_STORAGE_ACCOUNT=jbsstorage
+AZURE_STORAGE_CONTAINER=jbs-documents
 AZURE_STORAGE_KEY=<storage-access-key>
 
 # State backend (sqlite for single-replica, external_redis for multi-replica)
@@ -188,7 +188,7 @@ Duty tables and the safety section are dynamically inserted after the template h
   "jbs_version": "1.0",
   "generated_at": "2026-01-15T09:30:00Z",
   "metadata": {
-    "customer_name": "Certis Security",
+    "customer_name": "Your Organisation",
     "site_name": "Changi Airport Terminal 3",
     "site_category": "Aviation",
     "job_purpose": "Provide airside security screening and access control for Terminal 3 operations.",

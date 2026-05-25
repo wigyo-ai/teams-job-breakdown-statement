@@ -3,12 +3,12 @@
   "manifestVersion": "1.16",
   "version": "1.0.0",
   "id": "5aa17256-1fce-4af7-b177-c0b63f63a690",
-  "packageName": "com.certis.jbs",
+  "packageName": "com.jbs",
   "developer": {
-    "name": "Certis Security",
-    "websiteUrl": "https://www.certis.com",
-    "privacyUrl": "https://www.certis.com/privacy",
-    "termsOfUseUrl": "https://www.certis.com/terms"
+    "name": "Your Organisation",
+    "websiteUrl": "https://your-organisation.example.com",
+    "privacyUrl": "https://your-organisation.example.com/privacy",
+    "termsOfUseUrl": "https://your-organisation.example.com/terms"
   },
   "icons": {
     "color": "color.png",
@@ -16,11 +16,11 @@
   },
   "name": {
     "short": "JBS Assistant",
-    "full": "Certis Job Breakdown Statement Assistant"
+    "full": "Job Breakdown Statement Assistant"
   },
   "description": {
     "short": "AI-assisted Job Breakdown Statement creation",
-    "full": "An AI-powered assistant that guides Certis security personnel through creating comprehensive Job Breakdown Statements via a structured 4-phase interview process covering duties, tasks, safety requirements and compliance."
+    "full": "An AI-powered assistant that guides security personnel through creating comprehensive Job Breakdown Statements via a structured 4-phase interview process covering duties, tasks, safety requirements and compliance."
   },
   "accentColor": "#1A3A5C",
   "bots": [
@@ -50,6 +50,6 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "certisjbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io"
+    "jbs-webhook.salmonground-66006e1c.australiaeast.azurecontainerapps.io"
   ]
 }

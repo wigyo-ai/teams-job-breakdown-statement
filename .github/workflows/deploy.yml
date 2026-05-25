@@ -94,35 +94,35 @@ jobs:
       - name: Update webhook Container App
         run: |
           az containerapp update \
-            --name certisjbs-webhook \
+            --name jbs-webhook \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-webhook:${{ env.IMAGE_TAG }}
 
       - name: Update orchestrator Container App
         run: |
           az containerapp update \
-            --name certisjbs-orchestrator \
+            --name jbs-orchestrator \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:${{ env.IMAGE_TAG }}
 
       - name: Update document generator Container App
         run: |
           az containerapp update \
-            --name certisjbs-docgen \
+            --name jbs-docgen \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-docgen:${{ env.IMAGE_TAG }}
 
       - name: Update SharePoint sync Job
         run: |
           az containerapp job update \
-            --name certisjbs-sp-sync \
+            --name jbs-sp-sync \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --image ${{ secrets.ACR_LOGIN_SERVER }}/jbs-orchestrator:${{ env.IMAGE_TAG }}
 
       - name: Verify webhook health
         run: |
           FQDN=$(az containerapp show \
-            --name certisjbs-webhook \
+            --name jbs-webhook \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --query "properties.configuration.ingress.fqdn" -o tsv)
           echo "Webhook deployed at: https://${FQDN}"

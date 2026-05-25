@@ -1,5 +1,5 @@
 # =============================================================================
-# Certis JBS Platform — Reference Configuration
+# JBS Platform — Reference Configuration
 #
 # This file documents the environment variable mapping for the three middleware
 # services deployed on Azure Container Apps (ACA):
@@ -20,12 +20,12 @@
 # =============================================================================
 
 global:
-  registry: myregistry.azurecr.io/certis
+  registry: myregistry.azurecr.io/jbs
   imageTag: "1.0.0"
   imagePullPolicy: Always
-  tenantId: "certis"
-  orchestratorUrl: "http://certis-jbs-orchestrator:8001"
-  documentGeneratorUrl: "http://certis-jbs-docgen:8002"
+  tenantId: "jbs"
+  orchestratorUrl: "http://jbs-orchestrator:8001"
+  documentGeneratorUrl: "http://jbs-docgen:8002"
 
 # -----------------------------------------------------------------------------
 # 1. Webhook Service
@@ -59,7 +59,7 @@ webhook:
       TEAMS_APP_ID: "<PLACEHOLDER>"               # Azure Bot App Registration client ID
     secret:
       TEAMS_APP_PASSWORD:
-        name: certis-jbs-secrets
+        name: jbs-secrets
         key: teams-app-password
 
 # -----------------------------------------------------------------------------
@@ -95,7 +95,7 @@ orchestrator:
       SP_LIBRARY_INDUSTRIAL: "<PLACEHOLDER>"
       SP_LIBRARY_MARITIME: "<PLACEHOLDER>"
       SP_LIBRARY_RETAIL: "<PLACEHOLDER>"
-      TENANT_ID: "certis"
+      TENANT_ID: "jbs"
       SESSION_TTL_HOURS: "24"
       # State backend: "memory" (single replica), "sqlite" (restart-safe), or
       # "external_redis" (multi-replica — requires REDIS_URL below)
@@ -103,14 +103,14 @@ orchestrator:
       SQLITE_PATH: "/data/jbs_sessions.db"
     secret:
       H2OGPTE_API_KEY:
-        name: certis-jbs-secrets
+        name: jbs-secrets
         key: h2ogpte-api-key
       AZURE_CLIENT_SECRET:
-        name: certis-jbs-secrets
+        name: jbs-secrets
         key: azure-client-secret
       # Only needed if STATE_BACKEND=external_redis
       # REDIS_URL:
-      #   name: certis-jbs-secrets
+      #   name: jbs-secrets
       #   key: redis-url
 
 # -----------------------------------------------------------------------------
@@ -131,12 +131,12 @@ documentGenerator:
   env:
     plain:
       AZURE_STORAGE_ACCOUNT: "<your storage account name>"
-      AZURE_STORAGE_CONTAINER: "certis-jbs-documents"
+      AZURE_STORAGE_CONTAINER: "jbs-documents"
       BLOB_PREFIX: "jbs-documents/"
       DOC_URL_EXPIRY_SECONDS: "900"
     secret:
       AZURE_STORAGE_KEY:
-        name: certis-jbs-secrets
+        name: jbs-secrets
         key: storage-key
 
 # -----------------------------------------------------------------------------

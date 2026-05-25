@@ -6,7 +6,7 @@ Phase 1 (Setup): Collect Customer Name, Site Name, Site Category, Job Purpose.
 
 Phase 2 (Interview): Hybrid LLM+RAG suggestions + code-driven storage.
   LLM+RAG (h2oGPTe) is called ONCE per section to suggest duties, tasks, and
-  safety requirements from Certis SOPs. Code then asks the user to confirm or
+  safety requirements from SOPs. Code then asks the user to confirm or
   modify. The confirmed answer is stored directly in collected_fields — no
   parsing of LLM narrative output into structured data.
 
@@ -74,7 +74,7 @@ _SITE_CATEGORY_PROMPT = (
 
 _WELCOME = (
     "Welcome! I will guide you through creating a Job Breakdown Statement.\n\n"
-    "What is the **Customer Name**? (the organisation that hired Certis)"
+    "What is the **Customer Name**? (the client organisation)"
 )
 
 
@@ -162,7 +162,7 @@ async def _get_rag_suggestion(prompt: str, collection_id: str | None) -> str:
     Each call is independent (conversation_id=None) to avoid stale history confusion.
     """
     system_prompt = (
-        "You are a Certis JBS assistant with access to Certis security SOPs and procedures. "
+        "You are a JBS assistant with access to SOPs and procedures. "
         "Use the knowledge base to provide accurate, site-specific suggestions. "
         "Output ONLY in the requested format — no preamble, no extra explanation."
     )
@@ -315,7 +315,7 @@ async def _phase2_respond(text: str, session: dict) -> str | None:
 
             numbered = "\n".join(f"{i+1}. {d}" for i, d in enumerate(duty_list))
             return (
-                f"Based on the Certis knowledge base, here are suggested duties for "
+                f"Based on the knowledge base, here are suggested duties for "
                 f"a **{fields['job_purpose']}** at a **{fields['site_category']}** site:\n\n"
                 f"{numbered}\n\n"
                 "Reply **confirm** to use these, or type your own duties (one per line)."
@@ -511,7 +511,7 @@ async def _process_message_inner(msg: dict, user_id: str):
         state_mgr.save(user_id, {})
         await _send_reply(
             msg,
-            "Starting a new JBS session.\n\nWhat is the **Customer Name**? (the organisation that hired Certis)",
+            "Starting a new JBS session.\n\nWhat is the **Customer Name**? (the client organisation)",
         )
         return
 

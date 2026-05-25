@@ -131,7 +131,7 @@ class ExternalRedisStateBackend:
         import redis as redis_lib
         url = os.environ["REDIS_URL"]
         self.r = redis_lib.from_url(url, decode_responses=True)
-        self._tenant = os.environ.get("TENANT_ID", "certis")
+        self._tenant = os.environ.get("TENANT_ID", "jbs")
 
     def _key(self, user_id: str) -> str:
         return f"{self._tenant}:session:{user_id}"

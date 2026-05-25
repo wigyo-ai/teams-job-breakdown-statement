@@ -1,11 +1,11 @@
 apiVersion: v2
-name: certis-jbs-platform
-description: Certis Security JBS Automation Platform — Azure Container Apps (reference chart)
+name: jbs-platform
+description: Your Organisation JBS Automation Platform — Azure Container Apps (reference chart)
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
 maintainers:
-  - name: Certis Digital Team
+  - name: Digital Team
 keywords:
   - security
   - jbs

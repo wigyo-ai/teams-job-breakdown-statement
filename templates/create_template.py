@@ -67,13 +67,13 @@ header_table.columns[1].width = Inches(3.5)
 left_cell = header_table.cell(0, 0)
 right_cell = header_table.cell(0, 1)
 
-set_cell_bg(left_cell, "1A3A5C")    # Certis navy
+set_cell_bg(left_cell, "1A3A5C")    # navy
 set_cell_bg(right_cell, "1A3A5C")
 
 # Company name — left
 lp = left_cell.paragraphs[0]
 lp.alignment = WD_ALIGN_PARAGRAPH.LEFT
-add_run(lp, "CERTIS SECURITY", bold=True, size=14, color="FFFFFF")
+add_run(lp, "JBS PLATFORM", bold=True, size=14, color="FFFFFF")
 lp.paragraph_format.space_before = Pt(8)
 lp.paragraph_format.space_after = Pt(2)
 add_run(left_cell.add_paragraph(), "Security Operations", size=9, color="A8C4E0")

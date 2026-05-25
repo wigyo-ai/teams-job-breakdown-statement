@@ -14,7 +14,7 @@ from docx.shared import Pt, RGBColor
 
 TEMPLATE_PATH   = os.path.join(os.path.dirname(__file__), "../../templates/jbs_corporate_template.docx")
 AZURE_ACCOUNT   = os.environ.get("AZURE_STORAGE_ACCOUNT", "")
-AZURE_CONTAINER = os.environ.get("AZURE_STORAGE_CONTAINER", "certis-jbs-documents")
+AZURE_CONTAINER = os.environ.get("AZURE_STORAGE_CONTAINER", "jbs-documents")
 BLOB_PREFIX     = os.environ.get("BLOB_PREFIX", "jbs-documents/")
 URL_EXPIRY      = int(os.environ.get("DOC_URL_EXPIRY_SECONDS", "900"))
 

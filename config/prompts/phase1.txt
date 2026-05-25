@@ -2,13 +2,13 @@ CURRENT PHASE: 1 — Context & Initiation
 
 OBJECTIVE
 Collect four fields ONE AT A TIME in this exact order:
-  1. Customer Name   — the CLIENT ORGANISATION (the company that hired Certis)
+  1. Customer Name   — the CLIENT ORGANISATION (the client company)
   2. Site Name       — the PHYSICAL LOCATION where officers will be deployed
   3. Site Category   — one of: Corporate | Aviation | Industrial | Maritime | Retail
   4. Job Purpose     — a brief description of the role or task being broken down
 
 CRITICAL DISTINCTION
-  Customer Name = the organisation that is Certis's CLIENT.
+  Customer Name = the organisation that is our CLIENT.
     Examples: "Singapore Airlines", "Changi Airport Group", "PSA Corporation", "SMRT", "Australian Government"
   Site Name = the specific physical place where officers are deployed.
     Examples: "Terminal 3 Landside", "Canberra International Airport", "Tuas Berth 5"

@@ -1,9 +1,9 @@
-name: certisjbs-sp-sync
+name: jbs-sp-sync
 type: Microsoft.App/jobs
 location: Australia East
-resourceGroup: certis-jbs-rg
+resourceGroup: jbs-rg
 properties:
-  environmentId: /subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/certis-jbs-rg/providers/Microsoft.App/managedEnvironments/certisjbs-env
+  environmentId: /subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/jbs-rg/providers/Microsoft.App/managedEnvironments/jbs-env
   configuration:
     triggerType: Schedule
     replicaTimeout: 1800
@@ -12,8 +12,8 @@ properties:
       replicaCompletionCount: 1
       parallelism: 1
     registries:
-      - server: certisjbsacr.azurecr.io
-        username: certisjbsacr
+      - server: jbsacr.azurecr.io
+        username: jbsacr
         passwordSecretRef: acr-password
     secrets:
       - name: acr-password
@@ -24,8 +24,8 @@ properties:
         value: "<AZURE_CLIENT_SECRET>"
   template:
     containers:
-      - name: certisjbs-sp-sync
-        image: certisjbsacr.azurecr.io/jbs-orchestrator:1.0.0
+      - name: jbs-sp-sync
+        image: jbsacr.azurecr.io/jbs-orchestrator:1.0.0
         command:
           - python
           - -m

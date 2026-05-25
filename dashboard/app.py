@@ -1,5 +1,5 @@
 """
-Certis JBS Admin Dashboard — H2O Wave application.
+JBS Admin Dashboard — H2O Wave application.
 
 Connects to the Orchestrator service (ORCHESTRATOR_URL) to:
   - List active JBS interview sessions and their current phase  (GET /sessions)
@@ -125,13 +125,13 @@ async def serve(q: Q):
     # ---- layout -------------------------------------------------------
     q.page["meta"] = ui.meta_card(
         box="",
-        title="Certis JBS Admin",
+        title="JBS Admin",
         theme="h2o-dark",
     )
 
     q.page["header"] = ui.header_card(
         box="1 1 12 1",
-        title="Certis JBS Admin Dashboard",
+        title="JBS Admin Dashboard",
         subtitle="Job Breakdown Statement Platform — Operations Console",
         icon="Shield",
         icon_color="$blue",
@@ -185,7 +185,7 @@ async def serve(q: Q):
 
     q.page["footer"] = ui.footer_card(
         box="1 11 12 1",
-        caption="Certis JBS Platform — Powered by H2O Wave & Azure Container Apps",
+        caption="JBS Platform — Powered by H2O Wave & Azure Container Apps",
     )
 
     await q.page.save()

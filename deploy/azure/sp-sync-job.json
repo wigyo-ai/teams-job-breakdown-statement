@@ -1,7 +1,7 @@
 {
   "location": "Australia East",
   "properties": {
-    "environmentId": "/subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/certis-jbs-rg/providers/Microsoft.App/managedEnvironments/certisjbs-env",
+    "environmentId": "/subscriptions/90f386b1-e925-4056-ab30-1e05134c3717/resourceGroups/jbs-rg/providers/Microsoft.App/managedEnvironments/jbs-env",
     "configuration": {
       "triggerType": "Schedule",
       "replicaTimeout": 1800,
@@ -12,8 +12,8 @@
       },
       "registries": [
         {
-          "server": "certisjbsacr.azurecr.io",
-          "username": "certisjbsacr",
+          "server": "jbsacr.azurecr.io",
+          "username": "jbsacr",
           "passwordSecretRef": "acr-password"
         }
       ],
@@ -26,8 +26,8 @@
     "template": {
       "containers": [
         {
-          "name": "certisjbs-sp-sync",
-          "image": "certisjbsacr.azurecr.io/jbs-orchestrator:1.0.0",
+          "name": "jbs-sp-sync",
+          "image": "jbsacr.azurecr.io/jbs-orchestrator:1.0.0",
           "command": ["python", "-m", "src.rag.sharepoint_sync"],
           "resources": {
             "cpu": 0.5,

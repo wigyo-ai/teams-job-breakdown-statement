@@ -3,7 +3,7 @@
 ## 1. Repository Structure
 
 ```
-certis-jbs-platform/
+jbs-platform/
 ├── README.md
 ├── docs/
 │   ├── SOLUTION_ARCHITECTURE.md
@@ -344,7 +344,7 @@ from docx.shared import Pt, RGBColor
 
 TEMPLATE_PATH   = os.path.join(os.path.dirname(__file__), "../../templates/jbs_corporate_template.docx")
 AZURE_ACCOUNT   = os.environ.get("AZURE_STORAGE_ACCOUNT", "")
-AZURE_CONTAINER = os.environ.get("AZURE_STORAGE_CONTAINER", "certis-jbs-documents")
+AZURE_CONTAINER = os.environ.get("AZURE_STORAGE_CONTAINER", "jbs-documents")
 BLOB_PREFIX     = os.environ.get("BLOB_PREFIX", "jbs-documents/")
 URL_EXPIRY      = int(os.environ.get("DOC_URL_EXPIRY_SECONDS", "900"))
 
@@ -452,10 +452,10 @@ The actual conversation flow is code-driven (`p2_step` state machine in `orchest
 | `SP_LIBRARY_MARITIME` | Sync pipeline | SharePoint library ID for Maritime SOPs |
 | `SP_LIBRARY_RETAIL` | Sync pipeline | SharePoint library ID for Retail SOPs |
 | `AZURE_STORAGE_ACCOUNT` | Document Gen | Azure Storage account name |
-| `AZURE_STORAGE_CONTAINER` | Document Gen | Blob container name (default: `certis-jbs-documents`) |
+| `AZURE_STORAGE_CONTAINER` | Document Gen | Blob container name (default: `jbs-documents`) |
 | `AZURE_STORAGE_KEY` | Document Gen | **Required.** Storage account access key — must be set or document generation fails. Store in Azure Key Vault. |
 | `BLOB_PREFIX` | Document Gen | Blob name prefix for stored documents (default: `jbs-documents/`) |
 | `DOC_URL_EXPIRY_SECONDS` | Document Gen | SAS URL validity in seconds (default: `900` = 15 min) |
 | `ORCHESTRATOR_URL` | Webhook, Dashboard | Internal URL of orchestrator service |
-| `TENANT_ID` | Orchestrator | Certis tenant identifier (value: `certis`) |
+| `TENANT_ID` | Orchestrator | tenant identifier (value: `jbs`) |
 | `AZURE_TENANT_ID` | Orchestrator | Azure AD tenant ID (`35013e61-d285-4f21-9b33-4c601cc1d8ce`) |

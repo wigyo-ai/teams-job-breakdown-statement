@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JBS Automation Platform — End-to-End Workflow</title>
+<style>
+  :root {
+    --navy:   #0d1b2a;
+    --navy2:  #1b2e45;
+    --teal:   #00b4a0;
+    --teal2:  #007a6e;
+    --slate:  #2e4a6a;
+    --white:  #f4f7fa;
+    --muted:  #8fa5be;
+    --p0:     #6c63ff;  /* ingestion   */
+    --p1:     #00b4a0;  /* phase 1     */
+    --p2:     #f5a623;  /* phase 2     */
+    --p3:     #4caf50;  /* phase 3     */
+    --bg:     #e8edf3;  /* background  */
+    --card:   #ffffff;
+    --border: #d0dae6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--navy);
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--slate) 100%);
+    color: var(--white);
+    padding: 48px 40px 40px;
+    border-bottom: 4px solid var(--teal);
+  }
+  header .logo {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 12px;
+  }
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  header .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  /* ── NAV ── */
+  nav {
+    background: var(--navy2);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    border-bottom: 1px solid #2a3f5a;
+  }
+  nav a {
+    display: block;
+    padding: 14px 18px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  nav a:hover { color: var(--white); border-bottom-color: var(--teal); }
+
+  /* ── MAIN LAYOUT ── */
+  main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* ── SECTION HEADINGS ── */
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 48px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title span.icon {
+    width: 32px; height: 32px;
+    background: var(--navy);
+    color: var(--teal);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  /* ── ARCHITECTURE DIAGRAM ── */
+  .arch-wrap {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .arch-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .arch-side {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 200px;
+  }
+  .arch-layer {
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+  }
+  .arch-layer .layer-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .arch-layer .layer-info { flex: 1; }
+  .arch-layer .layer-title { font-size: 14px; font-weight: 700; color: #fff; }
+  .arch-layer .layer-sub { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+  .arch-layer .layer-port {
+    font-size: 11px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: monospace;
+  }
+
+  .layer-ext    { background: var(--slate); }
+  .layer-webhook{ background: var(--p0); }
+  .layer-orch   { background: var(--p1); background: #006f8e; }
+  .layer-docgen { background: var(--p3); background: #2e7d52; }
+  .layer-blob   { background: #4a7bc8; }
+
+  .arch-arrow {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    margin: -2px 0;
+  }
+
+  .arch-side-box {
+    border-radius: 10px;
+    padding: 14px 16px;
+    flex: 1;
+  }
+  .side-rag  { background: #6c3fa3; }
+  .side-sp   { background: #b35a00; }
+  .arch-side-box .layer-title { font-size: 13px; font-weight: 700; color: #fff; }
+  .arch-side-box .layer-sub   { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+
+  /* connector */
+  .arch-connector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .arch-connector hr { flex: 1; border: none; border-top: 1px dashed var(--border); }
+
+  /* ── PHASE SECTION ── */
+  .phase-block { margin-bottom: 32px; }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .phase-badge {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #fff;
+  }
+  .badge-p0 { background: var(--p0); }
+  .badge-p1 { background: var(--teal2); }
+  .badge-p2 { background: #c07d00; }
+  .badge-p3 { background: #2e7d52; }
+  .badge-bg { background: #7a3a00; }
+
+  .phase-header h3 { font-size: 17px; color: var(--navy); font-weight: 700; }
+
+  /* ── STEP CARDS ── */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+  }
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .step-num {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-p0 { background: var(--p0); }
+  .step-p1 { background: var(--teal2); }
+  .step-p2 { background: #c07d00; }
+  .step-p3 { background: #2e7d52; }
+  .step-bg  { background: #7a3a00; }
+
+  .step-body {}
+  .step-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .step-desc  { font-size: 13px; color: #445; line-height: 1.5; }
+  .step-desc code {
+    font-family: monospace;
+    font-size: 12px;
+    background: #eef2f7;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #2a4a7a;
+  }
+  .step-detail {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #f6f9fc;
+    border-left: 3px solid var(--border);
+    border-radius: 0 6px 6px 0;
+    font-size: 12px;
+    color: #5a6a7a;
+  }
+  .step-detail ul { padding-left: 16px; }
+  .step-detail li { margin-bottom: 2px; }
+
+  /* sub-steps inside a card */
+  .sub-steps { margin-top: 8px; }
+  .sub-step {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #eef2f7;
+    font-size: 12px;
+  }
+  .sub-step:last-child { border-bottom: none; }
+  .sub-step .sub-num {
+    width: 20px; height: 20px;
+    background: #dde5ef;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: var(--navy2);
+  }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: var(--navy2);
+    color: var(--white);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #f6f9fc; }
+  td code {
+    font-family: monospace;
+    font-size: 12px;
+    background: #eef2f7;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #2a4a7a;
+  }
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  /* ── DETAILS / SCHEMA ── */
+  details {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  summary {
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "▶";
+    font-size: 10px;
+    color: var(--teal);
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  .schema-body { padding: 0 18px 18px; }
+  pre {
+    background: var(--navy);
+    color: #c9d9ef;
+    padding: 16px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+  pre .key   { color: #79b8ff; }
+  pre .str   { color: #9ecbff; }
+  pre .num   { color: #fdac54; }
+  pre .cmt   { color: #6a737d; }
+
+  /* ── CONVERSATION EXAMPLE ── */
+  .convo { display: flex; flex-direction: column; gap: 10px; }
+  .msg {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .msg.bot { flex-direction: row-reverse; }
+  .msg .avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    font-weight: 700;
+    color: #fff;
+  }
+  .avatar-user { background: var(--p0); }
+  .avatar-bot  { background: var(--teal2); }
+  .bubble {
+    max-width: 520px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .bubble-user { background: #e8f0fe; border: 1px solid #c5d5f7; }
+  .bubble-bot  { background: #e6f4f2; border: 1px solid #b2dcd8; }
+  .bubble strong { font-weight: 700; }
+  .msg-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+  .convo-phase-divider {
+    text-align: center;
+    margin: 12px 0 8px;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .convo-phase-divider hr { flex: 1; border: none; border-top: 1px dashed var(--border); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 24px;
+    border-top: 1px solid var(--border);
+    background: var(--card);
+    margin-top: 48px;
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    header { background: #0d1b2a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    nav { display: none; }
+    main { padding: 20px; }
+    details { break-inside: avoid; }
+    .step-card { break-inside: avoid; }
+  }
+
+  @media (max-width: 700px) {
+    main { padding: 20px 12px 60px; }
+    header { padding: 28px 20px; }
+    header h1 { font-size: 20px; }
+    .arch-wrap { flex-direction: column; }
+    .arch-side { width: 100%; flex-direction: row; }
+    nav { padding: 0 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Security Operations &nbsp;·&nbsp; Internal Documentation</div>
+  <h1>JBS Automation Platform — End-to-End Workflow</h1>
+  <div class="subtitle">Version&nbsp;1.0&nbsp;&nbsp;·&nbsp;&nbsp;Generated 2026-04-03&nbsp;&nbsp;·&nbsp;&nbsp;3 microservices&nbsp;·&nbsp;4 workflow phases&nbsp;·&nbsp;24 steps</div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <a href="#architecture">Architecture</a>
+  <a href="#workflow">Workflow Steps</a>
+  <a href="#schemas">Data Schemas</a>
+  <a href="#config">Configuration</a>
+  <a href="#example">Conversation Example</a>
+  <a href="#files">Key Files</a>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 1 — ARCHITECTURE
+═══════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="architecture">
+  <span class="icon">⬡</span> Architecture Overview
+</h2>
+
+<div class="arch-wrap">
+  <!-- Main vertical stack -->
+  <div class="arch-main">
+
+    <div class="arch-layer layer-ext">
+      <div class="layer-num">↑</div>
+      <div class="layer-info">
+        <div class="layer-title">Microsoft Teams (Azure Bot Service)</div>
+        <div class="layer-sub">External — user interface via Bot Framework REST API (HTTPS)</div>
+      </div>
+    </div>
+
+    <div class="arch-arrow">↕ HTTPS POST /webhook/teams · RS256 JWT Bearer token</div>
+
+    <div class="arch-layer layer-webhook">
+      <div class="layer-num">1</div>
+      <div class="layer-info">
+        <div class="layer-title">Webhook Service — FastAPI</div>
+        <div class="layer-sub">Token validation · Activity parsing · Message normalization</div>
+      </div>
+      <div class="layer-port">:8000</div>
+    </div>
+
+    <div class="arch-arrow">↕ HTTP POST /process · NormalisedMessage JSON (internal)</div>
+
+    <div class="arch-layer layer-orch">
+      <div class="layer-num">2</div>
+      <div class="layer-info">
+        <div class="layer-title">Orchestrator Service — FastAPI</div>
+        <div class="layer-sub">Session management · Phase 1 state machine · Phase 2 RAG hybrid</div>
+      </div>
+      <div class="layer-port">:8001</div>
+    </div>
+
+    <div class="arch-arrow">↕ HTTP POST /generate · JBS JSON payload (internal)</div>
+
+    <div class="arch-layer layer-docgen">
+      <div class="layer-num">3</div>
+      <div class="layer-info">
+        <div class="layer-title">Document Generator Service — FastAPI</div>
+        <div class="layer-sub">Template rendering · .docx assembly · Azure Blob upload · SAS URL</div>
+      </div>
+      <div class="layer-port">:8002</div>
+    </div>
+
+    <div class="arch-arrow">↕ Azure Blob Storage SDK · SAS token (15-min read-only)</div>
+
+    <div class="arch-layer layer-blob">
+      <div class="layer-num">↓</div>
+      <div class="layer-info">
+        <div class="layer-title">Azure Blob Storage</div>
+        <div class="layer-sub">Container: jbs-documents · Prefix: jbs-documents/</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Side panels -->
+  <div class="arch-side">
+    <div class="arch-side-box side-rag">
+      <div class="layer-title">H2O Enterprise h2oGPTe</div>
+      <div class="layer-sub">RAG Engine<br>5 site-category collections<br>Vector DB: hnswlib<br>Auth: API Key (Key Vault)</div>
+    </div>
+    <div class="arch-connector"><hr>called by Orchestrator<hr></div>
+    <div class="arch-side-box side-sp">
+      <div class="layer-title">SharePoint Online</div>
+      <div class="layer-sub">Knowledge Base source<br>5 document libraries<br>Ingested via Graph API<br>Daily sync: 02:00 UTC</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 2 — WORKFLOW STEPS
+═══════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="workflow">
+  <span class="icon">↻</span> End-to-End Workflow Steps
+</h2>
+
+<!-- PHASE 0 -->
+<div class="phase-block">
+  <div class="phase-header">
+    <div class="phase-badge badge-p0">Phase 0</div>
+    <h3>Message Ingestion &amp; Validation (Steps 1–5)</h3>
+  </div>
+  <div class="steps-grid">
+
+    <div class="step-card">
+      <div class="step-num step-p0">1</div>
+      <div class="step-body">
+        <div class="step-title">User Sends Message in Teams</div>
+        <div class="step-desc">A staff member types a message in the JBS Assistant bot channel inside Microsoft Teams. The Azure Bot Service routes the message as a Bot Framework Activity object.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p0">2</div>
+      <div class="step-body">
+        <div class="step-title">Bot Framework Delivers to Webhook</div>
+        <div class="step-desc">Azure Bot Service delivers an HTTPS <code>POST /webhook/teams</code> to the Webhook Service (port 8000) with an <code>Authorization: Bearer &lt;jwt&gt;</code> header.</div>
+        <div class="step-detail">Activity JSON includes: <code>type</code>, <code>text</code>, <code>from</code>, <code>conversation</code>, <code>id</code>, <code>serviceUrl</code>, <code>timestamp</code></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p0">3</div>
+      <div class="step-body">
+        <div class="step-title">JWT Token Validation</div>
+        <div class="step-desc">Webhook validates the RS256 Bearer token using JWKS fetched from <code>login.botframework.com</code>.</div>
+        <div class="step-detail"><ul>
+          <li>Algorithm: RS256 (asymmetric, public key from JWKS)</li>
+          <li>Audience check: <code>== TEAMS_APP_ID</code></li>
+          <li>Issuer check: <code>https://api.botframework.com</code></li>
+          <li>Reject: missing token, wrong audience, invalid signature</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p0">4</div>
+      <div class="step-body">
+        <div class="step-title">Parse Teams Activity → NormalisedMessage</div>
+        <div class="step-desc">Only <code>type="message"</code> activities are processed. The event is normalized into a Pydantic <code>NormalisedMessage</code> object.</div>
+        <div class="step-detail"><ul>
+          <li><code>user_id</code> — prefer <code>aadObjectId</code>, fallback to channel ID</li>
+          <li><code>text</code>, <code>timestamp</code> (ISO-8601), <code>reply_to</code> (activity ID)</li>
+          <li><code>service_url</code>, <code>conversation_id</code></li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p0">5</div>
+      <div class="step-body">
+        <div class="step-title">Forward to Orchestrator</div>
+        <div class="step-desc">Webhook POSTs the <code>NormalisedMessage</code> JSON to <code>ORCHESTRATOR_URL/process</code> via async <code>httpx</code> client with a 150-second timeout.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PHASE 1 -->
+<div class="phase-block">
+  <div class="phase-header">
+    <div class="phase-badge badge-p1">Phase 1</div>
+    <h3>Code-Driven Data Collection — No LLM (Steps 6–10)</h3>
+  </div>
+  <div class="steps-grid">
+
+    <div class="step-card">
+      <div class="step-num step-p1">6</div>
+      <div class="step-body">
+        <div class="step-title">Deduplication Guard</div>
+        <div class="step-desc">Orchestrator tracks in-flight Teams activity IDs in an async-locked set. Exact re-deliveries (common after pod restarts) are silently dropped.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p1">7</div>
+      <div class="step-body">
+        <div class="step-title">Load Session from StateManager</div>
+        <div class="step-desc">Session is loaded by <code>user_id</code> from the configured backend.</div>
+        <div class="step-detail"><ul>
+          <li><strong>memory</strong> — in-process dict, lost on restart</li>
+          <li><strong>sqlite</strong> — <code>/tmp/jbs_sessions.db</code>, restart-safe</li>
+          <li><strong>external_redis</strong> — multi-replica deployments</li>
+          <li>Default TTL: 24 hours. New users get a fresh session (phase=1, step=1).</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p1">8</div>
+      <div class="step-body">
+        <div class="step-title">Stale Message Guard</div>
+        <div class="step-desc">Prevents queued/delayed messages from corrupting an active interview.</div>
+        <div class="step-detail"><ul>
+          <li>Drop <em>reset</em> commands (e.g. "new jbs") if message is &gt;10 seconds old on active session</li>
+          <li>Drop <em>any</em> message &gt;5 minutes old if session has collected fields</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="step-card" style="grid-column: span 2;">
+      <div class="step-num step-p1">9</div>
+      <div class="step-body">
+        <div class="step-title">Phase 1 State Machine — 5 Steps, Pure Code</div>
+        <div class="step-desc">Each user message advances one step. No LLM is called. All replies are hard-coded templates.</div>
+        <div class="sub-steps">
+          <div class="sub-step"><div class="sub-num">1</div><div><strong>Customer Name</strong> — greeting words trigger welcome message; any other input is saved as <code>customer_name</code> and advances to step 2.</div></div>
+          <div class="sub-step"><div class="sub-num">2</div><div><strong>Site Name</strong> — text saved as <code>site_name</code>, advance to step 3.</div></div>
+          <div class="sub-step"><div class="sub-num">3</div><div><strong>Site Category</strong> — parse "Aviation", "2", or "aviation" → normalize to one of 5 categories → bind <code>collection_id</code> from <code>SITE_CATEGORY_COLLECTION_MAP</code>.</div></div>
+          <div class="sub-step"><div class="sub-num">4</div><div><strong>Job Purpose</strong> — free-text, saved as <code>job_purpose</code>, advance to step 5.</div></div>
+          <div class="sub-step"><div class="sub-num">5</div><div><strong>Confirmation</strong> — display summary. Approval keywords (yes / confirm / ok) set <code>phase1_confirmed=True</code> and <code>phase=2</code>. "Change X" loops back to the relevant step.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p1">10</div>
+      <div class="step-body">
+        <div class="step-title">Save Session &amp; Send Teams Reply</div>
+        <div class="step-desc">Session is serialized and persisted. Bot Framework reply is sent to Teams using a cached OAuth2 client-credentials token (scope: <code>https://api.botframework.com/.default</code>).</div>
+        <div class="step-detail">Token cached in memory; refreshed 60 seconds before expiry.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PHASE 2 -->
+<div class="phase-block">
+  <div class="phase-header">
+    <div class="phase-badge badge-p2">Phase 2</div>
+    <h3>RAG-Guided Content Collection — LLM + h2oGPTe (Steps 11–17)</h3>
+  </div>
+  <div class="steps-grid">
+
+    <div class="step-card">
+      <div class="step-num step-p2">11</div>
+      <div class="step-body">
+        <div class="step-title">suggest_duties — h2oGPTe RAG Call #1</div>
+        <div class="step-desc">Orchestrator calls <code>H2OGPTeClient.chat()</code> with the site-category collection bound in step 9-3.</div>
+        <div class="step-detail">Prompt: <em>"List 3–5 typical duties for [job_purpose] at a [site_category] site. Output ONLY a numbered list."</em><br>Response parsed into a list of duty names, stored in <code>p2_suggestions.duties</code>.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p2">12</div>
+      <div class="step-body">
+        <div class="step-title">confirm_duties — User Accepts or Overrides</div>
+        <div class="step-desc">User replies "confirm" (use suggestions) or types custom duties (one per line). Structured as <code>duties = [{duty_name, tasks: []}]</code>. State advances to <code>suggest_tasks_0</code>.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p2">13</div>
+      <div class="step-body">
+        <div class="step-title">suggest_tasks_N — h2oGPTe RAG Call per Duty</div>
+        <div class="step-desc">One RAG call per duty. Loop index N tracks which duty is active.</div>
+        <div class="step-detail">Prompt: <em>"List 3–5 tasks for duty '[duty_name]' in [job_purpose] at [site_category]. Format: task | frequency | responsible_role"</em></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p2">14</div>
+      <div class="step-body">
+        <div class="step-title">confirm_tasks_N — Parse &amp; Store Task Rows</div>
+        <div class="step-desc">Each confirmed task is parsed into a structured object and stored under the duty.</div>
+        <div class="step-detail">Fields: <code>sequence</code>, <code>task_description</code>, <code>trigger</code>, <code>frequency</code>, <code>responsible_role</code>. Loop continues until all duties have tasks.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p2">15</div>
+      <div class="step-body">
+        <div class="step-title">suggest_safety — h2oGPTe RAG Call for Safety</div>
+        <div class="step-desc">One RAG call for hazards and PPE requirements for the site type.</div>
+        <div class="step-detail">Prompt: <em>"For a [site_category] site at [site_name], list typical hazards and required PPE. Format: Hazards: item1, item2 / PPE: item1, item2"</em></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p2">16</div>
+      <div class="step-body">
+        <div class="step-title">confirm_safety — Store Safety Data</div>
+        <div class="step-desc">User confirms or provides custom hazards/PPE. Stored as <code>safety_compliance = {site_hazards: [...], ppe_requirements: [...]}</code>. State advances to <code>review</code>.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p2">17</div>
+      <div class="step-body">
+        <div class="step-title">review — Full JBS Summary &amp; Approval Gate</div>
+        <div class="step-desc">Full JBS summary displayed. User can type <strong>APPROVE</strong>, "change duties", "change safety", or name a specific duty to re-enter.</div>
+        <div class="step-detail">On APPROVE → <code>build_jbs_json()</code> called and flow continues to Phase 3.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PHASE 3 -->
+<div class="phase-block">
+  <div class="phase-header">
+    <div class="phase-badge badge-p3">Phase 3</div>
+    <h3>Document Generation &amp; Delivery (Steps 18–24)</h3>
+  </div>
+  <div class="steps-grid">
+
+    <div class="step-card">
+      <div class="step-num step-p3">18</div>
+      <div class="step-body">
+        <div class="step-title">Build JBS JSON Payload</div>
+        <div class="step-desc">Orchestrator calls <code>PhaseController.build_jbs_json()</code> to assemble the complete structured payload from <code>collected_fields</code>.</div>
+        <div class="step-detail">Top-level fields: <code>jbs_version</code>, <code>generated_at</code>, <code>metadata</code>, <code>duties[]</code>, <code>safety_compliance</code></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p3">19</div>
+      <div class="step-body">
+        <div class="step-title">POST to Document Generator</div>
+        <div class="step-desc">Orchestrator sends the JBS JSON to <code>DOCUMENT_GENERATOR_URL/generate</code> (port 8002, internal) with a 60-second timeout.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p3">20</div>
+      <div class="step-body">
+        <div class="step-title">Load Template &amp; Replace Placeholders</div>
+        <div class="step-desc">Document Generator loads <code>templates/jbs_corporate_template.docx</code> and performs placeholder substitution.</div>
+        <div class="step-detail">Placeholders: <code>{CUSTOMER_NAME}</code> <code>{SITE_NAME}</code> <code>{SITE_CATEGORY}</code> <code>{JOB_PURPOSE}</code> <code>{GENERATED_AT}</code> <code>{AUTHORIZED_BY}</code></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p3">21</div>
+      <div class="step-body">
+        <div class="step-title">Assemble Document Content</div>
+        <div class="step-desc">For each duty: add heading (level 2) + 5-column task table. Then add Safety &amp; Compliance section. Append hidden audit trail.</div>
+        <div class="step-detail"><ul>
+          <li>Table columns: #, Task, Trigger, Frequency, Role</li>
+          <li>Safety paragraphs: Hazards, PPE</li>
+          <li>Audit trail: JSON in white 6pt font under "Appendix: Machine-Readable Data"</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p3">22</div>
+      <div class="step-body">
+        <div class="step-title">Upload to Azure Blob Storage</div>
+        <div class="step-desc">Generated file saved locally to <code>/tmp/</code> then uploaded to Azure Blob Storage.</div>
+        <div class="step-detail">Filename: <code>JBS_{site_name}_{uuid8}.docx</code><br>Container: <code>jbs-documents</code><br>Prefix: <code>jbs-documents/</code></div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p3">23</div>
+      <div class="step-body">
+        <div class="step-title">Generate SAS URL &amp; Return</div>
+        <div class="step-desc">A 15-minute read-only Shared Access Signature URL is generated and returned to the Orchestrator.</div>
+        <div class="step-detail">Response: <code>{"download_url": "https://&lt;account&gt;.blob.core.windows.net/..."}</code><br>Expiry: <code>DOC_URL_EXPIRY_SECONDS</code> (default 900)</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-p3">24</div>
+      <div class="step-body">
+        <div class="step-title">Final Teams Reply &amp; Session Close</div>
+        <div class="step-desc">Orchestrator sends the download link to the user via Teams. Session status is set to <code>"complete"</code>. User can type "New JBS" to restart.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- BACKGROUND SYNC -->
+<div class="phase-block">
+  <div class="phase-header">
+    <div class="phase-badge badge-bg">Background</div>
+    <h3>SharePoint → h2oGPTe Knowledge Base Sync</h3>
+  </div>
+  <div class="steps-grid">
+
+    <div class="step-card">
+      <div class="step-num step-bg">S1</div>
+      <div class="step-body">
+        <div class="step-title">Trigger</div>
+        <div class="step-desc">Runs automatically via Azure Container Apps Scheduled Job (daily 02:00 UTC) or on-demand via <code>POST /admin/sync</code> from the Wave dashboard.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-bg">S2</div>
+      <div class="step-body">
+        <div class="step-title">Per-Category Loop</div>
+        <div class="step-desc">For each of 5 site categories (Corporate, Aviation, Industrial, Maritime, Retail): get-or-create the h2oGPTe collection, list changed documents from the corresponding SharePoint library.</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num step-bg">S3</div>
+      <div class="step-body">
+        <div class="step-title">Download &amp; Ingest</div>
+        <div class="step-desc">Each changed document is downloaded via Microsoft Graph API, saved to a temp file, and uploaded to h2oGPTe for Document AI processing (OCR, chunking, embedding).</div>
+        <div class="step-detail">Chunks tagged with: <code>site_category</code>, <code>doc_type</code>, <code>version</code>. Available for RAG queries in Phase 2.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 3 — DATA SCHEMAS
+═══════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="schemas">
+  <span class="icon">{}</span> Key Data Schemas
+</h2>
+
+<details>
+  <summary>NormalisedMessage — Webhook output / Orchestrator input</summary>
+  <div class="schema-body">
+    <pre>{
+  <span class="key">"channel"</span>:         <span class="str">"teams"</span>,
+  <span class="key">"user_id"</span>:         <span class="str">"&lt;AAD-object-id&gt;"</span>,
+  <span class="key">"user_name"</span>:       <span class="str">"John Doe"</span>,
+  <span class="key">"text"</span>:            <span class="str">"Aviation"</span>,
+  <span class="key">"timestamp"</span>:      <span class="str">"2024-01-15T10:30:00Z"</span>,
+  <span class="key">"reply_to"</span>:       <span class="str">"&lt;teams-activity-id&gt;"</span>,
+  <span class="key">"service_url"</span>:    <span class="str">"https://smba.trafficmanager.net/..."</span>,
+  <span class="key">"conversation_id"</span>:<span class="str">"&lt;teams-conversation-id&gt;"</span>
+}</pre>
+  </div>
+</details>
+
+<details>
+  <summary>Session State — stored in memory / SQLite / Redis</summary>
+  <div class="schema-body">
+    <pre>{
+  <span class="key">"user_id"</span>:          <span class="str">"&lt;AAD-object-id&gt;"</span>,
+  <span class="key">"phase"</span>:            <span class="num">1</span>,             <span class="cmt">// 1 or 2</span>
+  <span class="key">"status"</span>:           <span class="str">"active"</span>,      <span class="cmt">// active | complete</span>
+  <span class="key">"phase1_step"</span>:      <span class="num">3</span>,             <span class="cmt">// 1–5</span>
+  <span class="key">"p2_step"</span>:          <span class="str">"suggest_duties"</span>, <span class="cmt">// see Phase 2 steps</span>
+  <span class="key">"collection_id"</span>:   <span class="str">"1f29b343-6f58-45eb-98ed-f724e3dbe038"</span>,
+  <span class="key">"h2ogpte_conv_id"</span>: <span class="num">null</span>,
+  <span class="key">"collected_fields"</span>: {
+    <span class="key">"customer_name"</span>:   <span class="str">"Sydney Airlines"</span>,
+    <span class="key">"site_name"</span>:       <span class="str">"Kingsford Smith Terminal 2"</span>,
+    <span class="key">"site_category"</span>:   <span class="str">"Aviation"</span>,
+    <span class="key">"job_purpose"</span>:     <span class="str">"Airside security screening"</span>,
+    <span class="key">"phase1_confirmed"</span>:<span class="num">true</span>,
+    <span class="key">"duties"</span>: [
+      {
+        <span class="key">"duty_name"</span>: <span class="str">"Airside Access Control"</span>,
+        <span class="key">"tasks"</span>: [
+          {
+            <span class="key">"sequence"</span>:         <span class="num">1</span>,
+            <span class="key">"task_description"</span>: <span class="str">"Verify airside passes"</span>,
+            <span class="key">"trigger"</span>:          <span class="str">"Personnel entry"</span>,
+            <span class="key">"frequency"</span>:        <span class="str">"Per entry"</span>,
+            <span class="key">"responsible_role"</span>: <span class="str">"Security Officer"</span>
+          }
+        ]
+      }
+    ],
+    <span class="key">"safety_compliance"</span>: {
+      <span class="key">"site_hazards"</span>:      [<span class="str">"Aircraft movement"</span>, <span class="str">"Jet blast"</span>],
+      <span class="key">"ppe_requirements"</span>:   [<span class="str">"High-vis vest"</span>, <span class="str">"Safety boots"</span>]
+    }
+  },
+  <span class="key">"p2_suggestions"</span>: { <span class="cmt">/* raw LLM responses cached here */</span> }
+}</pre>
+  </div>
+</details>
+
+<details>
+  <summary>JBS JSON Payload — sent to Document Generator</summary>
+  <div class="schema-body">
+    <pre>{
+  <span class="key">"jbs_version"</span>:  <span class="str">"1.0"</span>,
+  <span class="key">"generated_at"</span>: <span class="str">"2024-01-15T10:45:00Z"</span>,
+  <span class="key">"metadata"</span>: {
+    <span class="key">"customer_name"</span>: <span class="str">"Sydney Airlines"</span>,
+    <span class="key">"site_name"</span>:       <span class="str">"Kingsford Smith Terminal 2"</span>,
+    <span class="key">"site_category"</span>:   <span class="str">"Aviation"</span>,
+    <span class="key">"job_purpose"</span>:     <span class="str">"Airside security screening"</span>,
+    <span class="key">"created_by"</span>:      <span class="str">"&lt;AAD-object-id&gt;"</span>,
+    <span class="key">"authorized_by"</span>:   <span class="str">""</span>
+  },
+  <span class="key">"duties"</span>: [
+    {
+      <span class="key">"duty_name"</span>: <span class="str">"Airside Access Control"</span>,
+      <span class="key">"tasks"</span>: [
+        {
+          <span class="key">"sequence"</span>: <span class="num">1</span>,
+          <span class="key">"task_description"</span>: <span class="str">"Verify airside passes"</span>,
+          <span class="key">"trigger"</span>:          <span class="str">"Personnel entry"</span>,
+          <span class="key">"frequency"</span>:        <span class="str">"Per entry"</span>,
+          <span class="key">"responsible_role"</span>: <span class="str">"Security Officer"</span>
+        }
+      ]
+    }
+  ],
+  <span class="key">"safety_compliance"</span>: {
+    <span class="key">"site_hazards"</span>:     [<span class="str">"Aircraft movement"</span>, <span class="str">"Jet blast zones"</span>],
+    <span class="key">"ppe_requirements"</span>:  [<span class="str">"High-vis vest"</span>, <span class="str">"Safety boots"</span>, <span class="str">"Ear defenders"</span>]
+  }
+}</pre>
+  </div>
+</details>
+
+<details>
+  <summary>SITE_CATEGORY_COLLECTION_MAP — h2oGPTe collection IDs</summary>
+  <div class="schema-body">
+    <pre>{
+  <span class="key">"Corporate"</span>:  <span class="str">"c0e682b7-e990-48de-9cdf-5f0f1bab73a1"</span>,
+  <span class="key">"Aviation"</span>:   <span class="str">"1f29b343-6f58-45eb-98ed-f724e3dbe038"</span>,
+  <span class="key">"Industrial"</span>: <span class="str">"debcfa65-f032-4ada-99eb-b080b48ddec5"</span>,
+  <span class="key">"Maritime"</span>:   <span class="str">"21a23bb0-2cfa-4561-8a19-ef408c03c980"</span>,
+  <span class="key">"Retail"</span>:     <span class="str">"30ae7e9b-3812-4d96-ad34-357214210dcf"</span>
+}</pre>
+  </div>
+</details>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 4 — CONFIGURATION
+═══════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="config">
+  <span class="icon">⚙</span> Configuration Reference
+</h2>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Service</th>
+      <th>Purpose</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td colspan="4" style="background:#f0f4f8;font-size:12px;font-weight:700;color:#445;padding:8px 12px;">H2O Platform</td></tr>
+    <tr><td><code>H2OGPTE_ADDRESS</code></td><td>Orchestrator</td><td>h2oGPTe server URL</td><td><code>https://gpte.your-org.h2o.ai</code></td></tr>
+    <tr><td><code>H2OGPTE_API_KEY</code></td><td>Orchestrator</td><td>h2oGPTe API key (Key Vault)</td><td><em>secret</em></td></tr>
+
+    <tr><td colspan="4" style="background:#f0f4f8;font-size:12px;font-weight:700;color:#445;padding:8px 12px;">Microsoft Teams Bot</td></tr>
+    <tr><td><code>TEAMS_APP_ID</code></td><td>Webhook, Orchestrator</td><td>Bot app registration ID (JWT audience)</td><td><em>uuid</em></td></tr>
+    <tr><td><code>TEAMS_APP_PASSWORD</code></td><td>Orchestrator</td><td>Bot app secret (OAuth2 client_secret)</td><td><em>secret</em></td></tr>
+    <tr><td><code>AZURE_TENANT_ID</code></td><td>Orchestrator</td><td>AAD tenant for Bot Framework token</td><td><em>uuid</em></td></tr>
+
+    <tr><td colspan="4" style="background:#f0f4f8;font-size:12px;font-weight:700;color:#445;padding:8px 12px;">SharePoint / Microsoft Graph</td></tr>
+    <tr><td><code>AZURE_CLIENT_ID</code></td><td>Sync job</td><td>SharePoint app registration ID</td><td><em>uuid</em></td></tr>
+    <tr><td><code>AZURE_CLIENT_SECRET</code></td><td>Sync job</td><td>SharePoint app secret</td><td><em>secret</em></td></tr>
+    <tr><td><code>SP_SITE_URL</code></td><td>Sync job</td><td>SharePoint site URL</td><td><code>https://wigyoai.sharepoint.com/sites/h2O</code></td></tr>
+    <tr><td><code>SP_LIBRARY_CORPORATE</code></td><td>Sync job</td><td>Library ID for Corporate docs</td><td><em>uuid</em></td></tr>
+    <tr><td><code>SP_LIBRARY_AVIATION</code></td><td>Sync job</td><td>Library ID for Aviation docs</td><td><em>uuid</em></td></tr>
+    <tr><td><code>SP_LIBRARY_INDUSTRIAL</code></td><td>Sync job</td><td>Library ID for Industrial docs</td><td><em>uuid</em></td></tr>
+    <tr><td><code>SP_LIBRARY_MARITIME</code></td><td>Sync job</td><td>Library ID for Maritime docs</td><td><em>uuid</em></td></tr>
+    <tr><td><code>SP_LIBRARY_RETAIL</code></td><td>Sync job</td><td>Library ID for Retail docs</td><td><em>uuid</em></td></tr>
+
+    <tr><td colspan="4" style="background:#f0f4f8;font-size:12px;font-weight:700;color:#445;padding:8px 12px;">Azure Blob Storage</td></tr>
+    <tr><td><code>AZURE_STORAGE_ACCOUNT</code></td><td>Doc Generator</td><td>Storage account name</td><td><code>jbsstorage</code></td></tr>
+    <tr><td><code>AZURE_STORAGE_KEY</code></td><td>Doc Generator</td><td>Storage account key</td><td><em>secret</em></td></tr>
+    <tr><td><code>AZURE_STORAGE_CONTAINER</code></td><td>Doc Generator</td><td>Blob container name</td><td><code>jbs-documents</code></td></tr>
+    <tr><td><code>BLOB_PREFIX</code></td><td>Doc Generator</td><td>Key prefix within container</td><td><code>jbs-documents/</code></td></tr>
+    <tr><td><code>DOC_URL_EXPIRY_SECONDS</code></td><td>Doc Generator</td><td>SAS token expiry (seconds)</td><td><code>900</code></td></tr>
+
+    <tr><td colspan="4" style="background:#f0f4f8;font-size:12px;font-weight:700;color:#445;padding:8px 12px;">Internal Service URLs</td></tr>
+    <tr><td><code>ORCHESTRATOR_URL</code></td><td>Webhook</td><td>Orchestrator internal URL</td><td><code>http://orchestrator:8001</code></td></tr>
+    <tr><td><code>DOCUMENT_GENERATOR_URL</code></td><td>Orchestrator</td><td>Doc Generator internal URL</td><td><code>http://docgen:8002</code></td></tr>
+
+    <tr><td colspan="4" style="background:#f0f4f8;font-size:12px;font-weight:700;color:#445;padding:8px 12px;">Session State</td></tr>
+    <tr><td><code>STATE_BACKEND</code></td><td>Orchestrator</td><td>Session storage backend</td><td><code>sqlite</code> (memory | sqlite | external_redis)</td></tr>
+    <tr><td><code>SESSION_TTL_HOURS</code></td><td>Orchestrator</td><td>Session time-to-live</td><td><code>24</code></td></tr>
+    <tr><td><code>SQLITE_PATH</code></td><td>Orchestrator</td><td>SQLite database file path</td><td><code>/tmp/jbs_sessions.db</code></td></tr>
+    <tr><td><code>REDIS_URL</code></td><td>Orchestrator</td><td>Redis connection string (external_redis only)</td><td><code>rediss://:password@host:6380/0</code></td></tr>
+    <tr><td><code>TENANT_ID</code></td><td>Orchestrator</td><td>Namespace prefix for Redis keys</td><td><code>jbs</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 5 — CONVERSATION EXAMPLE
+═══════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="example">
+  <span class="icon">💬</span> Annotated Conversation Example
+</h2>
+
+<div class="convo">
+
+  <div class="convo-phase-divider"><hr>Phase 0 — Message arrives, JWT validated, NormalisedMessage created<hr></div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">Hi, I want to create a JBS</div>
+      <div class="msg-note">Teams Activity → Webhook validates JWT → forwards to Orchestrator</div>
+    </div>
+  </div>
+
+  <div class="convo-phase-divider"><hr>Phase 1 — Step 1: greeting detected, welcome message returned<hr></div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Welcome! I will guide you through creating a Job Breakdown Statement.<br><br>What is the <strong>Customer Name</strong>? (the client organisation)</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">Sydney Airlines</div>
+      <div class="msg-note">Phase 1 Step 1 → saved as customer_name, advance to step 2</div>
+    </div>
+  </div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Got it — Customer Name: <strong>Sydney Airlines</strong><br><br>What is the <strong>Site Name</strong>?</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">Kingsford Smith Airport Terminal 2</div>
+    </div>
+  </div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Got it — Site Name: <strong>Kingsford Smith Airport Terminal 2</strong><br><br>What is the <strong>Site Category</strong>?<br>1. Corporate &nbsp; 2. Aviation &nbsp; 3. Industrial &nbsp; 4. Maritime &nbsp; 5. Retail</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">Aviation</div>
+      <div class="msg-note">Phase 1 Step 3 → "Aviation" → collection_id bound → advance to step 4</div>
+    </div>
+  </div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Got it — Site Category: <strong>Aviation</strong><br><br>What is the <strong>Job Purpose</strong>?</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">Provide airside security screening</div>
+    </div>
+  </div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot"><strong>Summary</strong><br>1. Customer: Sydney Airlines<br>2. Site: Kingsford Smith Airport Terminal 2<br>3. Category: Aviation<br>4. Job Purpose: Provide airside security screening<br><br>Reply <strong>Yes</strong> to proceed or tell me which field to change.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">Yes</div>
+      <div class="msg-note">Phase 1 Step 5 → approved → phase1_confirmed=True, phase=2 → immediately enter Phase 2</div>
+    </div>
+  </div>
+
+  <div class="convo-phase-divider"><hr>Phase 2 — RAG call #1 for duties (h2oGPTe Aviation collection)<hr></div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Based on the knowledge base, here are suggested duties for a <strong>Provide airside security screening</strong> role at an <strong>Aviation</strong> site:<br><br>1. Airside Access Control<br>2. Passenger Screening<br>3. Perimeter Patrol<br><br>Reply <strong>confirm</strong> to use these, or type your own duties.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">confirm</div>
+      <div class="msg-note">Duties confirmed → structured duties array created → loop to suggest_tasks_0</div>
+    </div>
+  </div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Suggested tasks for <strong>Airside Access Control</strong>:<br><br>1. Verify all personnel hold valid airside passes | Per entry | Security Officer<br>2. Monitor access control points | Continuously | Security Officer<br><br>Reply <strong>confirm</strong> to use these, or type your own tasks.</div>
+      <div class="msg-note">h2oGPTe RAG call #2 — tasks for duty 0</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div><div class="bubble bubble-user">confirm</div></div>
+  </div>
+
+  <!-- skipping intermediate duties for brevity -->
+  <div class="convo-phase-divider"><hr>… (repeat for each duty) …<hr></div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Suggested safety requirements:<br><br><strong>Hazards:</strong> Aircraft movement, Jet blast zones, High-noise environment<br><strong>PPE:</strong> High-visibility vest, Safety boots, Ear defenders<br><br>Reply <strong>confirm</strong> to use these.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div><div class="bubble bubble-user">confirm</div></div>
+  </div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot"><strong>JBS SUMMARY</strong><br>━━━━━━━━━━━━━━━━━━<br><strong>Customer:</strong> Sydney Airlines<br><strong>Site:</strong> Kingsford Smith Airport Terminal 2 (Aviation)<br><strong>Job Purpose:</strong> Provide airside security screening<br>…<br><br>Type <strong>APPROVE</strong> to generate the document, or ask to change any section.</div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="avatar avatar-user">JD</div>
+    <div>
+      <div class="bubble bubble-user">APPROVE</div>
+      <div class="msg-note">Phase 2 review → approval detected → build_jbs_json() → POST /generate → .docx rendered → Blob upload → SAS URL</div>
+    </div>
+  </div>
+
+  <div class="convo-phase-divider"><hr>Phase 3 — Document generated, uploaded to Azure Blob, SAS URL returned<hr></div>
+
+  <div class="msg bot">
+    <div class="avatar avatar-bot">JB</div>
+    <div>
+      <div class="bubble bubble-bot">Your JBS document has been generated!<br><br>Download link (valid 15 minutes):<br><em>https://jbsstorage.blob.core.windows.net/jbs-documents/jbs-documents/JBS_Kingsford_Smith_a1b2c3d4.docx?sv=…</em></div>
+      <div class="msg-note">Session status → "complete". User can type "New JBS" to restart.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 6 — KEY FILES
+═══════════════════════════════════════════════════════ -->
+<h2 class="section-title" id="files">
+  <span class="icon">📁</span> Key Files Reference
+</h2>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Service</th>
+      <th>Purpose</th>
+      <th>Key Functions / Classes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>src/webhook/main.py</code></td>
+      <td>Webhook :8000</td>
+      <td>Public entry point — JWT validation, Teams event parsing, forward to orchestrator</td>
+      <td><code>POST /webhook/teams</code>, <code>_forward()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/webhook/teams.py</code></td>
+      <td>Webhook</td>
+      <td>Teams Bot Framework activity parser</td>
+      <td><code>parse_teams_event()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/agent/orchestrator.py</code></td>
+      <td>Orchestrator :8001</td>
+      <td>Core state machine — dedup, session, Phase 1 &amp; 2, Teams reply</td>
+      <td><code>process_message()</code>, <code>_phase1_respond()</code>, <code>_phase2_respond()</code>, <code>_get_rag_suggestion()</code>, <code>_send_teams()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/agent/phase_controller.py</code></td>
+      <td>Orchestrator</td>
+      <td>Phase logic helpers and JBS JSON builder</td>
+      <td><code>build_jbs_json()</code>, <code>is_approved()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/agent/state_manager.py</code></td>
+      <td>Orchestrator</td>
+      <td>Session persistence — 3 backends</td>
+      <td><code>StateManager</code>, <code>MemoryStateBackend</code>, <code>SQLiteStateBackend</code>, <code>ExternalRedisStateBackend</code></td>
+    </tr>
+    <tr>
+      <td><code>src/agent/server.py</code></td>
+      <td>Orchestrator</td>
+      <td>FastAPI app — /process, /sessions, /admin/sync endpoints</td>
+      <td><code>POST /process</code>, <code>GET /sessions</code>, <code>POST /admin/sync</code></td>
+    </tr>
+    <tr>
+      <td><code>src/rag/h2ogpte_client.py</code></td>
+      <td>Orchestrator</td>
+      <td>H2O GPTe Python client wrapper</td>
+      <td><code>H2OGPTeClient</code>, <code>chat()</code>, <code>get_or_create_collection()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/rag/sharepoint_sync.py</code></td>
+      <td>Sync job</td>
+      <td>SharePoint → h2oGPTe daily sync</td>
+      <td><code>sync_sharepoint_to_h2ogpte()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/integrations/graph_api_client.py</code></td>
+      <td>Sync job</td>
+      <td>Microsoft Graph API client for SharePoint</td>
+      <td><code>GraphAPIClient</code>, <code>list_changed_documents()</code>, <code>download_document()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/document/generator.py</code></td>
+      <td>Doc Gen :8002</td>
+      <td>Word template rendering, Blob upload, SAS generation</td>
+      <td><code>DocumentGenerator.generate()</code>, <code>_populate_document()</code></td>
+    </tr>
+    <tr>
+      <td><code>src/document/server.py</code></td>
+      <td>Doc Gen</td>
+      <td>FastAPI app — /generate endpoint</td>
+      <td><code>POST /generate</code></td>
+    </tr>
+    <tr>
+      <td><code>templates/jbs_corporate_template.docx</code></td>
+      <td>Doc Gen</td>
+      <td>Word template with placeholders</td>
+      <td>Placeholders: <code>{CUSTOMER_NAME}</code> <code>{SITE_NAME}</code> <code>{SITE_CATEGORY}</code> <code>{JOB_PURPOSE}</code> <code>{GENERATED_AT}</code></td>
+    </tr>
+    <tr>
+      <td><code>config/prompts/system_base.txt</code></td>
+      <td>Orchestrator</td>
+      <td>h2oGPTe system prompt — strict output rules</td>
+      <td>No simulated responses, one question at a time, no meta-commentary</td>
+    </tr>
+    <tr>
+      <td><code>config/prompts/phase2.txt</code></td>
+      <td>Orchestrator</td>
+      <td>Phase 2 workflow reference (not sent to LLM directly)</td>
+      <td>Section A: Duties &amp; Tasks / B: Safety / C: Review &amp; Approval</td>
+    </tr>
+    <tr>
+      <td><code>docker-compose.yml</code></td>
+      <td>All</td>
+      <td>Local development orchestration — 3 services with health checks</td>
+      <td>webhook, orchestrator, document services</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+</main>
+
+<footer>
+  JBS Automation Platform &nbsp;·&nbsp; End-to-End Workflow Documentation &nbsp;·&nbsp; Generated 2026-04-03
+</footer>
+
+</body>
+</html>

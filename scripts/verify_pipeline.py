@@ -130,7 +130,7 @@ async def check_rag_queries(h2o: H2OGPTeClient, resolved_ids: dict[str, str | No
     section("Check 5 — Test RAG Probe Query per Collection")
     probe = "List one typical duty for this site type."
     system_prompt = (
-        "You are a Certis JBS assistant. Use the knowledge base. "
+        "You are a JBS assistant. Use the knowledge base. "
         "Output ONLY a single duty name — no preamble."
     )
     for category, collection_id in resolved_ids.items():
@@ -172,7 +172,7 @@ def check_sync_delta_filter():
 
 
 async def main():
-    print("\nCertis JBS — Pipeline Verification")
+    print("\nJBS — Pipeline Verification")
     print("====================================")
 
     graph = GraphAPIClient()

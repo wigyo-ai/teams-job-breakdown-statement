@@ -21,7 +21,7 @@
 2. Docker images already built and pushed to ACR (Steps 5–6 in DEPLOYMENT_GUIDE.md)
 3. Resource group already created:
    ```bash
-   az group create --name certis-jbs-rg --location australiaeast
+   az group create --name jbs-rg --location australiaeast
    ```
 
 ## Usage
@@ -29,15 +29,15 @@
 ### Option A — Inline parameters
 
 ```bash
-ACR_LOGIN_SERVER=certisjbsacr.azurecr.io
-ACR_USERNAME=$(az acr credential show --name certisjbsacr --query username -o tsv)
-ACR_PASSWORD=$(az acr credential show --name certisjbsacr --query "passwords[0].value" -o tsv)
+ACR_LOGIN_SERVER=jbsacr.azurecr.io
+ACR_USERNAME=$(az acr credential show --name jbsacr --query username -o tsv)
+ACR_PASSWORD=$(az acr credential show --name jbsacr --query "passwords[0].value" -o tsv)
 
 az deployment group create \
-  --resource-group certis-jbs-rg \
+  --resource-group jbs-rg \
   --template-file deploy/azure/main.bicep \
   --parameters \
-    prefix=certisjbs \
+    prefix=jbs \
     imageTag=1.0.0 \
     acrLoginServer=$ACR_LOGIN_SERVER \
     acrUsername=$ACR_USERNAME \
@@ -65,9 +65,9 @@ Create a `deploy/azure/parameters.json` file (do NOT commit this file — it con
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "prefix":             { "value": "certisjbs" },
+    "prefix":             { "value": "jbs" },
     "imageTag":           { "value": "1.0.0" },
-    "acrLoginServer":     { "value": "certisjbsacr.azurecr.io" },
+    "acrLoginServer":     { "value": "jbsacr.azurecr.io" },
     "acrUsername":        { "value": "<acr-username>" },
     "acrPassword":        { "value": "<acr-password>" },
     "teamsAppId":         { "value": "<teams-app-id>" },
@@ -89,7 +89,7 @@ Create a `deploy/azure/parameters.json` file (do NOT commit this file — it con
 Then deploy:
 ```bash
 az deployment group create \
-  --resource-group certis-jbs-rg \
+  --resource-group jbs-rg \
   --template-file deploy/azure/main.bicep \
   --parameters @deploy/azure/parameters.json
 ```
@@ -100,7 +100,7 @@ After deployment, retrieve the webhook messaging endpoint:
 
 ```bash
 az deployment group show \
-  --resource-group certis-jbs-rg \
+  --resource-group jbs-rg \
   --name main \
   --query properties.outputs.webhookMessagingEndpoint.value -o tsv
 ```
@@ -113,7 +113,7 @@ To update images after a new build:
 
 ```bash
 az deployment group create \
-  --resource-group certis-jbs-rg \
+  --resource-group jbs-rg \
   --template-file deploy/azure/main.bicep \
   --parameters @deploy/azure/parameters.json \
   --parameters imageTag=1.1.0

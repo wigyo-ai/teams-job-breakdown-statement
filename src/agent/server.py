@@ -129,7 +129,7 @@ async def verify_pipeline():
     # Check 5 — RAG probe
     probe = "List one typical duty for this site type."
     system_prompt = (
-        "You are a Certis JBS assistant. Use the knowledge base. "
+        "You are a JBS assistant. Use the knowledge base. "
         "Output ONLY a single duty name — no preamble."
     )
     for category, collection_id in resolved.items():

@@ -1,4 +1,4 @@
-# Certis Security — Job Breakdown Statement (JBS) Automation Platform
+# Job Breakdown Statement (JBS) Automation Platform
 
 ## Overview
 
